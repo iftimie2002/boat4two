@@ -1,0 +1,1601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <link crossorigin="" href="https://fonts.gstatic.com/" rel="preconnect"/>
+    <link as="style" href="https://fonts.googleapis.com/css2?display=swap&amp;family=Noto+Sans%3Awght%40400%3B500%3B700%3B900&amp;family=Plus+Jakarta+Sans%3Awght%40400%3B500%3B700%3B800" onload="this.rel='stylesheet'" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet"/>
+    <title>Boat4Two</title>
+    <link href="data:image/x-icon;base64," rel="icon" type="image/x-icon"/>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+    <script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              colors: {
+                primary: "#e65e19",
+                "background-light": "#f8f6f6",
+                "background-dark": "#211611",
+                "text-light": "#f8f6f6",
+                "text-dark": "#211611",
+              },
+              fontFamily: {
+                display: ["Plus Jakarta Sans"],
+              },
+              borderRadius: {
+                DEFAULT: "1rem",
+                lg: "2rem",
+                xl: "3rem",
+                full: "9999px"
+              },
+            },
+          },
+        };
+      </script>
+    <style type="text/tailwindcss">
+        @keyframes scroll {
+          0% {
+            transform: translateX(0);
+          }
+          100% {
+            transform: translateX(calc(-250px * 7));
+          }
+        }
+        .animate-scroll {
+          animation: scroll 60s linear infinite;
+        }
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 1s ease-out forwards;
+        }
+        @keyframes slideUp {
+          from {
+            transform: translateY(100%);
+          }
+          to {
+            transform: translateY(0);
+          }
+        }
+        .animate-slideUp {
+          animation: slideUp 0.5s ease-out forwards;
+        }
+        @keyframes slideDown {
+          from {
+            transform: translateY(0);
+          }
+          to {
+            transform: translateY(100%);
+          }
+        }
+        .animate-slideDown {
+          animation: slideDown 0.5s ease-out forwards;
+        }
+        .group:target .group-target\:block {
+          display: block;
+        }
+        .group:target .group-target\:translate-x-0 {
+          transform: translateX(0);
+        }
+        .group:target .group-target\:opacity-100 {
+          opacity: 1;
+        }
+        .group:target .group-target\:pointer-events-auto {
+          pointer-events: auto;
+        }
+        #select-tour-popup:target,
+        #calendar-popup:target,
+        #confirmation-popup:target,
+        #review-popup:target,
+        #payment-popup:target,
+        #success-popup:target,
+        #details-popup:target,
+        #terms-popup:target,
+        #contact-popup:target,
+        #cookies-popup:target,
+        #exemption-popup:target,
+        #impressum-popup:target,
+        #tour-sunset:target,
+        #tour-custom:target,
+        #tour-amor:target {
+          display: flex;
+        }
+        .peer:checked~.peer-checked\:bg-primary {
+          background-color: #e65e19;
+        }
+        .peer:checked~.peer-checked\:text-white {
+          color: white;
+        }
+        .peer:checked~.peer-checked\:border-primary {
+          border-color: #e65e19;
+        }
+        .peer:checked~.peer-checked\:bg-green-500 {
+          background-color: rgb(34 197 94);
+        }
+        .peer:checked~.peer-checked\:border-green-500 {
+          border-color: rgb(34 197 94);
+        }
+      </style>
+    <style>
+        body {
+          min-height: max(884px, 100dvh);
+        }
+      </style>
+    <style>
+        .material-symbols-outlined {
+          font-variation-settings: 'FILL' 1,
+          'wght' 400,
+          'GRAD' 0,
+          'opsz' 24
+        }
+      </style>
+    <style>
+        #contact-popup, #impressum-popup, #exemption-popup, #cookies-popup, #terms-popup {
+          font-family: 'Inter', sans-serif;
+        }
+      </style>
+    <style>
+        .text-strong-contrast {
+            color: #1a1a1a;
+        }
+        .dark .text-strong-contrast {
+            color: #ffffff;
+        }
+        .text-medium-contrast {
+            color: #525252;
+        }
+        .dark .text-medium-contrast {
+            color: #a3a3a3;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-zinc-900 dark:text-zinc-200">
+<div class="relative flex min-h-screen w-full flex-col overflow-x-hidden group" id="menu-container">
+<header class="sticky top-0 z-20 flex items-center justify-between border-b border-white/10 bg-background-light/80 p-4 backdrop-blur-sm dark:bg-background-dark/80">
+<h2 class="text-lg font-bold text-zinc-900 dark:text-zinc-100">Boat4Two</h2>
+<a class="flex h-12 w-12 items-center justify-end text-zinc-900 dark:text-zinc-100" href="#menu-container">
+<span class="material-symbols-outlined text-2xl"> menu </span>
+</a>
+</header>
+<a class="fixed inset-0 z-40 bg-black/50 opacity-0 pointer-events-none transition-opacity duration-300 group-target:opacity-100 group-target:pointer-events-auto" href="#"></a>
+<div class="fixed top-0 right-0 h-full w-80 max-w-[calc(100%-4rem)] bg-background-light dark:bg-background-dark shadow-xl transform translate-x-full transition-transform duration-300 z-50 group-target:translate-x-0">
+<div class="flex flex-col h-full">
+<div class="flex items-center justify-between p-4 border-b border-zinc-200/50 dark:border-zinc-800/50">
+<h3 class="text-lg font-bold">Menu</h3>
+<a class="p-2 -mr-2 text-zinc-500 hover:text-primary dark:text-zinc-400 dark:hover:text-primary" href="#">
+<span class="material-symbols-outlined"> close </span>
+</a>
+</div>
+<nav class="flex-grow p-4 space-y-4">
+<a class="block text-zinc-700 dark:text-zinc-300 hover:text-primary dark:hover:text-primary transition-colors" href="#terms-popup">Terms and Policies</a>
+<a class="block text-zinc-700 dark:text-zinc-300 hover:text-primary dark:hover:text-primary transition-colors" href="#contact-popup">Contact Us</a>
+<a class="block text-zinc-700 dark:text-zinc-300 hover:text-primary dark:hover:text-primary transition-colors" href="#cookies-popup">Cookies Policy</a>
+<a class="block text-zinc-700 dark:text-zinc-300 hover:text-primary dark:hover:text-primary transition-colors" href="#exemption-popup">Exemption of Responsibility</a>
+<a class="block text-zinc-700 dark:text-zinc-300 hover:text-primary dark:hover:text-primary transition-colors" href="#impressum-popup">Impressum</a>
+</nav>
+<div class="p-4 border-t border-zinc-200/50 dark:border-zinc-800/50 space-y-4">
+<a class="inline-flex w-full h-12 min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-full bg-green-500 px-8 text-base font-bold text-white shadow-lg transition-transform hover:scale-105" href="https://wa.me/351932066150?text=Hello!%20%0ACan%20I%20book%20a%20tour?%0AThank%20you!" target="_blank">
+<svg fill="currentColor" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+<path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.894 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.451-4.437-9.887-9.888-9.888-5.451 0-9.887 4.436-9.889 9.888-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01s-.521.074-.792.372c-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.626.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"></path>
+</svg>
+<span class="truncate">Book on WhatsApp</span>
+</a>
+<a class="flex h-12 w-full items-center justify-center rounded-full bg-primary px-6 text-sm font-bold text-white shadow-lg transition-transform hover:scale-105" href="#select-tour-popup"> Book Your Tour </a>
+</div>
+</div>
+</div>
+<main class="flex-grow">
+<div class="relative min-h-[60vh] flex flex-col items-center justify-center gap-6 bg-cover bg-center bg-no-repeat p-4 sm:min-h-[70vh]" style='background-image: linear-gradient(rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.5) 100%), url("https://i.ibb.co/F46x9Q2D/2-DJI-20250903073326-0087-D.jpg");'>
+<div class="flex animate-fadeIn flex-col gap-4 text-center" style="animation-delay: 200ms;">
+<h1 class="text-4xl font-extrabold text-white sm:text-5xl">Sail the Algarve Coast</h1>
+<p class="text-base text-white/90 sm:text-lg">Just You and Your Partner.</p>
+</div>
+<a class="flex h-12 min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full bg-primary px-6 text-sm font-bold text-white shadow-lg transition-transform hover:scale-105 sm:h-14 sm:px-8 sm:text-base animate-fadeIn" href="#select-tour-popup" style="animation-delay: 400ms;">
+<span class="truncate">Book Your Tour</span>
+</a>
+</div>
+<section class="px-4 py-10 sm:px-6">
+<div class="mx-auto max-w-4xl animate-fadeIn">
+<h2 class="text-3xl font-bold text-zinc-900 dark:text-zinc-100">Experience the Romance</h2>
+<p class="mt-4 text-base leading-relaxed text-zinc-700 dark:text-zinc-400">Imagine cruising along the stunning Algarve coastline, hand in hand with your loved one. Our private boat tours offer an intimate and luxurious experience, perfect for celebrating your love or simply enjoying a special moment together. From breathtaking sunsets to secluded coves, we curate every detail for an unforgettable romantic escape.</p>
+</div>
+</section>
+<section class="bg-background-light px-4 py-10 dark:bg-background-dark sm:px-6">
+<div class="mx-auto max-w-4xl">
+<h2 class="mb-8 text-center text-3xl font-bold text-zinc-900 dark:text-zinc-100 animate-fadeIn">Our Tours</h2>
+<div class="grid gap-8 sm:grid-cols-1">
+<a class="group block overflow-hidden rounded-lg bg-white shadow-md transition-all duration-300 hover:shadow-xl dark:bg-zinc-900 animate-fadeIn" href="#tour-sunset" style="animation-delay: 200ms;">
+<div class="relative">
+<img alt="Sunset Tour" class="h-56 w-full object-cover transition-transform duration-300 group-hover:scale-105" src="https://i.ibb.co/V08ngWQc/7-DJI-20250903072039-0044-D.jpg"/>
+<div class="absolute top-2 right-2 rounded-full bg-primary px-3 py-1 text-xs font-bold text-white">Most Popular</div>
+</div>
+<div class="p-6">
+<h3 class="text-xl font-bold text-zinc-900 dark:text-zinc-100">Sunset Tour</h3>
+<div class="mt-4 flex flex-col gap-3 text-zinc-700 dark:text-zinc-300">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-lg text-primary"> euro_symbol </span>
+<span>Starting at 95,00€* per Person</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-lg text-primary"> schedule </span>
+<span>3h30</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-lg text-primary"> location_on </span>
+<span>Ferragudo</span>
+</div>
+</div>
+</div>
+</a>
+<a class="group block overflow-hidden rounded-lg bg-white shadow-md transition-all duration-300 hover:shadow-xl dark:bg-zinc-900 animate-fadeIn" href="#tour-custom" style="animation-delay: 400ms;">
+<div class="relative">
+<img alt="Custom Tour" class="h-56 w-full object-cover transition-transform duration-300 group-hover:scale-105" src="https://i.ibb.co/BSFbg7z/11-DJI-20250903071402-0034-D-grande.jpg"/>
+</div>
+<div class="p-6">
+<h3 class="text-xl font-bold text-zinc-900 dark:text-zinc-100">Custom Tour</h3>
+<div class="mt-4 flex flex-col gap-3 text-zinc-700 dark:text-zinc-300">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-lg text-primary"> euro_symbol </span>
+<span>Starting at 255,00€* per Person</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-lg text-primary"> schedule </span>
+<span>~ 6h30</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-lg text-primary"> location_on </span>
+<span>Ferragudo</span>
+</div>
+</div>
+</div>
+</a>
+<a class="group block overflow-hidden rounded-lg bg-white shadow-md transition-all duration-300 hover:shadow-xl dark:bg-zinc-900 animate-fadeIn" href="#tour-amor" style="animation-delay: 600ms;">
+<div class="relative">
+<img alt="Amor Tour" class="h-56 w-full object-cover transition-transform duration-300 group-hover:scale-105" src="https://i.ibb.co/YFvhYDsX/8-DJI-20250903072034-0043-D.jpg"/>
+</div>
+<div class="p-6">
+<h3 class="text-xl font-bold text-zinc-900 dark:text-zinc-100">Amor Tour</h3>
+<div class="mt-4 flex flex-col gap-3 text-zinc-700 dark:text-zinc-300">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-lg text-primary"> euro_symbol </span>
+<span>Starting at 85,00€* per Person</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-lg text-primary"> schedule </span>
+<span>3h30</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-lg text-primary"> location_on </span>
+<span>Ferragudo</span>
+</div>
+</div>
+</div>
+</a>
+</div>
+<p class="mt-6 text-center text-sm text-zinc-600 dark:text-zinc-400">*when booked directly with us</p>
+<div class="mt-8 text-center animate-fadeIn" style="animation-delay: 800ms;">
+<a class="inline-flex h-14 min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-full bg-green-500 px-8 text-base font-bold text-white shadow-lg transition-transform hover:scale-105" href="https://wa.me/351932066150?text=Hello!%20%0ACan%20I%20book%20a%20tour?%0AThank%20you!" target="_blank">
+<svg fill="currentColor" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+<path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.894 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.451-4.437-9.887-9.888-9.888-5.451 0-9.887 4.436-9.889 9.888-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01s-.521.074-.792.372c-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.626.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"></path>
+</svg>
+<span class="truncate">Book via WhatsApp</span>
+</a>
+</div>
+</div>
+</section>
+<section class="py-10">
+<div class="relative w-full overflow-hidden [mask-image:linear-gradient(to_right,transparent,white_10%,white_90%,transparent)]">
+<h2 class="mb-8 text-center text-3xl font-bold text-zinc-900 dark:text-zinc-100 animate-fadeIn">Loved by Couples</h2>
+<div class="flex animate-scroll hover:[animation-play-state:paused]">
+<div class="w-[250px] flex-shrink-0">
+<div class="mx-2 flex flex-col gap-4 rounded-lg bg-white p-6 shadow-md transition-shadow hover:shadow-lg dark:bg-zinc-900">
+<div class="flex items-center gap-3">
+<img alt="casal reviewer" class="h-12 w-12 rounded-full object-cover" src="https://i.ibb.co/KzG3cLNX/boat4two-review1.jpg"/>
+<div>
+<p class="font-bold text-zinc-900 dark:text-zinc-100">Sarah &amp; Tom</p>
+<div class="flex text-yellow-400">
+<span class="material-symbols-outlined text-sm">star</span>
+<span class="material-symbols-outlined text-sm">star</span>
+<span class="material-symbols-outlined text-sm">star</span>
+<span class="material-symbols-outlined text-sm">star</span>
+<span class="material-symbols-outlined text-sm">star</span>
+</div>
+</div>
+</div>
+<p class="text-sm text-zinc-700 dark:text-zinc-300">"The most magical evening of our trip! The sunset tour was breathtaking. The crew made us feel so special. Highly recommend!"</p>
+</div>
+</div>
+<div class="w-[250px] flex-shrink-0">
+<div class="mx-2 flex flex-col gap-4 rounded-lg bg-white p-6 shadow-md transition-shadow hover:shadow-lg dark:bg-zinc-900">
+<div class="flex items-center gap-3">
+<img alt="can salsicha Reviewer" class="h-12 w-12 rounded-full object-cover" src="https://i.ibb.co/LX1GvZ3f/boat4two-review2.jpg"/>
+<div>
+<p class="font-bold text-zinc-900 dark:text-zinc-100">Emily &amp; John</p>
+<div class="flex text-yellow-400">
+<span class="material-symbols-outlined text-sm">star</span>
+<span class="material-symbols-outlined text-sm">star</span>
+<span class="material-symbols-outlined text-sm">star</span>
+<span class="material-symbols-outlined text-sm">star</span>
+<span class="material-symbols-outlined text-sm">star</span>
+</div>
+</div>
+</div>
+<p class="text-sm text-zinc-700 dark:text-zinc-300">"A perfect anniversary celebration. We had the boat to ourselves and explored the most beautiful hidden caves. Unforgettable!"</p>
+</div>
+</div>
+<div class="w-[250px] flex-shrink-0">
+<div class="mx-2 flex flex-col gap-4 rounded-lg bg-white p-6 shadow-md transition-shadow hover:shadow-lg dark:bg-zinc-900">
+<div class="flex items-center gap-3">
+<img alt="Reviewer" class="h-12 w-12 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAjQ1T-oC0FPr511jPtYOa3fDwbL2n89mA50mlECZhPzSfPjh4e64Qo4nY_X20BM0slcN1sX7hXeyS242oOxMyw4ib7BO0u-M0xinwk43kM_iNdzGfKHOljVYH8Ruptu8iTcVuuwXw6ns_aTMdjsP_EtEIRTdLJKMLyXgzQFg3p9tZvHdAzXEQ3l2xCKlxHDZ6VHrgG3V_DcWCckVHQx8MHRvIB0d3kNen1LQX1EP2NRHV_bhwiHFi8wY1Rhc895k43s0LCai_hsoc"/>
+<div>
+<p class="font-bold text-zinc-900 dark:text-zinc-100">Maria &amp; Carlos</p>
+<div class="flex text-yellow-400">
+<span class="material-symbols-outlined text-sm">star</span>
+<span class="material-symbols-outlined text-sm">star</span>
+<span class="material-symbols-outlined text-sm">star</span>
+<span class="material-symbols-outlined text-sm">star</span>
+<span class="material-symbols-outlined text-sm">star_half</span>
+</div>
+</div>
+</div>
+<p class="text-sm text-zinc-700 dark:text-zinc-300">"We loved our custom tour. The skipper was very knowledgeable and friendly. The views were stunning. A must-do in Algarve!"</p>
+</div>
+</div>
+<div class="w-[250px] flex-shrink-0">
+<div class="mx-2 flex flex-col gap-4 rounded-lg bg-white p-6 shadow-md transition-shadow hover:shadow-lg dark:bg-zinc-900">
+<div class="flex items-center gap-3">
+<img alt="Reviewer" class="h-12 w-12 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCynpkSY2dhhNZMpsnSc34jP7u6dmhi-l8CaH4G1byQOZsG127xgrY74GjZFrNeWSSye2Oo3dTuTQaHw5keCIGJd6pk9F_v-gJqYykvWXR63LxuJP62--G_nlBM0KYW3OrqOR18JiX9UCTVTaDNo7KAbccz1Sr4dBsifWsmOPiqINDDNuZksibuK4kJzAHTEpAq_Gmr2OPhvUDyeol47ssShao93_JiOX5QKAiCGs71pOFdqhBNapq1xSmlwTkwfBbMRK9CkaQh5a0"/>
+<div>
+<p class="font-bold text-zinc-900 dark:text-zinc-100">Jessica &amp; Mike</p>
+<div class="flex text-yellow-400">
+<span class="material-symbols-outlined text-sm">star</span>
+<span class="material-symbols-outlined text-sm">star</span>
+<span class="material-symbols-outlined text-sm">star</span>
+<span class="material-symbols-outlined text-sm">star</span>
+<span class="material-symbols-outlined text-sm">star</span>
+</div>
+</div>
+</div>
+<p class="text-sm text-zinc-700 dark:text-zinc-300">"The best way to see the Algarve coast. The boat was luxurious and comfortable. A truly romantic and special experience."</p>
+</div>
+</div>
+<div class="w-[250px] flex-shrink-0">
+<div class="mx-2 flex flex-col gap-4 rounded-lg bg-white p-6 shadow-md transition-shadow hover:shadow-lg dark:bg-zinc-900">
+<div class="flex items-center gap-3">
+<img alt="Reviewer" class="h-12 w-12 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuANfO8Cy2spWnVRh_WDEdX-wCcUKfDcsKUNEn6BqKWrAZh4AaZZciEdqIYouAoHxRxQFwn50ELFelSUAmM10DzJQXaUdSdg6yDzPc7imqhQmncH4H_kQnfwvoWI6DYo6pCriUEqtO48pV401WWXHil1ob1S8wn9v4RFJEt8x1qYwKN1JBZuOwrSLxtD_L2-qfa6bCYQw9CsBwmAbwvtUpR37towffrVFdGEtBPP_JcqNtw_vq2K2UJiIt7ILwfINVzfWnP7UHSi3CA"/>
+<div>
+<p class="font-bold text-zinc-900 dark:text-zinc-100">Chloe &amp; David</p>
+<div class="flex text-yellow-400">
+<span class="material-symbols-outlined text-sm">star</span>
+<span class="material-symbols-outlined text-sm">star</span>
+<span class="material-symbols-outlined text-sm">star</span>
+<span class="material-symbols-outlined text-sm">star</span>
+<span class="material-symbols-outlined text-sm">star</span>
+</div>
+</div>
+</div>
+<p class="text-sm text-zinc-700 dark:text-zinc-300">"Highlight of our honeymoon! Swimming in the crystal clear water and watching the sunset was incredible. Thank you, Boat4Two!"</p>
+</div>
+</div>
+<div class="w-[250px] flex-shrink-0">
+<div class="mx-2 flex flex-col gap-4 rounded-lg bg-white p-6 shadow-md transition-shadow hover:shadow-lg dark:bg-zinc-900">
+<div class="flex items-center gap-3">
+<img alt="Reviewer" class="h-12 w-12 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuChNndBCQN-3aqRQDei9wiFltTnQqa9xY6hTJbdRN_qUysvaq_N0jThntIcebmjebbNRrgCCubR37y2iN4W721OEZJu59uZfOfFr_9XvShI-s3dV7xR-1UDybzxIpj6Tdz3P-K3nN03fz_9U5aGYDTPwU1Z7GhOPGMss0wN2WqUmGVhoZHjUjmmIzt2hBEKCtfKNylKpJRKiejH5IRPKymFQGu6_XWe2HXvwLVko7LCSG-tpijZ6ECp3oNh-CjhIp41nCi_qO5uZWA"/>
+<div>
+<p class="font-bold text-zinc-900 dark:text-zinc-100">Ana &amp; Tiago</p>
+<div class="flex text-yellow-400">
+<span class="material-symbols-outlined text-sm">star</span>
+<span class="material-symbols-outlined text-sm">star</span>
+<span class="material-symbols-outlined text-sm">star</span>
+<span class="material-symbols-outlined text-sm">star</span>
+<span class="material-symbols-outlined text-sm">star</span>
+</div>
+</div>
+</div>
+<p class="text-sm text-zinc-700 dark:text-zinc-300">"Uma experiência fantástica! O passeio ao pôr do sol foi mágico e a equipa super atenciosa. Recomendamos a todos os casais!"</p>
+</div>
+</div>
+<div class="w-[250px] flex-shrink-0">
+<div class="mx-2 flex flex-col gap-4 rounded-lg bg-white p-6 shadow-md transition-shadow hover:shadow-lg dark:bg-zinc-900">
+<div class="flex items-center gap-3">
+<img alt="Reviewer" class="h-12 w-12 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD_-qV9RmPJIw947sxp7F_ItbH-mNUjnrUIfIH-B1o46xo31Tr6Z9HeZ7En1tf7Vp3Q0aIcstnr69JzrHEo1kDkH10zE9ikun_KmRs2LDKVbSzPLA3bqejOu5ugMZhlIkdu7oAEKBxA-WOtz8hJXNt-QHk4u9btJKJ_KG_HR7oOpuVER00vljScI3tuF9oaZhmDiV7ltVqP9-mLyvhqvuPSoIrAYDjZVEroW3VfPKmJsVnrCCsqX4XQLZA5ZqcjYBGN_HgRERllfrs"/>
+<div>
+<p class="font-bold text-zinc-900 dark:text-zinc-100">Laura &amp; Ben</p>
+<div class="flex text-yellow-400">
+<span class="material-symbols-outlined text-sm">star</span>
+<span class="material-symbols-outlined text-sm">star</span>
+<span class="material-symbols-outlined text-sm">star</span>
+<span class="material-symbols-outlined text-sm">star</span>
+<span class="material-symbols-outlined text-sm">star</span>
+</div>
+</div>
+</div>
+<p class="text-sm text-zinc-700 dark:text-zinc-300">"We booked the 'Amor Tour' and it exceeded all expectations. It was the perfect romantic getaway. We will be back!"</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section class="bg-background-light px-4 py-10 dark:bg-background-dark sm:px-6">
+<div class="mx-auto max-w-4xl animate-fadeIn">
+<h2 class="mb-8 text-center text-3xl font-bold text-zinc-900 dark:text-zinc-100">Our Photo Gallery</h2>
+<div class="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-4">
+<div class="aspect-square w-full overflow-hidden rounded-lg">
+<img alt="Sofia feliz" class="h-full w-full object-cover transition-transform duration-300 hover:scale-110" src="https://i.ibb.co/fYnHYTh3/17-IMG-4474.jpg"/>
+</div>
+<div class="aspect-square w-full overflow-hidden rounded-lg">
+<img alt="Ricky e sofia deitados" class="h-full w-full object-cover transition-transform duration-300 hover:scale-110" src="https://i.ibb.co/jPFWkbjP/22-IMG-4453.jpg"/>
+</div>
+<div class="aspect-square w-full overflow-hidden rounded-lg">
+<img alt="Sofia le livro" class="h-full w-full object-cover transition-transform duration-300 hover:scale-110" src="https://i.ibb.co/TMc3xcBG/34-IMG-4393.jpg"/>
+</div>
+<div class="aspect-square w-full overflow-hidden rounded-lg">
+<img alt="Sofia em pe no barco" class="h-full w-full object-cover transition-transform duration-300 hover:scale-110" src="https://i.ibb.co/DHsT93yX/3-DJI-20250903073358-0090-D.jpg"/>
+</div>
+<div class="aspect-square w-full overflow-hidden rounded-lg">
+<img alt="Ricky e Sofia encostados a jogar as cartas" class="h-full w-full object-cover transition-transform duration-300 hover:scale-110" src="https://i.ibb.co/0RQ6cdF2/23-IMG-4448.jpg"/>
+</div>
+<div class="aspect-square w-full overflow-hidden rounded-lg">
+<img alt="Sofia no mastro" class="h-full w-full object-cover transition-transform duration-300 hover:scale-110" src="https://i.ibb.co/4RPzrF9Y/19-IMG-4467.jpg"/>
+</div>
+</div>
+<div class="mt-8 text-center">
+<a class="inline-flex h-12 min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-full bg-zinc-800 px-6 text-sm font-bold text-white shadow-lg transition-transform hover:scale-105 dark:bg-zinc-200 dark:text-zinc-900" href="https://www.instagram.com/boat4two_" target="_blank">
+<svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919C8.416 2.175 8.796 2.163 12 2.163zm0 1.441c-3.117 0-3.483.01-4.692.065-2.61.12-3.824 1.322-3.943 3.943C3.308 8.72 3.3 9.087 3.3 12.001c0 2.914.008 3.281.065 4.692.119 2.621 1.333 3.824 3.943 3.943 1.209.055 1.575.065 4.692.065 3.117 0 3.483-.01 4.692-.065 2.61-.12 3.824 1.322 3.943-3.943.057-1.411.065-1.777.065-4.692 0-2.914-.008-3.281-.065-4.692-.119-2.621-1.333-3.824-3.943-3.943-1.209-.055-1.575.065-4.692.065zM12 7.188c-2.649 0-4.812 2.163-4.812 4.812s2.163 4.812 4.812 4.812 4.812-2.163 4.812-4.812S14.649 7.188 12 7.188zm0 7.929c-1.728 0-3.117-1.389-3.117-3.117s1.389-3.117 3.117-3.117 3.117 1.389 3.117 3.117S13.728 15.117 12 15.117zm4.905-6.87c-.63 0-1.14.51-1.14 1.14s.51 1.14 1.14 1.14 1.14-.51 1.14-1.14-.509-1.14-1.14-1.14z"></path>
+</svg>
+<span>See More on Instagram</span>
+</a>
+</div>
+</div>
+</section>
+</main>
+<footer class="border-t border-zinc-200/50 bg-background-light py-8 dark:border-zinc-800/50 dark:bg-background-dark">
+<div class="mx-auto max-w-4xl px-4 sm:px-6">
+<div class="flex flex-col items-center justify-center gap-6 text-center">
+<div class="flex justify-center gap-4">
+<a class="text-zinc-500 transition-colors hover:text-primary dark:text-zinc-400 dark:hover:text-primary" href="https://www.instagram.com/boat4two_" target="_blank">
+<svg fill="currentColor" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+<path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919C8.416 2.175 8.796 2.163 12 2.163m0-2C8.74 0 8.333.015 7.053.072 2.695.272.273 2.69.073 7.052.015 8.333 0 8.74 0 12s.015 3.667.072 4.947c.2 4.358 2.618 6.78 6.98 6.98C8.333 23.985 8.74 24 12 24s3.667-.015 4.947-.072c4.358-.2 6.78-2.618 6.98-6.98C23.985 15.667 24 15.26 24 12s-.015-3.667-.072-4.947c-.2-4.358-2.618-6.78-6.98-6.98C15.667.015 15.26 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.88 1.44 1.44 0 0 0 0-2.88z"></path>
+</svg>
+</a>
+<a class="text-zinc-500 transition-colors hover:text-primary dark:text-zinc-400 dark:hover:text-primary" href="https://www.facebook.com/boat4two" target="_blank">
+<svg fill="currentColor" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+<path d="M22.675 0h-21.35C.59 0 0 .59 0 1.325v21.35C0 23.41.59 24 1.325 24H12.82v-9.29H9.692v-3.622h3.128V8.413c0-3.1 1.893-4.788 4.659-4.788 1.325 0 2.463.099 2.795.143v3.24l-1.918.001c-1.504 0-1.795.715-1.795 1.763v2.313h3.587l-.467 3.622h-3.12V24h6.116c.735 0 1.325-.59 1.325-1.325V1.325C24 .59 23.41 0 22.675 0z"></path>
+</svg>
+</a>
+</div>
+<div class="flex flex-col flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm text-zinc-500 dark:text-zinc-400 sm:flex-row">
+<a class="transition-colors hover:text-primary dark:hover:text-primary" href="#terms-popup">Terms and Policies</a>
+<a class="transition-colors hover:text-primary dark:hover:text-primary" href="#contact-popup">Contact Us</a>
+<a class="transition-colors hover:text-primary dark:hover:text-primary" href="#cookies-popup">Cookies Policy</a>
+<a class="transition-colors hover:text-primary dark:hover:text-primary" href="#exemption-popup">Exemption of Responsibility</a>
+<a class="transition-colors hover:text-primary dark:hover:text-primary" href="#impressum-popup">Impressum</a>
+</div>
+<p class="text-sm text-zinc-500 dark:text-zinc-400">© 2025 Boat4Two. All rights reserved.</p>
+</div>
+</div>
+</footer>
+</div>
+<a class="fixed bottom-6 right-6 z-30 flex h-16 w-16 items-center justify-center rounded-full bg-primary text-white shadow-lg transition-transform hover:scale-110" href="#select-tour-popup">
+<span class="material-symbols-outlined text-3xl"> calendar_month </span>
+</a>
+<div class="fixed inset-0 z-50 hidden items-end bg-black/50 backdrop-blur-sm" id="terms-popup">
+<a class="absolute inset-0" href="#"></a>
+<div class="relative w-full h-[95%] bg-background-light dark:bg-background-dark rounded-t-lg shadow-xl p-4 flex flex-col overflow-hidden animate-slideUp">
+<header class="flex-shrink-0 flex items-center justify-center relative pb-4 border-b border-zinc-200 dark:border-zinc-700">
+<a class="absolute left-0 p-2 text-zinc-500 hover:text-primary dark:text-zinc-400 dark:hover:text-primary" href="#">
+<span class="material-symbols-outlined">arrow_back_ios</span>
+</a>
+<h3 class="text-xl font-bold text-zinc-900 dark:text-zinc-100 text-center">Terms &amp; Policies</h3>
+</header>
+<main class="flex-grow overflow-y-auto py-6 space-y-6 text-zinc-700 dark:text-zinc-300 text-sm">
+<section>
+    <h4 class="font-bold text-lg text-zinc-800 dark:text-zinc-200 mb-2">Supplier Identification</h4>
+    <p>
+      These policies govern the provision of services by Diogo Alexandre Faustino, holder of tax identification number 251010139, a maritime-tourism operator registered under RNAAT License No. 769/2025, insured by Mútua dos Pescadores (hereinafter referred to as the “Supplier”). The Supplier organises and manages private maritime-tourism activities, namely boat tours for couples, with the possibility of using additional aquatic equipment. For any questions or inquiries, please contact: <a href="mailto:info.boat4two@gmail.com" class="underline">info.boat4two@gmail.com</a>
+    </p>
+  </section>
+
+  <section>
+    <h4 class="font-bold text-lg text-zinc-800 dark:text-zinc-200 mb-2">Purpose and Scope</h4>
+    <p>These policies apply to all activities organised by the Supplier, including but not limited to:</p>
+    <ul class="list-disc pl-5 space-y-1">
+      <li>Private boat tours</li>
+      <li>Use of additional aquatic equipment (kayak, stand up paddle board, snorkelling gear, among others)</li>
+      <li>Provision of snacks, bottled water, and sealed beverages</li>
+    </ul>
+    <p>Participation in any activity implies full reading, understanding, and acceptance of these terms and conditions.</p>
+  </section>
+
+  <section>
+    <h4 class="font-bold text-lg text-zinc-800 dark:text-zinc-200 mb-2">Bookings, Payments, and Confirmation</h4>
+    <p>
+      Reservations must be made through the Supplier’s official channels (website, partner platforms, phone, or email). A reservation is only considered confirmed after full payment, unless otherwise agreed in writing. Payment may be made by bank transfer, credit/debit card, or other methods made available. The Supplier reserves the right to cancel a reservation if payment is not received within the specified timeframe.
+    </p>
+  </section>
+
+  <section>
+    <h4 class="font-bold text-lg text-zinc-800 dark:text-zinc-200 mb-2">Cancellation and Amendment Policy</h4>
+    <p>
+      The Client may cancel the booking at least 48 hours in advance and will receive a full refund. Cancellations made between 24 and 48 hours before the activity entitle the Client to a 50% refund. Cancellations made less than 24 hours before the activity, or in case of no-show, are non-refundable. The Supplier reserves the right to postpone or cancel the activity due to:
+    </p>
+    <ul class="list-disc pl-5 space-y-1">
+      <li>Adverse weather conditions</li>
+      <li>Technical issues with the vessel or equipment</li>
+      <li>Maritime safety reasons</li>
+      <li>Justified operational unavailability</li>
+    </ul>
+    <p>In such cases, the Client may choose to reschedule or receive a full refund.</p>
+  </section>
+
+  <section>
+    <h4 class="font-bold text-lg text-zinc-800 dark:text-zinc-200 mb-2">Participation Conditions</h4>
+    <p>
+      The Client must arrive at the boarding location at least 15 minutes before the scheduled departure time. The Supplier may refuse participation to any person under the influence of alcohol, drugs, or who poses a risk to themselves or others. The minimum participation age is 6 years old, unless expressly authorised by the Supplier. Minors must be accompanied by a responsible adult. Wearing a life jacket is mandatory throughout the entire activity.
+    </p>
+  </section>
+
+  <section>
+    <h4 class="font-bold text-lg text-zinc-800 dark:text-zinc-200 mb-2">Provision of Snacks and Beverages</h4>
+    <p>
+      The Supplier provides complimentary light snacks and bottled water during the activity. The Client may purchase additional beverages, including wine, sparkling wine, champagne, or spirits, which are always served in sealed containers. Alcohol consumption must be done responsibly. Abusive consumption or any behaviour that may compromise the safety of the vessel, crew, or third parties is strictly prohibited. The captain/skipper reserves the right to limit or stop the serving of alcoholic beverages if inappropriate behaviour or safety risks are observed. The Supplier shall not be held liable for any adverse effects resulting from alcohol consumption during the activity.
+    </p>
+  </section>
+
+  <section>
+    <h4 class="font-bold text-lg text-zinc-800 dark:text-zinc-200 mb-2">Use of Equipment</h4>
+    <p>
+      The equipment provided (kayak, stand up paddle board, snorkelling gear, etc.) is the property of the Supplier and must be used carefully and in accordance with the instructions of the captain/skipper or assistant. Any damage caused by improper, negligent, or unauthorised use will be charged to the Client, who may be held responsible for the full cost of repair or replacement. The Client agrees to return all equipment in the same condition as it was provided.
+    </p>
+  </section>
+
+  <section>
+    <h4 class="font-bold text-lg text-zinc-800 dark:text-zinc-200 mb-2">Safety Regulations</h4>
+    <p>
+      The Client agrees to follow all instructions given by the captain/skipper and crew, as well as the applicable maritime safety regulations. Diving, swimming in unauthorised areas, or climbing on restricted parts of the vessel is strictly prohibited. The captain/skipper is the highest authority on board and may alter or interrupt the route whenever deemed necessary for safety reasons.
+    </p>
+  </section>
+
+  <section>
+    <h4 class="font-bold text-lg text-zinc-800 dark:text-zinc-200 mb-2">Insurance and Liability</h4>
+    <p>
+      The Supplier holds valid civil liability and personal accident insurance, issued by Mútua dos Pescadores, covering the duration of the activity. Insurance coverage applies only when the Client complies with all safety rules and crew instructions. The Supplier shall not be held liable for:
+    </p>
+    <ul class="list-disc pl-5 space-y-1">
+      <li>Accidents resulting from negligence or failure to follow instructions</li>
+      <li>Damage, loss, or theft of personal belongings</li>
+      <li>Injuries or incidents occurring outside the scope of the activity</li>
+    </ul>
+    <p>The Client declares to be in good physical and mental condition to participate in the activity.</p>
+  </section>
+
+  <section>
+    <h4 class="font-bold text-lg text-zinc-800 dark:text-zinc-200 mb-2">Conduct and Good Practices</h4>
+    <p>
+      The Client must maintain respectful and appropriate behaviour towards the crew, other participants, and the marine environment. Any behaviour deemed dangerous, offensive, or disruptive may result in immediate termination of the activity without refund.
+    </p>
+  </section>
+
+  <section>
+    <h4 class="font-bold text-lg text-zinc-800 dark:text-zinc-200 mb-2">Personal Data and Image Use</h4>
+    <p>
+      The Supplier fully complies with the General Data Protection Regulation (GDPR). The Client authorises, freely and knowingly, the capture of images and videos during the activity for promotional and marketing purposes, unless a written objection is submitted before the start of the activity.
+    </p>
+  </section>
+
+  <section>
+    <h4 class="font-bold text-lg text-zinc-800 dark:text-zinc-200 mb-2">Amendments to Policies</h4>
+    <p>
+      The Supplier may update these Service Policies whenever necessary. Updated versions will be made available through official communication channels.
+    </p>
+  </section>
+
+  <section>
+    <h4 class="font-bold text-lg text-zinc-800 dark:text-zinc-200 mb-2">Applicable Law and Jurisdiction</h4>
+    <p>
+      These Service Policies are governed by Portuguese law. Any disputes arising shall be submitted to the Court of Portimão, with express waiver of any other jurisdiction.
+    </p>
+  </section>
+
+  <section>
+    <h4 class="font-bold text-lg text-zinc-800 dark:text-zinc-200 mb-2">Declaration of Acceptance</h4>
+    <p>
+      By booking and/or participating in the activity, the Client declares that they have read, understood, and fully accepted these Service Policies and General Terms, and agree to comply with them in their entirety.
+    </p>
+    <p>
+      <strong>Activity Responsible:</strong> Diogo Alexandre Faustino<br>
+      <strong>Tax ID:</strong> 251010139<br>
+      <strong>RNAAT License No.:</strong> 769/2025<br>
+      <strong>Insurer:</strong> Mútua dos Pescadores (Apólice Nº 85/27161)<br>
+      <strong>Email:</strong> <a href="mailto:info.boat4two@gmail.com" class="underline">info.boat4two@gmail.com</a><br>
+      © 2025 – All rights reserved
+    </p>
+  </section>
+</main>
+<footer class="flex-shrink-0 pt-4 border-t border-zinc-200 dark:border-zinc-700 text-center">
+<p class="text-xs text-zinc-500 dark:text-zinc-400">Last updated: October 2025</p>
+</footer>
+</div>
+</div>
+<div class="fixed inset-0 z-50 hidden items-end bg-black/50 backdrop-blur-sm" id="contact-popup">
+<a class="absolute inset-0" href="#"></a>
+<div class="relative w-full h-[95%] bg-background-light dark:bg-background-dark rounded-t-lg shadow-xl p-4 flex flex-col overflow-hidden animate-slideUp">
+<header class="sticky top-0 z-10 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-sm">
+<div class="flex items-center p-4">
+<a class="p-2" href="#">
+<svg fill="currentColor" height="24" viewBox="0 0 256 256" width="24" xmlns="http://www.w3.org/2000/svg">
+<path d="M224,128a8,8,0,0,1-8,8H59.31l58.35,58.34a8,8,0,0,1-11.32,11.32l-72-72a8,8,0,0,1,0-11.32l72-72a8,8,0,0,1,11.32,11.32L59.31,120H216A8,8,0,0,1,224,128Z"></path>
+</svg>
+</a>
+<h1 class="flex-1 text-lg font-bold text-center -ml-10">Contact Us</h1>
+</div>
+</header>
+<main class="flex-grow px-6 py-8 space-y-8 overflow-y-auto">
+<section>
+<h2 class="text-2xl font-bold mb-4">Get in Touch</h2>
+<p class="text-text-dark/80 dark:text-text-light/80 mb-6"> Have a question or a special request? Fill out the form below and we'll get back to you as soon as possible. </p>
+<form action="#" class="space-y-4">
+<div>
+<label class="block text-sm font-medium text-text-dark/80 dark:text-text-light/80" for="name">Name</label>
+<input class="mt-1 block w-full bg-background-light dark:bg-background-dark border border-background-dark/20 dark:border-background-light/20 rounded-lg shadow-sm focus:ring-primary focus:border-primary" id="name" name="name" type="text"/>
+</div>
+<div>
+<label class="block text-sm font-medium text-text-dark/80 dark:text-text-light/80" for="email">Email</label>
+<input class="mt-1 block w-full bg-background-light dark:bg-background-dark border border-background-dark/20 dark:border-background-light/20 rounded-lg shadow-sm focus:ring-primary focus:border-primary" id="email" name="email" type="email"/>
+</div>
+<div>
+<label class="block text-sm font-medium text-text-dark/80 dark:text-text-light/80" for="subject">Subject</label>
+<input class="mt-1 block w-full bg-background-light dark:bg-background-dark border border-background-dark/20 dark:border-background-light/20 rounded-lg shadow-sm focus:ring-primary focus:border-primary" id="subject" name="subject" type="text"/>
+</div>
+<div>
+<label class="block text-sm font-medium text-text-dark/80 dark:text-text-light/80" for="message">Message</label>
+<textarea class="mt-1 block w-full bg-background-light dark:bg-background-dark border border-background-dark/20 dark:border-background-light/20 rounded-lg shadow-sm focus:ring-primary focus:border-primary" id="message" name="message" rows="4"></textarea>
+</div>
+<button class="w-full bg-primary text-white py-3 px-4 rounded-lg font-semibold hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary" type="submit"> Send Message </button>
+</form>
+</section>
+<div class="border-t border-background-dark/10 dark:border-background-light/10 my-8"></div>
+<section>
+<h2 class="text-2xl font-bold mb-4">Other Ways to Reach Us</h2>
+<div class="space-y-4">
+<div class="flex items-center">
+<span class="material-symbols-outlined mr-3 text-primary">call</span>
+<a class="text-text-dark dark:text-text-light hover:underline" href="tel:+351932015013">+351 932 015 013</a>
+</div>
+<div class="flex items-center">
+<span class="material-symbols-outlined mr-3 text-primary">email</span>
+<a class="text-text-dark dark:text-text-light hover:underline" href="mailto:info.boat4two@gmail.com">info.boat4two@gmail.com</a>
+</div>
+</div>
+</section>
+<div class="border-t border-background-dark/10 dark:border-background-light/10 my-8"></div>
+<section>
+<h2 class="text-2xl font-bold mb-4">Customer Service Business Hours</h2>
+<div class="space-y-3 text-text-dark/80 dark:text-text-light/80">
+<div class="flex justify-between">
+<span>Monday - Friday</span>
+<span>9:00 AM - 6:00 PM</span>
+</div>
+<div class="flex justify-between">
+<span>Saturday</span>
+<span>10:00 AM - 4:00 PM</span>
+</div>
+<div class="flex justify-between">
+<span>Sunday</span>
+<span>Closed</span>
+</div>
+</div>
+</section>
+<div class="border-t border-background-dark/10 dark:border-background-light/10 my-8"></div>
+<section>
+<h2 class="text-2xl font-bold mb-4">Our Location</h2>
+<div class="aspect-w-16 aspect-h-9 rounded-lg overflow-hidden">
+<iframe allowfullscreen="" height="450" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3179.378904576395!2d-8.522950!3d37.123921!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMzfCsDA3JzI2LjEiTiA4wrAzMSczMC42Ilc!5e0!3m2!1sen!2sus!4v1619624991000!5m2!1sen!2sus" style="border:0;" width="600"></iframe>
+</div>
+</section>
+</main>
+<footer class="bg-background-light dark:bg-background-dark border-t border-background-dark/10 dark:border-background-light/10 py-4">
+<div class="container mx-auto px-4">
+<p class="text-center text-xs text-text-dark/60 dark:text-text-light/60">© 2025 Boat4Two. All rights reserved.</p>
+</div>
+</footer>
+</div>
+</div>
+<div class="fixed inset-0 z-50 hidden items-end bg-black/50 backdrop-blur-sm" id="cookies-popup">
+<a class="absolute inset-0" href="#"></a>
+<div class="relative w-full h-[95%] bg-background-light dark:bg-background-dark rounded-t-lg shadow-xl p-4 flex flex-col overflow-hidden animate-slideUp">
+<header class="sticky top-0 bg-background-light dark:bg-background-dark/80 backdrop-blur-sm z-10">
+<div class="flex items-center p-4">
+<a class="text-background-dark dark:text-background-light" href="#">
+<span class="material-symbols-outlined">
+            arrow_back
+          </span>
+</a>
+<h1 class="flex-1 text-center text-lg font-bold text-background-dark dark:text-background-light pr-8">Cookies Policy</h1>
+</div>
+</header>
+<main class="flex-grow px-6 py-8 text-background-dark dark:text-background-light overflow-y-auto">
+<div class="space-y-8">
+<div>
+<h2 class="text-2xl font-bold mb-4">What are cookies?</h2>
+<p class="text-base leading-relaxed text-background-dark/80 dark:text-background-light/80">
+            Cookies are small text files that are stored on your device when you visit a website. They are widely used to make websites work, or work more efficiently, as well as to provide information to the owners of the site.
+          </p>
+</div>
+<div>
+<h2 class="text-2xl font-bold mb-4">How we use cookies</h2>
+<p class="text-base leading-relaxed text-background-dark/80 dark:text-background-light/80">
+            We use cookies to enhance your browsing experience, analyze site traffic, and personalize content. Cookies help us understand how you interact with our site, allowing us to improve its functionality and tailor our services to your needs.
+          </p>
+</div>
+<div>
+<h2 class="text-2xl font-bold mb-4">Types of cookies we use</h2>
+<p class="text-base leading-relaxed text-background-dark/80 dark:text-background-light/80">
+            We use several types of cookies, including essential cookies necessary for site operation, analytical cookies to understand site usage, and marketing cookies to deliver relevant content. Each type serves a specific purpose in improving your experience.
+          </p>
+</div>
+<div>
+<h2 class="text-2xl font-bold mb-4">Managing your cookie preferences</h2>
+<p class="text-base leading-relaxed text-background-dark/80 dark:text-background-light/80">
+            You can manage your cookie preferences through your browser settings. Most browsers allow you to control cookies, including blocking or deleting them. Please note that blocking essential cookies may affect site functionality.
+          </p>
+</div>
+</div>
+</main>
+<footer class="bg-background-light dark:bg-background-dark border-t border-gray-200 dark:border-gray-800 py-4 px-6 mt-auto">
+<p class="text-center text-sm text-background-dark/60 dark:text-background-light/60">
+        © 2025 Boat4Two. All rights reserved.
+      </p>
+</footer>
+</div>
+</div>
+<div class="fixed inset-0 z-50 hidden items-end bg-black/50 backdrop-blur-sm" id="exemption-popup">
+<a class="absolute inset-0" href="#"></a>
+<div class="relative w-full h-[95%] bg-background-light dark:bg-background-dark rounded-t-lg shadow-xl flex flex-col overflow-hidden animate-slideUp">
+<header class="sticky top-0 z-10 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-sm">
+<div class="flex items-center p-4">
+<a class="text-strong-contrast" href="#">
+<svg fill="currentColor" height="24" viewBox="0 0 256 256" width="24" xmlns="http://www.w3.org/2000/svg">
+<path d="M224,128a8,8,0,0,1-8,8H59.31l58.35,58.34a8,8,0,0,1-11.32,11.32l-72-72a8,8,0,0,1,0-11.32l72-72a8,8,0,0,1,11.32,11.32L59.31,120H216A8,8,0,0,1,224,128Z"></path>
+</svg>
+</a>
+<h1 class="text-lg font-bold text-strong-contrast flex-1 text-center pr-6">Exemption of Responsibility</h1>
+</div>
+</header>
+<main class="flex-grow p-6 space-y-8 overflow-y-auto">
+<div>
+<h2 class="text-2xl font-bold text-strong-contrast mb-2">Liability Disclaimer</h2>
+<p class="text-base text-medium-contrast">By participating in our boat tours, you acknowledge and agree to the following terms and conditions regarding liability:</p>
+</div>
+<div class="space-y-6">
+<div class="p-4 rounded-lg">
+<h3 class="text-lg font-bold text-strong-contrast mb-2">Unforeseen Circumstances</h3>
+<p class="text-sm text-medium-contrast">We are not liable for any injuries, damages, or losses resulting from unforeseen circumstances, including but not limited to weather conditions, mechanical failures, or other events beyond our control.</p>
+</div>
+<div class="p-4 rounded-lg">
+<h3 class="text-lg font-bold text-strong-contrast mb-2">Participant Conduct</h3>
+<p class="text-sm text-medium-contrast">Participants are responsible for their own conduct during the tour. We are not liable for any injuries, damages, or losses resulting from the actions or negligence of participants.</p>
+</div>
+<div class="p-4 rounded-lg">
+<h3 class="text-lg font-bold text-strong-contrast mb-2">General Disclaimer</h3>
+<p class="text-sm text-medium-contrast">This disclaimer is not exhaustive and may be subject to change. By participating in our tours, you agree to abide by all safety instructions and guidelines provided by our staff. We reserve the right to refuse service to anyone who does not comply with these terms.</p>
+</div>
+</div>
+<div class="mt-8 p-4 rounded-lg border border-primary/50 bg-primary/10">
+<p class="text-base font-semibold text-primary text-center">By participating in or booking a tour, you signify your agreement with this exemption of responsibility policy.</p>
+</div>
+</main>
+<footer class="p-4 bg-background-light dark:bg-background-dark border-t border-primary/20">
+<p class="text-center text-xs text-medium-contrast">© 2025 Boat4Two. All rights reserved.</p>
+</footer>
+</div>
+</div>
+<div class="fixed inset-0 z-50 hidden items-end bg-black/50 backdrop-blur-sm" id="impressum-popup">
+<a class="absolute inset-0" href="#"></a>
+<div class="relative w-full h-[95%] bg-background-light dark:bg-background-dark rounded-t-lg shadow-xl p-4 flex flex-col overflow-hidden animate-slideUp">
+<header class="sticky top-0 z-10 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-sm">
+<div class="flex items-center p-4">
+<a class="p-2" href="#">
+<svg fill="currentColor" height="24" viewBox="0 0 256 256" width="24" xmlns="http://www.w3.org/2000/svg">
+<path d="M224,128a8,8,0,0,1-8,8H59.31l58.35,58.34a8,8,0,0,1-11.32,11.32l-72-72a8,8,0,0,1,0-11.32l72-72a8,8,0,0,1,11.32,11.32L59.31,120H216A8,8,0,0,1,224,128Z"></path>
+</svg>
+</a>
+<h1 class="flex-1 text-lg font-bold text-center -ml-10">Impressum</h1>
+</div>
+</header>
+<main class="flex-grow px-6 py-8 space-y-6 overflow-y-auto">
+<section>
+<h2 class="text-xl font-bold mb-2 text-primary">Service Provider</h2>
+<div class="space-y-1 text-text-dark/90 dark:text-text-light/90">
+<p><span class="font-semibold">Name:</span> Diogo Alexandre Faustino</p>
+<p><span class="font-semibold">Address:</span> Urb Encosta do Pateiro R. Amália Rodrigues, LT 139, 8400-651 Parchal, Lagoa, Portugal</p>
+</div>
+</section>
+<div class="border-t border-background-dark/10 dark:border-background-light/10"></div>
+<section>
+<h2 class="text-xl font-bold mb-2 text-primary">Contact Information</h2>
+<div class="space-y-1 text-text-dark/90 dark:text-text-light/90">
+<p><span class="font-semibold">Phone:</span> <a class="hover:underline" href="tel:+351932015013">+351 932 015 013</a></p>
+<p><span class="font-semibold">Email:</span> <a class="hover:underline" href="mailto:info.boat4two@gmail.com">info.boat4two@gmail.com</a></p>
+</div>
+</section>
+<div class="border-t border-background-dark/10 dark:border-background-light/10"></div>
+<section>
+<h2 class="text-xl font-bold mb-2 text-primary">Registration Details</h2>
+<div class="space-y-1 text-text-dark/90 dark:text-text-light/90">
+<p><span class="font-semibold">VAT Number:</span> PT 251010139</p>
+<p><span class="font-semibold">RNAAT License:</span> N.º 769/2025</p>
+<p><span class="font-semibold">Insurance Provider:</span> Mútua dos Pescadores (Apólice Nº 85/ 27161)</p>
+</div>
+</section>
+<div class="border-t border-background-dark/10 dark:border-background-light/10"></div>
+<section>
+<h2 class="text-xl font-bold mb-2 text-primary">Responsible for Content</h2>
+<div class="space-y-1 text-text-dark/90 dark:text-text-light/90">
+<p>Diogo Alexandre Faustino</p>
+<p>Urb Encosta do Pateiro R. Amália Rodrigues, LT 139, 8400-651 Parchal, Lagoa, Portugal</p>
+</div>
+</section>
+<div class="border-t border-background-dark/10 dark:border-background-light/10"></div>
+<section>
+<h2 class="text-xl font-bold mb-2 text-primary">Online Dispute Resolution</h2>
+<p class="text-sm text-text-dark/80 dark:text-text-light/80">
+                    The European Commission provides a platform for online dispute resolution (ODR). You can access it here: 
+                    <a class="text-primary hover:underline" href="https://ec.europa.eu/consumers/odr" rel="noopener noreferrer" target="_blank">https://ec.europa.eu/consumers/odr</a>. We are not obliged or willing to participate in dispute resolution proceedings before a consumer arbitration board.
+                </p>
+</section>
+</main>
+<footer class="bg-background-light dark:bg-background-dark border-t border-background-dark/10 dark:border-background-light/10 py-4 mt-auto">
+<div class="container mx-auto px-4">
+<p class="text-center text-xs text-text-dark/60 dark:text-text-light/60">© 2025 Boat4Two. All rights reserved.</p>
+</div>
+</footer>
+</div>
+</div>
+<div class="fixed inset-0 z-50 hidden items-end bg-black/50 backdrop-blur-sm" id="tour-sunset">
+<a class="absolute inset-0" href="#"></a>
+<div class="relative w-full h-[95%] bg-background-light dark:bg-background-dark rounded-t-lg shadow-xl flex flex-col overflow-hidden animate-slideUp">
+<header class="flex-shrink-0 flex items-center justify-between p-4 border-b border-zinc-200 dark:border-zinc-700">
+<h3 class="text-xl font-bold text-zinc-900 dark:text-zinc-100">Sunset Tour</h3>
+<a class="p-2 -mr-2 text-zinc-500 hover:text-primary dark:text-zinc-400 dark:hover:text-primary" href="#">
+<span class="material-symbols-outlined">close</span>
+</a>
+</header>
+<main class="flex-grow overflow-y-auto p-6 space-y-4 text-zinc-700 dark:text-zinc-300">
+<img alt="Sunset Tour" class="h-56 w-full object-cover rounded-lg" src="https://i.ibb.co/V08ngWQc/7-DJI-20250903072039-0044-D.jpg"/>
+<h2>Sunset Tour</h2>
+
+  <p>
+    The <strong>Sunset Tour</strong> is a romantic and relaxing experience created for couples who want to enjoy the Algarve coast at the most beautiful time of the day. It combines the charm of a private boat trip with the magic of the setting sun over the Atlantic.
+  </p>
+
+  <p>
+    The journey begins at the <strong>Ferragudo pier</strong>, sailing calmly along the <strong>Arade River</strong> towards the ocean. Along the way, you will pass <strong>riverside beaches</strong>, <strong>fishing areas</strong>, <strong>marinas</strong> and the historic <strong>Castle of Ferragudo</strong> before reaching the open sea. From there, we follow the coastline past <strong>Praia da Rocha</strong> and <strong>Praia do Vau</strong>, heading towards the striking <strong>rock formations of João de Arens</strong>.
+  </p>
+
+  <p>
+    We anchor between the cliffs and crystal-clear waters so you can enjoy the sea at your own pace. There is time to <strong>swim</strong>, <strong>paddleboard</strong>, <strong>kayak</strong>, use our <strong>snorkeling gear</strong> or simply <strong>relax on deck</strong>, listening to music, sipping a glass of wine and watching the light soften over the horizon.
+  </p>
+
+  <p>
+    As the afternoon fades, we sail back to the <strong>mouth of the Arade River</strong>, where the boat rests gently on the water while the sun sets behind the cliffs. It is a calm and breathtaking moment, with the sky painted in warm shades of gold and pink.
+  </p>
+
+  <p>
+    The <strong>Sunset Tour</strong> is more than a boat trip. It is a slow and beautiful celebration of the sea, the light and the shared silence of the evening.
+  </p>
+<div class="flex flex-col gap-3 text-zinc-700 dark:text-zinc-300">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-lg text-primary"> euro_symbol </span>
+<span>Starting at 95,00€* per Person</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-lg text-primary"> schedule </span>
+<span>3h30</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-lg text-primary"> location_on </span>
+<span>Ferragudo</span>
+</div>
+</div>
+</main>
+<footer class="flex-shrink-0 p-4 border-t border-zinc-200 dark:border-zinc-700">
+<a class="w-full h-12 flex items-center justify-center rounded-full bg-primary text-white font-bold shadow-lg transition-transform hover:scale-105" href="#select-tour-popup" onclick="selectTour('sunset')">Book Now</a>
+</footer>
+</div>
+</div>
+<div class="fixed inset-0 z-50 hidden items-end bg-black/50 backdrop-blur-sm" id="tour-custom">
+<a class="absolute inset-0" href="#"></a>
+<div class="relative w-full h-[95%] bg-background-light dark:bg-background-dark rounded-t-lg shadow-xl flex flex-col overflow-hidden animate-slideUp">
+<header class="flex-shrink-0 flex items-center justify-between p-4 border-b border-zinc-200 dark:border-zinc-700">
+<h3 class="text-xl font-bold text-zinc-900 dark:text-zinc-100">Custom Tour</h3>
+<a class="p-2 -mr-2 text-zinc-500 hover:text-primary dark:text-zinc-400 dark:hover:text-primary" href="#">
+<span class="material-symbols-outlined">close</span>
+</a>
+</header>
+<main class="flex-grow overflow-y-auto p-6 space-y-4 text-zinc-700 dark:text-zinc-300">
+<img alt="Custom Tour" class="h-56 w-full object-cover rounded-lg" src="https://i.ibb.co/BSFbg7z/11-DJI-20250903071402-0034-D-grande.jpg"/>
+<h2>Custom Tour</h2>
+
+  <p>
+    The <strong>Custom Tour</strong> is an <strong>exclusive</strong> and <strong>private</strong> experience designed for couples who want complete freedom to create their perfect day at sea along the stunning <strong>Algarve</strong> coast. With an approximate duration of <strong>6 hours and 30 minutes</strong>, this tour allows you to decide what to do and where to go, making every moment unique.
+  </p>
+
+  <p>
+    You may choose to sail to the famous <strong>Benagil Cave</strong>, explore the dramatic coastline near <strong>Carvoeiro</strong>, <strong>Lagoa</strong>, <strong>Portimão</strong>, <strong>Lagos</strong> or <strong>Alvor</strong>, or anchor at a <strong>secluded beach</strong> accessible only by boat, where you can enjoy the rare feeling of having an entire beach just for the two of you.
+  </p>
+
+  <p>
+    During the tour, there is plenty of time for activities such as <strong>swimming</strong>, <strong>snorkeling</strong>, <strong>kayaking</strong>, <strong>paddleboarding (SUP)</strong>, or simply <strong>floating together on the water</strong>. You can relax under the sun, listen to music, share a glass of wine, and enjoy the calm and privacy of the ocean.
+  </p>
+
+  <p>
+    We can also raise the sails and head farther from the coast to feel the <strong>stronger ocean breeze</strong> and the freedom of open water. Your captain can share a few <strong>sailing lessons</strong> if you wish, turning the experience into a playful and interactive adventure.
+  </p>
+
+  <p>
+    You may choose to stop at remote beaches for a <strong>picnic</strong>, explore hidden coves, or simply stay anchored to soak up the sun and enjoy each other’s company. Personalized <strong>souvenirs and small gifts</strong> are provided on board to make the day even more memorable.
+  </p>
+
+  <p>
+    Every detail of the <strong>Custom Tour</strong> is flexible and personal, created to match your mood, your pace, and your idea of a perfect day together along the beautiful <strong>Algarve</strong> coast.
+  </p>
+<div class="flex flex-col gap-3 text-zinc-700 dark:text-zinc-300">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-lg text-primary"> euro_symbol </span>
+<span>Starting at 255,00€* per Person</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-lg text-primary"> schedule </span>
+<span>~ 6h30</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-lg text-primary"> location_on </span>
+<span>Ferragudo</span>
+</div>
+</div>
+</main>
+<footer class="flex-shrink-0 p-4 border-t border-zinc-200 dark:border-zinc-700">
+<a class="w-full h-12 flex items-center justify-center rounded-full bg-primary text-white font-bold shadow-lg transition-transform hover:scale-105" href="#select-tour-popup" onclick="selectTour('custom')">Book Now</a>
+</footer>
+</div>
+</div>
+<div class="fixed inset-0 z-50 hidden items-end bg-black/50 backdrop-blur-sm" id="tour-amor">
+<a class="absolute inset-0" href="#"></a>
+<div class="relative w-full h-[95%] bg-background-light dark:bg-background-dark rounded-t-lg shadow-xl flex flex-col overflow-hidden animate-slideUp">
+<header class="flex-shrink-0 flex items-center justify-between p-4 border-b border-zinc-200 dark:border-zinc-700">
+<h3 class="text-xl font-bold text-zinc-900 dark:text-zinc-100">Amor Tour</h3>
+<a class="p-2 -mr-2 text-zinc-500 hover:text-primary dark:text-zinc-400 dark:hover:text-primary" href="#">
+<span class="material-symbols-outlined">close</span>
+</a>
+</header>
+<main class="flex-grow overflow-y-auto p-6 space-y-4 text-zinc-700 dark:text-zinc-300">
+<img alt="Amor Tour" class="h-56 w-full object-cover rounded-lg" src="https://i.ibb.co/YFvhYDsX/8-DJI-20250903072034-0043-D.jpg"/><h2>Amor Tour</h2>
+
+  <p>
+    The <strong>Amor Tour</strong> is a gentle and romantic escape created for couples who want to enjoy the beauty of the Algarve coast in a calm and private way. Departing from <strong>Ferragudo pier</strong> at <strong>10:00 AM</strong> or <strong>2:00 PM</strong>, it offers the perfect balance between relaxation, discovery and connection.
+  </p>
+
+  <p>
+    The journey begins along the <strong>Arade River</strong>, passing <strong>fishing villages</strong>, <strong>riverside beaches</strong>, <strong>marinas</strong> and the historic <strong>Castle of Ferragudo</strong> before reaching the ocean. From there, we sail towards the breathtaking <strong>rock formations of João de Arens</strong>, gliding past <strong>Praia da Rocha</strong> and <strong>Praia do Vau</strong>, where dolphins are sometimes seen playing near the bow.
+  </p>
+
+  <p>
+    We anchor between cliffs and turquoise waters for a moment to enjoy the sea. You can <strong>swim</strong>, <strong>paddleboard</strong>, <strong>kayak</strong>, use our <strong>snorkeling gear</strong> or simply <strong>float together under the sun</strong>, listening to music, sharing a glass of wine and taking in the scenery.
+  </p>
+
+  <p>
+    Throughout the experience, your guide reveals stories about the region, the shapes of the rocks and the <strong>marine life</strong> that inhabits these waters.
+  </p>
+
+  <p>
+    As the tour draws to a close, we turn back toward <strong>Ferragudo</strong> and raise the sails, letting the <strong>western wind</strong> carry us home. It is a quiet and beautiful part of the journey, where the <strong>captain</strong> may share a few simple sailing tips with those who wish to learn.
+  </p>
+
+  <p>
+    Before you disembark, a few <strong>personalised gifts</strong> will be waiting on board, a small reminder of the time you shared at sea.
+  </p>
+
+  <p>
+    The <strong>Amor Tour</strong> is not just a boat trip. It is a slow and graceful experience made to be remembered.
+  </p>
+<div class="flex flex-col gap-3 text-zinc-700 dark:text-zinc-300">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-lg text-primary"> euro_symbol </span>
+<span>Starting at 85,00€* per Person</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-lg text-primary"> schedule </span>
+<span>3h30</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-lg text-primary"> location_on </span>
+<span>Ferragudo</span>
+</div>
+</div>
+</main>
+<footer class="flex-shrink-0 p-4 border-t border-zinc-200 dark:border-zinc-700">
+<a class="w-full h-12 flex items-center justify-center rounded-full bg-primary text-white font-bold shadow-lg transition-transform hover:scale-105" href="#select-tour-popup" onclick="selectTour('amor')">Book Now</a>
+</footer>
+</div>
+</div>
+<div class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 backdrop-blur-sm animate-fadeIn" id="select-tour-popup">
+<a class="absolute inset-0" href="#"></a>
+<div class="relative w-full max-w-sm rounded-lg bg-background-light p-6 shadow-xl dark:bg-background-dark m-4 flex flex-col gap-4">
+<a class="absolute top-4 right-4 text-zinc-500 hover:text-primary dark:text-zinc-400 dark:hover:text-primary" href="#">
+<span class="material-symbols-outlined"> close </span>
+</a>
+<h3 class="text-xl font-bold text-zinc-900 dark:text-zinc-100">Select a Tour</h3>
+<div class="space-y-2">
+<label class="relative block">
+<input class="peer sr-only" data-next-popup="#calendar-popup" name="tour-option" type="radio" value="sunset"/>
+<div class="p-3 text-sm font-semibold rounded-lg border border-zinc-300 dark:border-zinc-700 hover:bg-primary/20 hover:border-primary/50 transition-colors cursor-pointer peer-checked:bg-primary peer-checked:text-white peer-checked:border-primary">
+            Sunset Tour
+            <p class="font-normal text-xs opacity-80">3h30 - From 95,00€ p.p.</p>
+</div>
+</label>
+<label class="relative block">
+<input class="peer sr-only" data-next-popup="#calendar-popup" name="tour-option" type="radio" value="amor"/>
+<div class="p-3 text-sm font-semibold rounded-lg border border-zinc-300 dark:border-zinc-700 hover:bg-primary/20 hover:border-primary/50 transition-colors cursor-pointer peer-checked:bg-primary peer-checked:text-white peer-checked:border-primary">
+            Amor Tour
+            <p class="font-normal text-xs opacity-80">3h30 - From 85,00€ p.p.</p>
+</div>
+</label>
+<label class="relative block">
+<input class="peer sr-only" data-next-popup="#calendar-popup" name="tour-option" type="radio" value="custom"/>
+<div class="p-3 text-sm font-semibold rounded-lg border border-zinc-300 dark:border-zinc-700 hover:bg-primary/20 hover:border-primary/50 transition-colors cursor-pointer peer-checked:bg-primary peer-checked:text-white peer-checked:border-primary">
+            Custom Tour
+            <p class="font-normal text-xs opacity-80">~6h30 - From 255,00€ p.p.</p>
+</div>
+</label>
+</div>
+<a class="w-full h-12 flex items-center justify-center rounded-full bg-primary text-white font-bold shadow-lg transition-transform hover:scale-105" href="#" id="select-tour-next-btn">Select Date &amp; Time</a>
+</div>
+</div>
+<div class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 backdrop-blur-sm animate-fadeIn" id="calendar-popup">
+<a class="absolute inset-0" href="#"></a>
+<div class="relative w-full max-w-sm rounded-lg bg-background-light p-6 shadow-xl dark:bg-background-dark m-4 flex flex-col gap-4">
+<a class="absolute top-4 right-4 text-zinc-500 hover:text-primary dark:text-zinc-400 dark:hover:text-primary" href="#">
+<span class="material-symbols-outlined"> close </span>
+</a>
+<a class="absolute top-4 left-4 text-zinc-500 hover:text-primary dark:text-zinc-400 dark:hover:text-primary" href="#select-tour-popup">
+<span class="material-symbols-outlined"> arrow_back </span>
+</a>
+<h3 class="text-xl font-bold text-zinc-900 dark:text-zinc-100 text-center">Select Date &amp; Time</h3>
+<div id="calendar-container"></div>
+<div id="time-slots-container">
+<h4 class="font-bold text-lg text-zinc-900 dark:text-zinc-100 mb-2">Available Slots</h4>
+<div class="grid grid-cols-2 gap-2" id="time-slots-sunset" style="display: none;">
+<label class="relative">
+<input class="peer sr-only" name="time-slot" type="radio"/>
+<div class="p-3 text-sm font-semibold rounded-lg border border-zinc-300 dark:border-zinc-700 hover:bg-primary/20 hover:border-primary/50 transition-colors cursor-pointer peer-checked:bg-primary peer-checked:text-white peer-checked:border-primary text-center">18:00 PM</div>
+</label>
+</div>
+<div class="grid grid-cols-2 gap-2" id="time-slots-amor" style="display: none;">
+<button class="p-3 text-sm font-semibold rounded-lg border border-zinc-300 dark:border-zinc-700 text-zinc-400 dark:text-zinc-600 cursor-not-allowed" disabled="">06:00 AM</button>
+<label class="relative">
+<input class="peer sr-only" name="time-slot" type="radio"/>
+<div class="p-3 text-sm font-semibold rounded-lg border border-zinc-300 dark:border-zinc-700 hover:bg-primary/20 hover:border-primary/50 transition-colors cursor-pointer peer-checked:bg-primary peer-checked:text-white peer-checked:border-primary text-center">10:00 AM</div>
+</label>
+<label class="relative">
+<input class="peer sr-only" name="time-slot" type="radio"/>
+<div class="p-3 text-sm font-semibold rounded-lg border border-zinc-300 dark:border-zinc-700 hover:bg-primary/20 hover:border-primary/50 transition-colors cursor-pointer peer-checked:bg-primary peer-checked:text-white peer-checked:border-primary text-center">14:00 PM</div>
+</label>
+</div>
+<div class="grid grid-cols-2 gap-2" id="time-slots-custom" style="display: none;">
+<button class="p-3 text-sm font-semibold rounded-lg border border-zinc-300 dark:border-zinc-700 text-zinc-400 dark:text-zinc-600 cursor-not-allowed" disabled="">06:00 AM</button>
+<label class="relative">
+<input class="peer sr-only" name="time-slot" type="radio"/>
+<div class="p-3 text-sm font-semibold rounded-lg border border-zinc-300 dark:border-zinc-700 hover:bg-primary/20 hover:border-primary/50 transition-colors cursor-pointer peer-checked:bg-primary peer-checked:text-white peer-checked:border-primary text-center">10:00 AM</div>
+</label>
+<label class="relative">
+<input class="peer sr-only" name="time-slot" type="radio"/>
+<div class="p-3 text-sm font-semibold rounded-lg border border-zinc-300 dark:border-zinc-700 hover:bg-primary/20 hover:border-primary/50 transition-colors cursor-pointer peer-checked:bg-primary peer-checked:text-white peer-checked:border-primary text-center">14:00 PM</div>
+</label>
+<button class="p-3 text-sm font-semibold rounded-lg border border-zinc-300 dark:border-zinc-700 text-zinc-400 dark:text-zinc-600 cursor-not-allowed" disabled="">18:00 PM</button>
+</div>
+</div>
+<a class="w-full h-12 flex items-center justify-center rounded-full bg-primary text-white font-bold shadow-lg transition-transform hover:scale-105" href="#confirmation-popup">Confirm Booking</a>
+</div>
+</div>
+<div class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 backdrop-blur-sm animate-fadeIn" id="confirmation-popup">
+<a class="absolute inset-0" href="#"></a>
+<div class="relative w-full max-w-sm rounded-lg bg-background-light p-6 shadow-xl dark:bg-background-dark m-4 flex flex-col gap-4 text-center">
+<a class="absolute top-4 right-4 text-zinc-500 hover:text-primary dark:text-zinc-400 dark:hover:text-primary" href="#">
+<span class="material-symbols-outlined"> close </span>
+</a>
+<a class="absolute top-4 left-4 text-zinc-500 hover:text-primary dark:text-zinc-400 dark:hover:text-primary" href="#calendar-popup">
+<span class="material-symbols-outlined"> arrow_back </span>
+</a>
+<h3 class="text-xl font-bold text-zinc-900 dark:text-zinc-100">Confirm Your Booking</h3>
+<p class="text-zinc-700 dark:text-zinc-300">You have selected the <span class="font-bold text-primary" id="selected-tour-text"></span> on <span class="font-bold text-primary" id="selected-date-text"></span> at <span class="font-bold text-primary" id="selected-time-text"></span>. Please confirm to proceed.</p>
+<div class="flex justify-center gap-4 mt-4">
+<a class="w-full h-12 flex items-center justify-center rounded-full bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-bold shadow-lg transition-transform hover:scale-105" href="#calendar-popup">Change</a>
+<a class="w-full h-12 flex items-center justify-center rounded-full bg-primary text-white font-bold shadow-lg transition-transform hover:scale-105" href="#details-popup">Confirm</a>
+</div>
+</div>
+</div>
+<div class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 backdrop-blur-sm animate-fadeIn" id="review-popup">
+<a class="absolute inset-0" href="#"></a>
+<div class="relative w-full max-w-sm rounded-lg bg-background-light p-6 shadow-xl dark:bg-background-dark m-4 flex flex-col gap-4 text-center">
+<a class="absolute top-4 right-4 text-zinc-500 hover:text-primary dark:text-zinc-400 dark:hover:text-primary" href="#">
+<span class="material-symbols-outlined"> close </span>
+</a>
+<a class="absolute top-4 left-4 text-zinc-500 hover:text-primary dark:text-zinc-400 dark:hover:text-primary" href="#details-popup">
+<span class="material-symbols-outlined"> arrow_back </span>
+</a>
+<h3 class="text-xl font-bold text-zinc-900 dark:text-zinc-100">Review Your Details</h3>
+<div id="review-details" class="text-zinc-700 dark:text-zinc-300 text-left"></div>
+<div class="flex justify-center gap-4 mt-4">
+<a class="w-full h-12 flex items-center justify-center rounded-full bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-bold shadow-lg transition-transform hover:scale-105" href="#details-popup">Edit</a>
+<a class="w-full h-12 flex items-center justify-center rounded-full bg-primary text-white font-bold shadow-lg transition-transform hover:scale-105" href="#payment-popup" id="review-confirm-button">Confirm</a>
+</div>
+</div>
+</div>
+<div class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 backdrop-blur-sm animate-fadeIn" id="payment-popup">
+<a class="absolute inset-0" href="#"></a>
+<div class="relative w-full max-w-sm rounded-lg bg-background-light p-6 shadow-xl dark:bg-background-dark m-4 flex flex-col gap-4">
+<a class="absolute top-4 right-4 text-zinc-500 hover:text-primary dark:text-zinc-400 dark:hover:text-primary" href="#">
+<span class="material-symbols-outlined"> close </span>
+</a>
+<a class="absolute top-4 left-4 text-zinc-500 hover:text-primary dark:text-zinc-400 dark:hover:text-primary" href="#review-popup">
+<span class="material-symbols-outlined"> arrow_back </span>
+</a>
+<h3 class="text-xl font-bold text-zinc-900 dark:text-zinc-100 text-center">Select Payment Method</h3>
+<div class="space-y-4">
+<label class="relative block">
+<input class="peer sr-only" name="payment-method" type="radio" value="apple-pay"/>
+<div class="p-3 text-sm font-semibold rounded-lg border border-zinc-300 dark:border-zinc-700 hover:bg-primary/20 hover:border-primary/50 transition-colors cursor-pointer peer-checked:bg-primary peer-checked:text-white peer-checked:border-primary text-center">Apple Pay</div>
+</label>
+<label class="relative block">
+<input class="peer sr-only" name="payment-method" type="radio" value="paypal"/>
+<div class="p-3 text-sm font-semibold rounded-lg border border-zinc-300 dark:border-zinc-700 hover:bg-primary/20 hover:border-primary/50 transition-colors cursor-pointer peer-checked:bg-primary peer-checked:text-white peer-checked:border-primary text-center">PayPal</div>
+</label>
+<label class="relative block">
+<input class="peer sr-only" name="payment-method" type="radio" value="card"/>
+<div class="p-3 text-sm font-semibold rounded-lg border border-zinc-300 dark:border-zinc-700 hover:bg-primary/20 hover:border-primary/50 transition-colors cursor-pointer peer-checked:bg-primary peer-checked:text-white peer-checked:border-primary text-center">Debit/Credit Card</div>
+</label>
+<label class="relative block">
+<input class="peer sr-only" name="payment-method" type="radio" value="mbway"/>
+<div class="p-3 text-sm font-semibold rounded-lg border border-zinc-300 dark:border-zinc-700 hover:bg-primary/20 hover:border-primary/50 transition-colors cursor-pointer peer-checked:bg-primary peer-checked:text-white peer-checked:border-primary text-center">MB Way</div>
+</label>
+</div>
+<div class="flex items-center gap-2">
+<input type="checkbox" id="policy-checkbox" class="peer sr-only"/>
+<label for="policy-checkbox" class="flex items-center cursor-pointer">
+<div class="w-5 h-5 rounded border border-zinc-300 dark:border-zinc-700 mr-2 peer-checked:bg-green-500 peer-checked:border-green-500"></div>
+<span class="text-sm text-zinc-700 dark:text-zinc-300">I have read and agree to the <a href="#terms-popup" class="text-primary hover:underline">terms and policies</a></span>
+</label>
+</div>
+<button id="payment-confirm-button" class="w-full h-12 flex items-center justify-center rounded-full bg-primary text-white font-bold shadow-lg transition-transform hover:scale-105 disabled:bg-zinc-400 disabled:cursor-not-allowed" disabled>Confirm Payment</button>
+</div>
+</div>
+<div class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 backdrop-blur-sm animate-fadeIn" id="success-popup">
+<a class="absolute inset-0" href="#"></a>
+<div class="relative w-full max-w-sm rounded-lg bg-background-light p-6 shadow-xl dark:bg-background-dark m-4 flex flex-col gap-4 text-center">
+<a class="absolute top-4 right-4 text-zinc-500 hover:text-primary dark:text-zinc-400 dark:hover:text-primary" href="#">
+<span class="material-symbols-outlined"> close </span>
+</a>
+<h3 class="text-xl font-bold text-zinc-900 dark:text-zinc-100">Booking Confirmed</h3>
+<p class="text-zinc-700 dark:text-zinc-300">Your payment has been processed successfully. You will receive an email with your reservation details shortly.</p>
+<a class="w-full h-12 flex items-center justify-center rounded-full bg-primary text-white font-bold shadow-lg transition-transform hover:scale-105" href="#">Close</a>
+</div>
+</div>
+<div class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 backdrop-blur-sm animate-fadeIn" id="details-popup">
+<a class="absolute inset-0" href="#"></a>
+<div class="relative w-full max-w-sm rounded-lg bg-background-light p-6 shadow-xl dark:bg-background-dark m-4 flex flex-col gap-4">
+<a class="absolute top-4 right-4 text-zinc-500 hover:text-primary dark:text-zinc-400 dark:hover:text-primary" href="#">
+<span class="material-symbols-outlined"> close </span>
+</a>
+<a class="absolute top-4 left-4 text-zinc-500 hover:text-primary dark:text-zinc-400 dark:hover:text-primary" href="#confirmation-popup">
+<span class="material-symbols-outlined"> arrow_back </span>
+</a>
+<h3 class="text-xl font-bold text-zinc-900 dark:text-zinc-100 text-center">Enter Your Details</h3>
+<form id="booking-details-form" class="space-y-4">
+<div>
+<label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300" for="first-name">First Name</label>
+<input class="mt-1 block w-full rounded-lg border border-zinc-300 dark:border-zinc-700 bg-background-light dark:bg-background-dark p-2 shadow-sm focus:border-primary focus:ring-primary" id="first-name" type="text" required pattern="[A-Za-z]+" title="First name should contain only letters."/>
+</div>
+<div>
+<label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300" for="last-name">Last Name</label>
+<input class="mt-1 block w-full rounded-lg border border-zinc-300 dark:border-zinc-700 bg-background-light dark:bg-background-dark p-2 shadow-sm focus:border-primary focus:ring-primary" id="last-name" type="text" required pattern="[A-Za-z]+" title="Last name should contain only letters."/>
+</div>
+<div>
+<label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300" for="age">Age</label>
+<select class="mt-1 block w-full rounded-lg border border-zinc-300 dark:border-zinc-700 bg-background-light dark:bg-background-dark p-2 shadow-sm focus:border-primary focus:ring-primary" id="age" required></select>
+</div>
+<div>
+<label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300" for="email">Email</label>
+<input class="mt-1 block w-full rounded-lg border border-zinc-300 dark:border-zinc-700 bg-background-light dark:bg-background-dark p-2 shadow-sm focus:border-primary focus:ring-primary" id="email" type="email" required/>
+</div>
+<div>
+<label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300" for="phone">Phone Number</label>
+<input class="mt-1 block w-full rounded-lg border border-zinc-300 dark:border-zinc-700 bg-background-light dark:bg-background-dark p-2 shadow-sm focus:border-primary focus:ring-primary" id="phone" type="tel" required pattern="[+]?[0-9\s\-()]{7,}" title="Please enter a valid phone number."/>
+</div>
+<div>
+<label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300" for="country">Where are you visiting from?</label>
+<select class="mt-1 block w-full rounded-lg border border-zinc-300 dark:border-zinc-700 bg-background-light dark:bg-background-dark p-2 shadow-sm focus:border-primary focus:ring-primary" id="country" required></select>
+</div>
+<button class="w-full h-12 flex items-center justify-center rounded-full bg-primary text-white font-bold shadow-lg transition-transform hover:scale-105" type="submit">Confirm and Pay</button>
+</form>
+</div>
+</div>
+<script>
+    function selectTour(tourValue) {
+      const tourRadio = document.querySelector(`input[name="tour-option"][value="${tourValue}"]`);
+      if (tourRadio) {
+        tourRadio.checked = true;
+        const event = new Event('change');
+        tourRadio.dispatchEvent(event);
+      }
+    }
+    document.addEventListener('DOMContentLoaded', function() {
+      // Logic for multi-step popup
+      const tourOptions = document.querySelectorAll('input[name="tour-option"]');
+      const nextButton = document.getElementById('select-tour-next-btn');
+      const menuBookButton = document.querySelector('.fixed.top-0.right-0 a[href="#select-tour-popup"]');
+      if (menuBookButton) {
+        menuBookButton.addEventListener('click', function(e) {
+          e.preventDefault();
+          window.location.hash = '#select-tour-popup';
+          // This closes the menu
+          window.location.hash = '';
+          // A brief delay to allow the menu to close before the popup opens
+          setTimeout(() => {
+            window.location.hash = '#select-tour-popup';
+          }, 10);
+        });
+      }
+      tourOptions.forEach(option => {
+        option.addEventListener('change', () => {
+          const selectedOption = document.querySelector('input[name="tour-option"]:checked');
+          if (selectedOption) {
+            nextButton.href = selectedOption.dataset.nextPopup;
+            updateTimeSlots(selectedOption.value);
+          } else {
+            nextButton.href = "#";
+          }
+        });
+      });
+      function updateTimeSlots(tourValue) {
+        document.getElementById('time-slots-sunset').style.display = tourValue === 'sunset' ? 'grid' : 'none';
+        document.getElementById('time-slots-amor').style.display = tourValue === 'amor' ? 'grid' : 'none';
+        document.getElementById('time-slots-custom').style.display = tourValue === 'custom' ? 'grid' : 'none';
+      }
+      async function fetchAvailableDays(year, month, tour) {
+        // Placeholder for server request
+        // const response = await fetch(`/available-days?year=${year}&month=${month + 1}&tour=${tour}`);
+        // return await response.json(); // e.g., [1, 2, ..., 31] for available days
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        return Array.from({length: daysInMonth}, (_, i) => i + 1); // All days available for now
+      }
+      async function fetchAvailableTimes(dateStr, tour) {
+        // Placeholder for server request
+        // const response = await fetch(`/available-times?date=${dateStr}&tour=${tour}`);
+        // return await response.json(); // e.g., ['10:00 AM', '14:00 PM']
+        if (tour === 'sunset') return ['18:00 PM'];
+        if (tour === 'amor') return ['10:00 AM', '14:00 PM'];
+        if (tour === 'custom') return ['10:00 AM', '14:00 PM'];
+        return [];
+      }
+      let selectedDate = null;
+      async function updateTimeSlotsWithAvailability() {
+        const selectedTour = document.querySelector('input[name="tour-option"]:checked');
+        if (!selectedTour || !selectedDate) return;
+        const tourValue = selectedTour.value;
+        const dateStr = selectedDate.toISOString().split('T')[0];
+        const availableTimes = await fetchAvailableTimes(dateStr, tourValue);
+        const slotsContainer = document.getElementById(`time-slots-${tourValue}`);
+        if (!slotsContainer) return;
+        const slotLabels = slotsContainer.querySelectorAll('label');
+        slotLabels.forEach(label => {
+          const input = label.querySelector('input');
+          const div = label.querySelector('div');
+          const time = div.textContent.trim();
+          if (availableTimes.includes(time)) {
+            input.disabled = false;
+            div.classList.remove('text-zinc-400', 'dark:text-zinc-600', 'cursor-not-allowed');
+            label.classList.add('cursor-pointer');
+            div.classList.add('hover:bg-primary/20', 'hover:border-primary/50');
+          } else {
+            input.disabled = true;
+            input.checked = false;
+            div.classList.add('text-zinc-400', 'dark:text-zinc-600', 'cursor-not-allowed');
+            label.classList.remove('cursor-pointer');
+            div.classList.remove('hover:bg-primary/20', 'hover:border-primary/50');
+          }
+        });
+      }
+      function generateCalendar() {
+        const calendarContainer = document.getElementById('calendar-container');
+        if (!calendarContainer) return;
+        const selectedDateText = document.getElementById('selected-date-text');
+        const today = new Date(2025, 9, 6); // October 06, 2025
+        let currentMonth = today.getMonth();
+        let currentYear = today.getFullYear();
+        selectedDate = new Date(currentYear, currentMonth, today.getDate());
+        async function renderCalendar(month, year) {
+          calendarContainer.innerHTML = '';
+          const selectedTour = document.querySelector('input[name="tour-option"]:checked');
+          const tourValue = selectedTour ? selectedTour.value : '';
+          const availableDays = await fetchAvailableDays(year, month, tourValue);
+          const monthAndYear = document.createElement('div');
+          monthAndYear.className = 'flex items-center justify-between mb-4';
+          monthAndYear.innerHTML = `
+              <button id="prev-month" class="p-2 rounded-full hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors">
+                  <span class="material-symbols-outlined">chevron_left</span>
+              </button>
+              <h4 class="font-bold text-lg text-zinc-900 dark:text-zinc-100">${new Date(year, month).toLocaleString('en-US', { month: 'long' })} ${year}</h4>
+              <button id="next-month" class="p-2 rounded-full hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors">
+                  <span class="material-symbols-outlined">chevron_right</span>
+              </button>
+          `;
+          calendarContainer.appendChild(monthAndYear);
+          const daysOfWeek = document.createElement('div');
+          daysOfWeek.className = 'grid grid-cols-7 gap-1 text-center text-sm text-zinc-500 dark:text-zinc-400 mb-2';
+          daysOfWeek.innerHTML = `
+              <div class="w-10 h-10 flex items-center justify-center font-semibold">Su</div>
+              <div class="w-10 h-10 flex items-center justify-center font-semibold">Mo</div>
+              <div class="w-10 h-10 flex items-center justify-center font-semibold">Tu</div>
+              <div class="w-10 h-10 flex items-center justify-center font-semibold">We</div>
+              <div class="w-10 h-10 flex items-center justify-center font-semibold">Th</div>
+              <div class="w-10 h-10 flex items-center justify-center font-semibold">Fr</div>
+              <div class="w-10 h-10 flex items-center justify-center font-semibold">Sa</div>
+          `;
+          calendarContainer.appendChild(daysOfWeek);
+          const datesGrid = document.createElement('div');
+          datesGrid.className = 'grid grid-cols-7 gap-1 text-center text-zinc-900 dark:text-zinc-100';
+          calendarContainer.appendChild(datesGrid);
+          const firstDayOfMonth = new Date(year, month, 1).getDay();
+          const daysInMonth = new Date(year, month + 1, 0).getDate();
+          for (let i = 0; i < firstDayOfMonth; i++) {
+            const emptyCell = document.createElement('div');
+            emptyCell.className = 'w-10 h-10';
+            datesGrid.appendChild(emptyCell);
+          }
+          for (let day = 1; day <= daysInMonth; day++) {
+            const dateCell = document.createElement('button');
+            dateCell.className = 'w-10 h-10 flex items-center justify-center rounded-full transition-colors';
+            dateCell.textContent = day;
+            const thisDate = new Date(year, month, day);
+            const isPast = thisDate < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+            const isFutureLimit = thisDate > new Date(today.getFullYear() + 1, today.getMonth(), today.getDate());
+            const isAvailable = availableDays.includes(day);
+            if (isPast || isFutureLimit || !isAvailable) {
+              dateCell.disabled = true;
+              dateCell.className += ' text-zinc-400 dark:text-zinc-600 cursor-not-allowed';
+            } else {
+              dateCell.className += ' cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700';
+              if (selectedDate && thisDate.toDateString() === selectedDate.toDateString()) {
+                dateCell.className += ' bg-primary text-white';
+              }
+              dateCell.addEventListener('click', async () => {
+                selectedDate = thisDate;
+                await renderCalendar(currentMonth, currentYear);
+                await updateTimeSlotsWithAvailability();
+                updateConfirmationText();
+              });
+            }
+            datesGrid.appendChild(dateCell);
+          }
+          document.getElementById('prev-month').addEventListener('click', async () => {
+            currentMonth--;
+            if (currentMonth < 0) {
+              currentMonth = 11;
+              currentYear--;
+            }
+            await renderCalendar(currentMonth, currentYear);
+          });
+          document.getElementById('next-month').addEventListener('click', async () => {
+            currentMonth++;
+            if (currentMonth > 11) {
+              currentMonth = 0;
+              currentYear++;
+            }
+            await renderCalendar(currentMonth, currentYear);
+          });
+        }
+        // Swipe gestures for calendar
+        let touchStartX = 0;
+        let touchEndX = 0;
+        calendarContainer.addEventListener('touchstart', e => {
+          touchStartX = e.changedTouches[0].screenX;
+        });
+        calendarContainer.addEventListener('touchend', async e => {
+          touchEndX = e.changedTouches[0].screenX;
+          if (touchStartX - touchEndX > 50) { // swipe left - next month
+            currentMonth++;
+            if (currentMonth > 11) {
+              currentMonth = 0;
+              currentYear++;
+            }
+            await renderCalendar(currentMonth, currentYear);
+          } else if (touchEndX - touchStartX > 50) { // swipe right - prev month
+            currentMonth--;
+            if (currentMonth < 0) {
+              currentMonth = 11;
+              currentYear--;
+            }
+            await renderCalendar(currentMonth, currentYear);
+          }
+        });
+        function updateConfirmationText() {
+          const selectedTour = document.querySelector('input[name="tour-option"]:checked');
+          const selectedTime = document.querySelector('input[name="time-slot"]:checked');
+          if (selectedDateText) {
+            selectedDateText.textContent = selectedDate.toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            });
+          }
+          if (selectedTour) {
+            document.getElementById('selected-tour-text').textContent = selectedTour.nextElementSibling.textContent.trim().split('\n')[0];
+          }
+          if (selectedTime) {
+            document.getElementById('selected-time-text').textContent = selectedTime.nextElementSibling.textContent.trim();
+          } else {
+            document.getElementById('selected-time-text').textContent = 'N/A';
+          }
+        }
+        document.querySelectorAll('input[name="time-slot"]').forEach(slot => {
+          slot.addEventListener('change', updateConfirmationText);
+        });
+        renderCalendar(currentMonth, currentYear);
+      }
+      generateCalendar();
+
+      // Prevent scroll reset on popup/menu open/close
+      let scrollPosition = 0;
+      function handleHashChange() {
+        if (location.hash) {
+          scrollPosition = window.pageYOffset;
+          document.body.style.position = 'fixed';
+          document.body.style.top = `-${scrollPosition}px`;
+          document.body.style.width = '100%';
+          document.body.style.overflowY = 'scroll'; // To allow scrolling inside body if needed, but since fixed, no.
+        } else {
+          const scrollY = parseInt(document.body.style.top || '0') * -1;
+          document.body.style.position = '';
+          document.body.style.top = '';
+          document.body.style.width = '';
+          document.body.style.overflowY = '';
+          window.scrollTo(0, scrollY || 0);
+        }
+      }
+      window.addEventListener('hashchange', handleHashChange);
+      handleHashChange();
+
+      // Swipe to close bottom sheets
+      const bottomSheets = document.querySelectorAll('#terms-popup, #contact-popup, #cookies-popup, #exemption-popup, #impressum-popup, #tour-sunset, #tour-custom, #tour-amor');
+      bottomSheets.forEach(sheet => {
+        const content = sheet.querySelector('.relative.w-full.h-\\[95\\%\\]');
+        if (!content) return;
+        let startY = 0;
+        let currentY = 0;
+        let isDragging = false;
+        content.addEventListener('touchstart', e => {
+          startY = e.touches[0].clientY;
+          isDragging = true;
+          content.style.transition = 'none';
+        });
+        content.addEventListener('touchmove', e => {
+          if (!isDragging) return;
+          currentY = e.touches[0].clientY - startY;
+          if (currentY > 0) {
+            content.style.transform = `translateY(${currentY}px)`;
+          }
+        });
+        content.addEventListener('touchend', () => {
+          isDragging = false;
+          content.style.transition = 'transform 0.3s ease-out';
+          if (currentY > 150) {
+            window.location.hash = '#';
+          } else {
+            content.style.transform = 'translateY(0)';
+          }
+          currentY = 0;
+        });
+      });
+      // Populate age select
+      const ageSelect = document.getElementById('age');
+      if (ageSelect) {
+        for (let i = 10; i <= 99; i++) {
+          const option = document.createElement('option');
+          option.value = i;
+          option.textContent = i;
+          ageSelect.appendChild(option);
+        }
+      }
+      // Populate country select
+      const countrySelect = document.getElementById('country');
+      if (countrySelect) {
+        const countries = ["Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua & Deps", "Argentina", "Armenia", "Australia", "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin", "Bhutan", "Bolivia", "Bosnia Herzegovina", "Botswana", "Brazil", "Brunei", "Bulgaria", "Burkina", "Burundi", "Cambodia", "Cameroon", "Canada", "Cape Verde", "Central African Rep", "Chad", "Chile", "China", "Colombia", "Comoros", "Congo", "Congo {Democratic Rep}", "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czech Republic", "Denmark", "Djibouti", "Dominica", "Dominican Republic", "East Timor", "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea", "Eritrea", "Estonia", "Ethiopia", "Fiji", "Finland", "France", "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Greece", "Grenada", "Guatemala", "Guinea", "Guinea-Bissau", "Guyana", "Haiti", "Honduras", "Hungary", "Iceland", "India", "Indonesia", "Iran", "Iraq", "Ireland", "Israel", "Italy", "Ivory Coast", "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya", "Kiribati", "Korea North", "Korea South", "Kosovo", "Kuwait", "Kyrgyzstan", "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya", "Liechtenstein", "Lithuania", "Luxembourg", "Macedonia", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta", "Marshall Islands", "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia", "Montenegro", "Morocco", "Mozambique", "Myanmar, {Burma}", "Namibia", "Nauru", "Nepal", "Netherlands", "New Zealand", "Nicaragua", "Niger", "Nigeria", "Norway", "Oman", "Pakistan", "Palau", "Panama", "Papua New Guinea", "Paraguay", "Peru", "Philippines", "Poland", "Portugal", "Qatar", "Romania", "Russian Federation", "Rwanda", "St Kitts & Nevis", "St Lucia", "Saint Vincent & the Grenadines", "Samoa", "San Marino", "Sao Tome & Principe", "Saudi Arabia", "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", "Somalia", "South Africa", "South Sudan", "Spain", "Sri Lanka", "Sudan", "Suriname", "Swaziland", "Sweden", "Switzerland", "Syria", "Taiwan", "Tajikistan", "Tanzania", "Thailand", "Togo", "Tonga", "Trinidad & Tobago", "Tunisia", "Turkey", "Turkmenistan", "Tuvalu", "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay", "Uzbekistan", "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"];
+        countries.forEach(country => {
+          const option = document.createElement('option');
+          option.value = country;
+          option.textContent = country;
+          countrySelect.appendChild(option);
+        });
+      }
+      // Handle form submission
+      const detailsForm = document.getElementById('booking-details-form');
+      let bookingData = {};
+      if (detailsForm) {
+        detailsForm.addEventListener('submit', function(e) {
+          e.preventDefault();
+          if (!detailsForm.checkValidity()) {
+            detailsForm.reportValidity();
+            return;
+          }
+          const formData = new FormData(detailsForm);
+          bookingData = Object.fromEntries(formData.entries());
+          // Add selected tour, date, time
+          bookingData.tour = document.getElementById('selected-tour-text').textContent;
+          bookingData.date = document.getElementById('selected-date-text').textContent;
+          bookingData.time = document.getElementById('selected-time-text').textContent;
+          // Display in review
+          const reviewDetails = document.getElementById('review-details');
+          if (reviewDetails) {
+            reviewDetails.innerHTML = `
+              <p><strong>Tour:</strong> ${bookingData.tour}</p>
+              <p><strong>Date:</strong> ${bookingData.date}</p>
+              <p><strong>Time:</strong> ${bookingData.time}</p>
+              <p><strong>First Name:</strong> ${bookingData['first-name']}</p>
+              <p><strong>Last Name:</strong> ${bookingData['last-name']}</p>
+              <p><strong>Age:</strong> ${bookingData.age}</p>
+              <p><strong>Email:</strong> ${bookingData.email}</p>
+              <p><strong>Phone:</strong> ${bookingData.phone}</p>
+              <p><strong>Country:</strong> ${bookingData.country}</p>
+            `;
+          }
+          window.location.hash = '#review-popup';
+        });
+      }
+      // Review confirm
+      const reviewConfirmButton = document.getElementById('review-confirm-button');
+      if (reviewConfirmButton) {
+        reviewConfirmButton.addEventListener('click', () => {
+          // Placeholder for sending to server
+          console.log('Sending booking data to server:', bookingData);
+          // fetch('/submit-booking', {
+          //   method: 'POST',
+          //   headers: { 'Content-Type': 'application/json' },
+          //   body: JSON.stringify(bookingData)
+          // });
+        });
+      }
+      // Payment policy checkbox and method selection
+      const policyCheckbox = document.getElementById('policy-checkbox');
+      const paymentConfirmButton = document.getElementById('payment-confirm-button');
+      const paymentMethods = document.querySelectorAll('input[name="payment-method"]');
+      function checkPaymentReady() {
+        const methodSelected = Array.from(paymentMethods).some(input => input.checked);
+        const policyChecked = policyCheckbox.checked;
+        paymentConfirmButton.disabled = !(methodSelected && policyChecked);
+      }
+      if (policyCheckbox && paymentConfirmButton && paymentMethods.length > 0) {
+        policyCheckbox.addEventListener('change', checkPaymentReady);
+        paymentMethods.forEach(method => method.addEventListener('change', checkPaymentReady));
+        paymentConfirmButton.addEventListener('click', () => {
+          // Placeholder for payment processing
+          // If successful:
+          window.location.hash = '#success-popup';
+        });
+      }
+    });
+  </script>
+</body>
+</html>
