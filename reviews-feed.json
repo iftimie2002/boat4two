@@ -26,9 +26,9 @@
     },
     "google": {
       "enabled": true,
-      "public": false,
+      "public": true,
       "name": "Google",
-      "url": "https://share.google/auqEsNVQTD5LakkAm",
+      "url": "https://share.google/yWXBdC5UX3wbvZZXv",
       "rating": null,
       "reviewCount": 0,
       "reviews": []

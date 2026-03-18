@@ -232,30 +232,58 @@ async function syncJsonLdProvider(providerId, providerConfig, existingProvider) 
 async function syncGooglePlacesProvider(providerId, providerConfig, existingProvider) {
   const base = buildProviderBase(providerId, providerConfig, existingProvider);
   const apiKey = process.env[providerConfig.apiKeyEnv || 'GOOGLE_MAPS_API_KEY'];
-  if (!providerConfig.placeId || !apiKey) {
+  if (!apiKey) {
     return base;
   }
 
-  const detailsUrl = new URL('https://maps.googleapis.com/maps/api/place/details/json');
-  detailsUrl.searchParams.set('place_id', providerConfig.placeId);
-  detailsUrl.searchParams.set('fields', 'name,rating,user_ratings_total,url,reviews');
-  detailsUrl.searchParams.set('reviews_sort', 'newest');
-  detailsUrl.searchParams.set('key', apiKey);
-
-  const response = await fetch(detailsUrl, { redirect: 'follow' });
-  if (!response.ok) {
-    throw new Error(`Google Places request failed: ${response.status}`);
+  async function findPlaceIdFromTextQuery(textQuery) {
+    if (!textQuery) {
+      return '';
+    }
+    const response = await fetch('https://places.googleapis.com/v1/places:searchText', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': apiKey,
+        'X-Goog-FieldMask': 'places.id,places.googleMapsUri,places.displayName'
+      },
+      body: JSON.stringify({
+        textQuery: textQuery
+      })
+    });
+    if (!response.ok) {
+      throw new Error(`Google Places text search failed: ${response.status}`);
+    }
+    const payload = await response.json();
+    const place = Array.isArray(payload.places) ? payload.places[0] : null;
+    return place && place.id ? place.id : '';
   }
-  const payload = await response.json();
-  const result = payload.result || {};
+
+  const placeId = providerConfig.placeId || await findPlaceIdFromTextQuery(providerConfig.textQuery || '');
+  if (!placeId) {
+    return base;
+  }
+
+  const detailsUrl = new URL(`https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`);
+  detailsUrl.searchParams.set('fields', 'displayName,rating,userRatingCount,googleMapsUri,reviews');
+  const response = await fetch(detailsUrl, {
+    headers: {
+      'X-Goog-Api-Key': apiKey
+    },
+    redirect: 'follow'
+  });
+  if (!response.ok) {
+    throw new Error(`Google Place Details request failed: ${response.status}`);
+  }
+  const result = await response.json();
   const reviews = toArray(result.reviews).map(function(review) {
     return {
-      author: review.author_name || '',
+      author: review.authorAttribution && review.authorAttribution.displayName ? review.authorAttribution.displayName : '',
       location: '',
-      date: review.time ? normalizeDate(new Date(review.time * 1000).toISOString()) : '',
+      date: review.publishTime ? normalizeDate(review.publishTime) : '',
       rating: Number.isFinite(review.rating) ? review.rating : null,
-      quote: review.text || '',
-      sourceUrl: result.url || providerConfig.shareUrl || ''
+      quote: review.text && review.text.text ? review.text.text : '',
+      sourceUrl: result.googleMapsUri || providerConfig.shareUrl || ''
     };
   }).filter(function(review) {
     return review.author && review.quote;
@@ -263,9 +291,9 @@ async function syncGooglePlacesProvider(providerId, providerConfig, existingProv
 
   return {
     ...base,
-    url: result.url || providerConfig.shareUrl || base.url,
+    url: result.googleMapsUri || providerConfig.shareUrl || base.url,
     rating: Number.isFinite(result.rating) ? result.rating : base.rating,
-    reviewCount: Number.isFinite(result.user_ratings_total) ? result.user_ratings_total : reviews.length,
+    reviewCount: Number.isFinite(result.userRatingCount) ? result.userRatingCount : reviews.length,
     reviews: reviews
   };
 }

@@ -367,9 +367,8 @@
 <div>
 <p class="text-sm font-semibold uppercase tracking-[0.25em] text-primary">Reviews</p>
 <h2 class="mt-4 text-3xl font-black text-zinc-900 dark:text-zinc-100 sm:text-4xl">What couples say</h2>
-<p class="mt-5 text-base leading-relaxed text-zinc-700 dark:text-zinc-300" id="reviews-intro">Recent reviews from GetYourGuide.</p>
+<p class="mt-5 text-base leading-relaxed text-zinc-700 dark:text-zinc-300" id="reviews-intro">Recent reviews from our guests.</p>
 <p class="mt-4 hidden text-sm font-medium text-zinc-500 dark:text-zinc-400" id="reviews-meta"></p>
-<a class="mt-8 inline-flex h-12 items-center justify-center rounded-full border border-zinc-300 px-6 text-sm font-bold text-zinc-900 transition-colors hover:border-primary hover:text-primary dark:border-zinc-700 dark:text-zinc-100" href="https://www.getyourguide.com/ferragudo-l100992/portimao-sunset-private-sailing-tour-for-couples-t1108486/" id="reviews-primary-link" target="_blank">Read reviews on GetYourGuide</a>
 </div>
 <div class="grid gap-4 sm:grid-cols-2" id="reviews-list">
 <article class="rounded-[2rem] border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
@@ -1272,7 +1271,7 @@
       const reviewFeedConfig = {
         feedUrl: './reviews-feed.json',
         preferredProviderId: 'getyourguide',
-        publicProviderIds: ['getyourguide'],
+        publicProviderIds: ['getyourguide', 'google'],
         maxVisibleReviews: 4
       };
       const fallbackReviewFeed = {
@@ -1303,9 +1302,9 @@
           },
           google: {
             enabled: true,
-            public: false,
+            public: true,
             name: 'Google',
-            url: 'https://share.google/auqEsNVQTD5LakkAm',
+            url: 'https://share.google/yWXBdC5UX3wbvZZXv',
             rating: null,
             reviewCount: 0,
             reviews: []
@@ -1344,7 +1343,6 @@
       const contactFormFeedback = document.getElementById('contact-form-feedback');
       const reviewsIntro = document.getElementById('reviews-intro');
       const reviewsMeta = document.getElementById('reviews-meta');
-      const reviewsPrimaryLink = document.getElementById('reviews-primary-link');
       const reviewsList = document.getElementById('reviews-list');
       let bookingData = {};
       let scrollPosition = 0;
@@ -1470,9 +1468,23 @@
         const primaryProvider = visibleProviders.find(function(provider) {
           return provider.id === reviewFeedConfig.preferredProviderId;
         }) || visibleProviders[0] || null;
+        const reviews = visibleProviders.flatMap(function(provider) {
+          return provider.reviews.map(function(review) {
+            return {
+              author: review.author,
+              location: review.location,
+              date: review.date,
+              rating: review.rating,
+              quote: review.quote,
+              providerName: provider.name
+            };
+          });
+        }).sort(function(a, b) {
+          return new Date(b.date || 0) - new Date(a.date || 0);
+        }).slice(0, reviewFeedConfig.maxVisibleReviews);
         return {
           primaryProvider: primaryProvider,
-          reviews: primaryProvider ? primaryProvider.reviews.slice(0, reviewFeedConfig.maxVisibleReviews) : []
+          reviews: reviews
         };
       }
 
@@ -1482,7 +1494,7 @@
         if (!state.primaryProvider) return;
 
         if (reviewsIntro) {
-          reviewsIntro.textContent = `Recent reviews from ${state.primaryProvider.name}.`;
+          reviewsIntro.textContent = 'Recent reviews from our guests.';
         }
 
         if (reviewsMeta) {
@@ -1490,23 +1502,15 @@
           if (state.primaryProvider.rating !== null) {
             parts.push(`Rated ${state.primaryProvider.rating.toFixed(1)}/5 on ${state.primaryProvider.name}`);
           }
-          if (state.primaryProvider.reviewCount) {
-            parts.push(`${state.primaryProvider.reviewCount} reviews`);
-          }
           reviewsMeta.textContent = parts.join(' · ');
           reviewsMeta.classList.toggle('hidden', parts.length === 0);
-        }
-
-        if (reviewsPrimaryLink && state.primaryProvider.url) {
-          reviewsPrimaryLink.href = state.primaryProvider.url;
-          reviewsPrimaryLink.textContent = `Read reviews on ${state.primaryProvider.name}`;
         }
 
         reviewsList.innerHTML = state.reviews.map(function(review) {
           const authorLine = review.location ? `${review.author}, ${review.location}` : review.author;
           return `
             <article class="rounded-[2rem] border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
-              <p class="text-sm font-semibold uppercase tracking-[0.2em] text-primary">${escapeHtml(state.primaryProvider.name)}</p>
+              <p class="text-sm font-semibold uppercase tracking-[0.2em] text-primary">${escapeHtml(review.providerName)}</p>
               <blockquote class="mt-6 text-xl font-bold leading-snug text-zinc-900 dark:text-zinc-100">"${escapeHtml(review.quote)}"</blockquote>
               <div class="mt-6 border-t border-zinc-200 pt-6 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">
                 <p class="font-semibold text-zinc-900 dark:text-zinc-100">${escapeHtml(authorLine)}</p>

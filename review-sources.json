@@ -20,9 +20,10 @@
       "name": "Google",
       "mode": "google_places_api",
       "enabled": true,
-      "public": false,
-      "shareUrl": "https://share.google/auqEsNVQTD5LakkAm",
+      "public": true,
+      "shareUrl": "https://share.google/yWXBdC5UX3wbvZZXv",
       "placeId": "",
+      "textQuery": "Boat4Two Ferragudo Portugal",
       "apiKeyEnv": "GOOGLE_MAPS_API_KEY"
     },
     "viator": {
