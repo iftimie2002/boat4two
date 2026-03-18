@@ -1,0 +1,55 @@
+{
+  "updatedAt": "2026-03-18T00:00:00.000Z",
+  "providers": {
+    "getyourguide": {
+      "enabled": true,
+      "public": true,
+      "name": "GetYourGuide",
+      "url": "https://www.getyourguide.com/ferragudo-l100992/portimao-sunset-private-sailing-tour-for-couples-t1108486/",
+      "rating": 5,
+      "reviewCount": 2,
+      "reviews": [
+        {
+          "author": "Mikayla",
+          "location": "Canada",
+          "date": "2025-10-20",
+          "rating": 5,
+          "quote": "Amazing time, with two incredible hosts. It was a perfect trip for 2 out onto the water. Thanks!"
+        },
+        {
+          "author": "Paige",
+          "date": "2025-10-13",
+          "rating": 5,
+          "quote": "Best tour we've been on! Loved the crew, they were young but very experienced and professional. Would 10/10 recommend to everyone!"
+        }
+      ]
+    },
+    "google": {
+      "enabled": true,
+      "public": false,
+      "name": "Google",
+      "url": "https://share.google/auqEsNVQTD5LakkAm",
+      "rating": null,
+      "reviewCount": 0,
+      "reviews": []
+    },
+    "viator": {
+      "enabled": true,
+      "public": false,
+      "name": "Viator",
+      "url": "",
+      "rating": null,
+      "reviewCount": 0,
+      "reviews": []
+    },
+    "tripadvisor": {
+      "enabled": true,
+      "public": false,
+      "name": "Tripadvisor",
+      "url": "",
+      "rating": null,
+      "reviewCount": 0,
+      "reviews": []
+    }
+  }
+}

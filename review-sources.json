@@ -1,0 +1,43 @@
+{
+  "providers": {
+    "getyourguide": {
+      "name": "GetYourGuide",
+      "mode": "json_ld_page",
+      "enabled": true,
+      "public": true,
+      "products": [
+        {
+          "label": "Private Sailing Tour for Couples",
+          "url": "https://www.getyourguide.com/ferragudo-l100992/portimao-private-sailing-tour-for-couples-all-inclusive-t1108388/?preview=7X1V4H5NIS40K883VFXF87E4RGWWYJJK"
+        },
+        {
+          "label": "Sunset Private Sailing Tour for Couples",
+          "url": "https://www.getyourguide.com/ferragudo-l100992/portimao-sunset-private-sailing-tour-for-couples-t1108486/?preview=T6998LXRY6GHY26D7AG09TT6QUNETFZZ"
+        }
+      ]
+    },
+    "google": {
+      "name": "Google",
+      "mode": "google_places_api",
+      "enabled": true,
+      "public": false,
+      "shareUrl": "https://share.google/auqEsNVQTD5LakkAm",
+      "placeId": "",
+      "apiKeyEnv": "GOOGLE_MAPS_API_KEY"
+    },
+    "viator": {
+      "name": "Viator",
+      "mode": "json_ld_page",
+      "enabled": true,
+      "public": false,
+      "products": []
+    },
+    "tripadvisor": {
+      "name": "Tripadvisor",
+      "mode": "json_ld_page",
+      "enabled": true,
+      "public": false,
+      "products": []
+    }
+  }
+}
