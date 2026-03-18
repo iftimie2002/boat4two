@@ -3,6 +3,29 @@
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <meta content="light dark" name="color-scheme"/>
+    <script>
+        (function() {
+          const storageKey = 'boat4two-theme';
+          const root = document.documentElement;
+
+          function getStoredTheme() {
+            try {
+              const value = window.localStorage.getItem(storageKey);
+              return value === 'light' || value === 'dark' ? value : null;
+            } catch (error) {
+              return null;
+            }
+          }
+
+          const storedTheme = getStoredTheme();
+          const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          const theme = storedTheme || (systemPrefersDark ? 'dark' : 'light');
+
+          root.classList.toggle('dark', theme === 'dark');
+          root.style.colorScheme = theme;
+        })();
+      </script>
     <link crossorigin="" href="https://fonts.gstatic.com/" rel="preconnect"/>
     <link as="style" href="https://fonts.googleapis.com/css2?display=swap&amp;family=Noto+Sans%3Awght%40400%3B500%3B700%3B900&amp;family=Plus+Jakarta+Sans%3Awght%40400%3B500%3B700%3B800" onload="this.rel='stylesheet'" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
@@ -166,6 +189,11 @@
 <a class="transition-colors hover:text-primary" href="#contact-cta">Contact</a>
 <a class="transition-colors hover:text-primary" href="#select-tour-popup">Book</a>
 </nav>
+<div class="flex items-center gap-3">
+<button aria-label="Switch color mode" class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-300 bg-white/80 text-zinc-900 shadow-sm transition-colors hover:border-primary hover:text-primary dark:border-zinc-700 dark:bg-zinc-900/80 dark:text-zinc-100" data-theme-toggle title="Switch color mode" type="button">
+<span class="material-symbols-outlined text-[22px]" data-theme-icon>dark_mode</span>
+<span class="sr-only" data-theme-label>Dark mode</span>
+</button>
 <div class="hidden items-center gap-3 lg:flex">
 <a class="inline-flex h-11 items-center justify-center rounded-full bg-zinc-900 px-5 text-sm font-bold text-white shadow-lg transition-transform hover:scale-105 dark:bg-zinc-100 dark:text-zinc-900" href="https://wa.me/351932015013?text=Hello%20Boat4Two%2C%20I%20have%20a%20question%20about%20your%20private%20sailing%20tours." target="_blank">Ask a Question</a>
 <a class="inline-flex h-11 items-center justify-center rounded-full bg-primary px-5 text-sm font-bold text-white shadow-lg transition-transform hover:scale-105" href="#select-tour-popup">Book</a>
@@ -1242,6 +1270,9 @@
     }
 
     document.addEventListener('DOMContentLoaded', function() {
+      const themeStorageKey = 'boat4two-theme';
+      const root = document.documentElement;
+      const systemThemeQuery = window.matchMedia('(prefers-color-scheme: dark)');
       const overlayHashes = new Set([
         '#menu-container',
         '#terms-popup',
@@ -1344,9 +1375,54 @@
       const reviewsIntro = document.getElementById('reviews-intro');
       const reviewsMeta = document.getElementById('reviews-meta');
       const reviewsList = document.getElementById('reviews-list');
+      const themeToggleButtons = Array.from(document.querySelectorAll('[data-theme-toggle]'));
       let bookingData = {};
       let scrollPosition = 0;
       let isScrollLocked = false;
+
+      function getStoredThemePreference() {
+        try {
+          const value = window.localStorage.getItem(themeStorageKey);
+          return value === 'light' || value === 'dark' ? value : null;
+        } catch (error) {
+          return null;
+        }
+      }
+
+      function setStoredThemePreference(theme) {
+        try {
+          window.localStorage.setItem(themeStorageKey, theme);
+        } catch (error) {
+          return;
+        }
+      }
+
+      function getSystemTheme() {
+        return systemThemeQuery.matches ? 'dark' : 'light';
+      }
+
+      function applyTheme(theme) {
+        root.classList.toggle('dark', theme === 'dark');
+        root.style.colorScheme = theme;
+        themeToggleButtons.forEach(function(button) {
+          const nextTheme = theme === 'dark' ? 'light' : 'dark';
+          const icon = button.querySelector('[data-theme-icon]');
+          const label = button.querySelector('[data-theme-label]');
+          button.setAttribute('aria-label', `Switch to ${nextTheme} mode`);
+          button.setAttribute('title', `Switch to ${nextTheme} mode`);
+          button.setAttribute('aria-pressed', String(theme === 'dark'));
+          if (icon) {
+            icon.textContent = theme === 'dark' ? 'light_mode' : 'dark_mode';
+          }
+          if (label) {
+            label.textContent = `${nextTheme.charAt(0).toUpperCase()}${nextTheme.slice(1)} mode`;
+          }
+        });
+      }
+
+      function initializeTheme() {
+        applyTheme(getStoredThemePreference() || getSystemTheme());
+      }
 
       function getSelectedTour() {
         return document.querySelector('input[name="tour-option"]:checked');
@@ -1795,6 +1871,21 @@
         });
       });
 
+      themeToggleButtons.forEach(function(button) {
+        button.addEventListener('click', function() {
+          const nextTheme = root.classList.contains('dark') ? 'light' : 'dark';
+          setStoredThemePreference(nextTheme);
+          applyTheme(nextTheme);
+        });
+      });
+
+      systemThemeQuery.addEventListener('change', function() {
+        if (!getStoredThemePreference()) {
+          applyTheme(getSystemTheme());
+        }
+      });
+
+      initializeTheme();
       updateSelectTourState();
       showTimeSlotsForTour(getSelectedTour() ? getSelectedTour().value : '');
       updateSelectionSummary();
