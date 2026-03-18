@@ -43,7 +43,7 @@
               colors: {
                 primary: "#e65e19",
                 "background-light": "#f8f6f6",
-                "background-dark": "#211611",
+                "background-dark": "#061427",
                 "text-light": "#f8f6f6",
                 "text-dark": "#211611",
               },
@@ -175,9 +175,52 @@
             color: #a3a3a3;
         }
     </style>
+    <style>
+        :root {
+          --dark-ocean-page: #061427;
+          --dark-ocean-surface: #09172a;
+          --dark-ocean-surface-soft: #0d223b;
+          --dark-ocean-surface-strong: #040a12;
+          --dark-ocean-border: #19324a;
+          --dark-ocean-border-soft: rgba(25, 50, 74, 0.5);
+          --dark-ocean-border-muted: rgba(25, 50, 74, 0.6);
+        }
+        html.dark body {
+          background-color: var(--dark-ocean-page);
+        }
+        html.dark .dark\:bg-background-dark {
+          background-color: var(--dark-ocean-page) !important;
+        }
+        html.dark .dark\:bg-background-dark\/80 {
+          background-color: rgba(6, 20, 39, 0.8) !important;
+        }
+        html.dark .dark\:bg-zinc-900 {
+          background-color: var(--dark-ocean-surface) !important;
+        }
+        html.dark .dark\:bg-zinc-900\/80 {
+          background-color: rgba(9, 23, 42, 0.8) !important;
+        }
+        html.dark .dark\:bg-zinc-950 {
+          background-color: var(--dark-ocean-surface-strong) !important;
+        }
+        html.dark .dark\:bg-zinc-800 {
+          background-color: var(--dark-ocean-surface-soft) !important;
+        }
+        html.dark .dark\:border-zinc-700,
+        html.dark .dark\:border-zinc-800,
+        html.dark .dark\:border-gray-800 {
+          border-color: var(--dark-ocean-border) !important;
+        }
+        html.dark .dark\:border-zinc-800\/50 {
+          border-color: var(--dark-ocean-border-soft) !important;
+        }
+        html.dark .dark\:border-zinc-800\/60 {
+          border-color: var(--dark-ocean-border-muted) !important;
+        }
+      </style>
 </head>
-<body class="bg-background-light dark:bg-background-dark font-display text-zinc-900 dark:text-zinc-200">
-<div class="relative flex min-h-screen w-full flex-col overflow-x-hidden group" id="menu-container">
+<body class="relative bg-background-light dark:bg-background-dark font-display text-zinc-900 dark:text-zinc-200">
+<div class="relative z-10 flex min-h-screen w-full flex-col overflow-x-hidden group" id="menu-container">
 <header class="sticky top-0 z-20 border-b border-white/10 bg-background-light/80 backdrop-blur-sm dark:bg-background-dark/80">
 <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 p-4 sm:px-6">
 <a class="text-lg font-black uppercase tracking-[0.18em] text-zinc-900 dark:text-zinc-100" href="#home">Boat4Two</a>
