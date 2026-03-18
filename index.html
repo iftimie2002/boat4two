@@ -6,24 +6,9 @@
     <meta content="light dark" name="color-scheme"/>
     <script>
         (function() {
-          const storageKey = 'boat4two-theme';
           const root = document.documentElement;
-
-          function getStoredTheme() {
-            try {
-              const value = window.localStorage.getItem(storageKey);
-              return value === 'light' || value === 'dark' ? value : null;
-            } catch (error) {
-              return null;
-            }
-          }
-
-          const storedTheme = getStoredTheme();
-          const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-          const theme = storedTheme || (systemPrefersDark ? 'dark' : 'light');
-
-          root.classList.toggle('dark', theme === 'dark');
-          root.style.colorScheme = theme;
+          root.classList.remove('dark');
+          root.style.colorScheme = 'light';
         })();
       </script>
     <link crossorigin="" href="https://fonts.gstatic.com/" rel="preconnect"/>
@@ -1313,9 +1298,7 @@
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-      const themeStorageKey = 'boat4two-theme';
       const root = document.documentElement;
-      const systemThemeQuery = window.matchMedia('(prefers-color-scheme: dark)');
       const overlayHashes = new Set([
         '#menu-container',
         '#terms-popup',
@@ -1423,27 +1406,6 @@
       let scrollPosition = 0;
       let isScrollLocked = false;
 
-      function getStoredThemePreference() {
-        try {
-          const value = window.localStorage.getItem(themeStorageKey);
-          return value === 'light' || value === 'dark' ? value : null;
-        } catch (error) {
-          return null;
-        }
-      }
-
-      function setStoredThemePreference(theme) {
-        try {
-          window.localStorage.setItem(themeStorageKey, theme);
-        } catch (error) {
-          return;
-        }
-      }
-
-      function getSystemTheme() {
-        return systemThemeQuery.matches ? 'dark' : 'light';
-      }
-
       function applyTheme(theme) {
         root.classList.toggle('dark', theme === 'dark');
         root.style.colorScheme = theme;
@@ -1464,7 +1426,7 @@
       }
 
       function initializeTheme() {
-        applyTheme(getStoredThemePreference() || getSystemTheme());
+        applyTheme('light');
       }
 
       function getSelectedTour() {
@@ -1917,15 +1879,8 @@
       themeToggleButtons.forEach(function(button) {
         button.addEventListener('click', function() {
           const nextTheme = root.classList.contains('dark') ? 'light' : 'dark';
-          setStoredThemePreference(nextTheme);
           applyTheme(nextTheme);
         });
-      });
-
-      systemThemeQuery.addEventListener('change', function() {
-        if (!getStoredThemePreference()) {
-          applyTheme(getSystemTheme());
-        }
       });
 
       initializeTheme();
