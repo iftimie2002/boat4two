@@ -1434,11 +1434,12 @@
       const calendarNextMonthButton = document.getElementById('calendar-next-month');
 
       let bookingData = {};
-      let scrollPosition = 0;
-      let isScrollLocked = false;
-      let currentCalendarMonth = null;
-      let selectedCalendarDate = '';
-      let availableDatesSet = new Set();
+let activeHold = null;
+let scrollPosition = 0;
+let isScrollLocked = false;
+let currentCalendarMonth = null;
+let selectedCalendarDate = '';
+let availableDatesSet = new Set();
 
       function applyTheme(theme) {
         root.classList.toggle('dark', theme === 'dark');
@@ -1972,20 +1973,64 @@
         setLinkEnabled(calendarContinueButton, selectionIsComplete(), '#details-popup');
       }
 
+async function createHoldFromSelection(formValues) {
+  const selection = buildSelectionData();
+
+  const payload = {
+    tour: getSelectedTour() ? getSelectedTour().value : '',
+    date: requestDateInput ? requestDateInput.value : '',
+    time: getSelectedTimeSlot() ? getSelectedTimeSlot().value : '',
+    name: formValues.name || '',
+    email: formValues.email || '',
+    phone: formValues.phone || '',
+    country: formValues.country || '',
+    occasion: formValues.occasion || '',
+    message: formValues.message || ''
+  };
+
+  const response = await fetch('/api/create-hold', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await response.json();
+
+  if (!response.ok || !data.ok) {
+    throw new Error(data.error || 'Could not reserve this slot.');
+  }
+
+  activeHold = {
+    holdId: data.holdId,
+    eventId: data.eventId,
+    expiresAt: data.expiresAt
+  };
+
+  return {
+    selection,
+    hold: activeHold
+  };
+}
+
+
       function renderReviewDetails(data) {
-        if (!reviewDetails) return;
-        reviewDetails.innerHTML = '';
-        [
-          ['Tour', data.tour],
-          ['Preferred date', data.date],
-          ['Preferred time', data.time],
-          ['Name', data.name],
-          ['Email', data.email],
-          ['Phone', data.phone],
-          ['Visiting from', data.country],
-          ['Occasion', data.occasion],
-          ['Notes', data.message]
-        ].forEach(function(entry) {
+  if (!reviewDetails) return;
+  reviewDetails.innerHTML = '';
+  [
+  ['Tour', data.tour],
+  ['Preferred date', data.date],
+  ['Preferred time', data.time],
+  ['Name', data.name],
+  ['Email', data.email],
+  ['Phone', data.phone],
+  ['Visiting from', data.country],
+  ['Occasion', data.occasion],
+  ['Notes', data.message],
+  ['Hold ID', data.holdId],
+  ['Hold expires at', data.holdExpiresAt ? new Date(data.holdExpiresAt).toLocaleString('en-US') : '']
+].forEach(function(entry) {
           if (!entry[1]) return;
           const row = document.createElement('p');
           const label = document.createElement('strong');
@@ -2122,27 +2167,64 @@
       }
 
       if (detailsForm) {
-        detailsForm.addEventListener('submit', function(event) {
-          event.preventDefault();
-          if (!detailsForm.checkValidity()) {
-            detailsForm.reportValidity();
-            return;
-          }
-          if (!selectionIsComplete()) {
-            window.location.hash = '#calendar-popup';
-            return;
-          }
-          const formData = new FormData(detailsForm);
-          const selection = buildSelectionData();
-          bookingData = Object.fromEntries(formData.entries());
-          bookingData.tour = selection.tour;
-          bookingData.date = selection.date;
-          bookingData.time = selection.time;
-          renderReviewDetails(bookingData);
-          updateOutboundLinks(bookingData);
-          window.location.hash = '#review-popup';
-        });
+  detailsForm.addEventListener('submit', async function(event) {
+    event.preventDefault();
+
+    if (!detailsForm.checkValidity()) {
+      detailsForm.reportValidity();
+      return;
+    }
+
+    if (!selectionIsComplete()) {
+      window.location.hash = '#calendar-popup';
+      return;
+    }
+
+    const submitButton = detailsForm.querySelector('button[type="submit"]');
+    const originalButtonText = submitButton ? submitButton.textContent : '';
+
+    try {
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = 'Reserving slot...';
+        submitButton.classList.add('opacity-70', 'pointer-events-none');
       }
+
+      const formData = new FormData(detailsForm);
+      const formValues = Object.fromEntries(formData.entries());
+
+      const result = await createHoldFromSelection(formValues);
+      const selection = result.selection;
+
+      bookingData = {
+        ...formValues,
+        tour: selection.tour,
+        date: selection.date,
+        time: selection.time,
+        holdId: result.hold.holdId,
+        holdExpiresAt: result.hold.expiresAt
+      };
+
+      renderReviewDetails(bookingData);
+      updateOutboundLinks(bookingData);
+      window.location.hash = '#review-popup';
+    } catch (error) {
+      alert(error.message || 'Could not reserve this slot. Please try another one.');
+      await loadCalendarAvailability();
+      if (requestDateInput && requestDateInput.value) {
+        selectedCalendarDate = requestDateInput.value;
+        renderCalendarMonth();
+        await loadAvailability();
+      }
+    } finally {
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.textContent = originalButtonText;
+        submitButton.classList.remove('opacity-70', 'pointer-events-none');
+      }
+    }
+  });
+}
 
       if (contactForm) {
         contactForm.addEventListener('submit', function(event) {
