@@ -1197,22 +1197,8 @@
 </div>
 <div class="space-y-3" id="time-slots-container">
 <h4 class="text-sm font-semibold uppercase tracking-[0.2em] text-primary">Preferred time</h4>
-<div class="hidden grid-cols-2 gap-3" id="time-slots-private">
-<label class="relative block">
-<input class="peer sr-only" name="time-slot" type="radio" value="10:00 AM"/>
-<div class="rounded-2xl border border-zinc-300 p-3 text-center text-sm font-semibold transition-colors cursor-pointer peer-checked:border-primary peer-checked:bg-primary peer-checked:text-white dark:border-zinc-700">10:00 AM</div>
-</label>
-<label class="relative block">
-<input class="peer sr-only" name="time-slot" type="radio" value="2:00 PM"/>
-<div class="rounded-2xl border border-zinc-300 p-3 text-center text-sm font-semibold transition-colors cursor-pointer peer-checked:border-primary peer-checked:bg-primary peer-checked:text-white dark:border-zinc-700">2:00 PM</div>
-</label>
-</div>
-<div class="hidden grid-cols-1 gap-3" id="time-slots-sunset">
-<label class="relative block">
-<input class="peer sr-only" name="time-slot" type="radio" value="6:00 PM"/>
-<div class="rounded-2xl border border-zinc-300 p-3 text-center text-sm font-semibold transition-colors cursor-pointer peer-checked:border-primary peer-checked:bg-primary peer-checked:text-white dark:border-zinc-700">6:00 PM</div>
-</label>
-</div>
+<div class="hidden rounded-2xl border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300" id="time-slots-status"></div>
+<div class="hidden gap-3" id="time-slots-grid"></div>
 </div>
 <div class="rounded-2xl bg-primary/10 p-4 text-sm text-zinc-700 dark:text-zinc-300">
 <p data-request-summary>Select a tour to begin.</p>
@@ -1318,11 +1304,11 @@
       const tourConfig = {
         private: {
           label: 'Private Sailing Tour for Couples',
-          times: ['10:00 AM', '2:00 PM']
+          apiTour: 'amor'
         },
         sunset: {
           label: 'Sunset Private Sailing Tour for Couples',
-          times: ['6:00 PM']
+          apiTour: 'sunset'
         }
       };
       const reviewFeedConfig = {
@@ -1387,7 +1373,6 @@
         }
       };
       const tourOptions = Array.from(document.querySelectorAll('input[name="tour-option"]'));
-      const timeSlotInputs = Array.from(document.querySelectorAll('input[name="time-slot"]'));
       const selectTourNextButton = document.getElementById('select-tour-next-btn');
       const calendarContinueButton = document.getElementById('calendar-continue-button');
       const requestDateInput = document.getElementById('request-date');
@@ -1402,6 +1387,8 @@
       const reviewsMeta = document.getElementById('reviews-meta');
       const reviewsList = document.getElementById('reviews-list');
       const themeToggleButtons = Array.from(document.querySelectorAll('[data-theme-toggle]'));
+      const timeSlotsStatus = document.getElementById('time-slots-status');
+      const timeSlotsGrid = document.getElementById('time-slots-grid');
       let bookingData = {};
       let scrollPosition = 0;
       let isScrollLocked = false;
@@ -1521,7 +1508,6 @@
         };
       }
 
-      // The homepage only renders approved public sources, but the feed already supports extra providers.
       const reviewProviderRegistry = {
         getyourguide: function(provider) {
           return normalizeProvider('getyourguide', provider);
@@ -1616,18 +1602,141 @@
       }
 
       function clearTimeSlotSelection() {
-        timeSlotInputs.forEach(function(input) {
+        document.querySelectorAll('input[name="time-slot"]').forEach(function(input) {
           input.checked = false;
         });
       }
 
-      function showTimeSlotsForTour(tourValue) {
-        Object.keys(tourConfig).forEach(function(key) {
-          const container = document.getElementById(`time-slots-${key}`);
-          if (container) {
-            container.style.display = key === tourValue ? 'grid' : 'none';
-          }
+      function showTimeSlotsStatus(message) {
+        if (!timeSlotsStatus) return;
+        timeSlotsStatus.textContent = message;
+        timeSlotsStatus.style.display = 'block';
+      }
+
+      function hideTimeSlotsStatus() {
+        if (!timeSlotsStatus) return;
+        timeSlotsStatus.textContent = '';
+        timeSlotsStatus.style.display = 'none';
+      }
+
+      function formatTimeLabel(value) {
+        const [hours, minutes] = value.split(':').map(Number);
+        const date = new Date();
+        date.setHours(hours, minutes, 0, 0);
+        return date.toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit'
         });
+      }
+
+      function renderTimeSlots(slots, selectedTourValue) {
+        if (!timeSlotsGrid) return;
+
+        clearTimeSlotSelection();
+        timeSlotsGrid.innerHTML = '';
+
+        const availableSlots = slots.filter(function(slot) {
+          return slot.available;
+        });
+
+        if (!availableSlots.length) {
+          timeSlotsGrid.style.display = 'none';
+          showTimeSlotsStatus('No available times for this date.');
+          updateSelectionSummary();
+          updateCalendarState();
+          return;
+        }
+
+        hideTimeSlotsStatus();
+        timeSlotsGrid.className = `grid gap-3 ${availableSlots.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`;
+        timeSlotsGrid.style.display = 'grid';
+
+        availableSlots.forEach(function(slot) {
+          const label = document.createElement('label');
+          label.className = 'relative block';
+
+          const input = document.createElement('input');
+          input.className = 'peer sr-only';
+          input.name = 'time-slot';
+          input.type = 'radio';
+          input.value = formatTimeLabel(slot.time);
+          input.dataset.rawTime = slot.time;
+          input.dataset.tour = selectedTourValue;
+
+          const visual = document.createElement('div');
+          visual.className = 'rounded-2xl border border-zinc-300 p-3 text-center text-sm font-semibold transition-colors cursor-pointer peer-checked:border-primary peer-checked:bg-primary peer-checked:text-white dark:border-zinc-700';
+          visual.textContent = formatTimeLabel(slot.time);
+
+          label.appendChild(input);
+          label.appendChild(visual);
+          timeSlotsGrid.appendChild(label);
+        });
+
+        updateSelectionSummary();
+        updateCalendarState();
+      }
+
+      async function loadAvailability() {
+        const selectedTour = getSelectedTour();
+        const dateValue = requestDateInput ? requestDateInput.value : '';
+
+        clearTimeSlotSelection();
+
+        if (timeSlotsGrid) {
+          timeSlotsGrid.innerHTML = '';
+          timeSlotsGrid.style.display = 'none';
+        }
+
+        if (!selectedTour) {
+          showTimeSlotsStatus('Select a tour to see available times.');
+          updateSelectionSummary();
+          updateCalendarState();
+          return;
+        }
+
+        if (!dateValue) {
+          showTimeSlotsStatus('Choose a date to see available times.');
+          updateSelectionSummary();
+          updateCalendarState();
+          return;
+        }
+
+        const apiTour = tourConfig[selectedTour.value] ? tourConfig[selectedTour.value].apiTour : '';
+
+        if (!apiTour) {
+          showTimeSlotsStatus('Unable to load availability for this tour.');
+          updateSelectionSummary();
+          updateCalendarState();
+          return;
+        }
+
+        showTimeSlotsStatus('Checking availability...');
+
+        try {
+          const response = await fetch(`/api/availability?tour=${encodeURIComponent(apiTour)}&date=${encodeURIComponent(dateValue)}`, {
+            cache: 'no-store'
+          });
+
+          if (!response.ok) {
+            throw new Error('Availability request failed');
+          }
+
+          const data = await response.json();
+
+          if (!data.ok || !Array.isArray(data.slots)) {
+            throw new Error('Invalid availability response');
+          }
+
+          renderTimeSlots(data.slots, selectedTour.value);
+        } catch (error) {
+          if (timeSlotsGrid) {
+            timeSlotsGrid.innerHTML = '';
+            timeSlotsGrid.style.display = 'none';
+          }
+          showTimeSlotsStatus('Could not load availability. Please try again.');
+          updateSelectionSummary();
+          updateCalendarState();
+        }
       }
 
       function buildSelectionData() {
@@ -1754,27 +1863,26 @@
         requestDateInput.min = today.toISOString().split('T')[0];
         requestDateInput.max = maxDate.toISOString().split('T')[0];
         requestDateInput.addEventListener('change', function() {
-          updateSelectionSummary();
-          updateCalendarState();
+          loadAvailability();
         });
       }
 
       tourOptions.forEach(function(option) {
         option.addEventListener('change', function() {
           clearTimeSlotSelection();
-          showTimeSlotsForTour(option.value);
           updateSelectTourState();
-          updateSelectionSummary();
-          updateCalendarState();
+          loadAvailability();
         });
       });
 
-      timeSlotInputs.forEach(function(slot) {
-        slot.addEventListener('change', function() {
-          updateSelectionSummary();
-          updateCalendarState();
+      if (timeSlotsGrid) {
+        timeSlotsGrid.addEventListener('change', function(event) {
+          if (event.target && event.target.matches('input[name="time-slot"]')) {
+            updateSelectionSummary();
+            updateCalendarState();
+          }
         });
-      });
+      }
 
       if (selectTourNextButton) {
         selectTourNextButton.addEventListener('click', function(event) {
@@ -1885,9 +1993,9 @@
 
       initializeTheme();
       updateSelectTourState();
-      showTimeSlotsForTour(getSelectedTour() ? getSelectedTour().value : '');
       updateSelectionSummary();
       updateCalendarState();
+      loadAvailability();
       loadPublicReviews();
     });
   </script>
