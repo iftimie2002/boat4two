@@ -1191,10 +1191,42 @@
 </a>
 <h3 class="text-center text-xl font-bold text-zinc-900 dark:text-zinc-100">Choose your preferred date and time</h3>
 <p class="text-sm text-zinc-600 dark:text-zinc-300">Choose your preferred date and time, then send us your details and we will confirm availability with you directly.</p>
-<div>
-<label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300" for="request-date">Preferred date</label>
-<input class="mt-2 block w-full rounded-xl border border-zinc-300 bg-background-light p-3 shadow-sm focus:border-primary focus:ring-primary dark:border-zinc-700 dark:bg-background-dark" id="request-date" type="date"/>
+<div class="space-y-4">
+<label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Preferred date</label>
+
+<div class="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+<div class="mb-4 flex items-center justify-between">
+<button class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-zinc-300 text-zinc-700 transition-colors hover:border-primary hover:text-primary dark:border-zinc-700 dark:text-zinc-300" id="calendar-prev-month" type="button">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+
+<div class="text-center">
+<p class="text-sm font-bold text-zinc-900 dark:text-zinc-100" id="calendar-month-label">Month</p>
+<p class="text-xs text-zinc-500 dark:text-zinc-400">Only available dates are selectable</p>
 </div>
+
+<button class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-zinc-300 text-zinc-700 transition-colors hover:border-primary hover:text-primary dark:border-zinc-700 dark:text-zinc-300" id="calendar-next-month" type="button">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+
+<div class="mb-2 grid grid-cols-7 gap-2 text-center text-xs font-semibold uppercase tracking-[0.15em] text-zinc-500 dark:text-zinc-400">
+<div>Sun</div>
+<div>Mon</div>
+<div>Tue</div>
+<div>Wed</div>
+<div>Thu</div>
+<div>Fri</div>
+<div>Sat</div>
+</div>
+
+<div class="grid grid-cols-7 gap-2" id="calendar-days-grid"></div>
+
+<input id="request-date" type="hidden"/>
+<div class="mt-3 hidden rounded-2xl border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-background-dark dark:text-zinc-300" id="calendar-status"></div>
+</div>
+</div>
+
 <div class="space-y-3" id="time-slots-container">
 <h4 class="text-sm font-semibold uppercase tracking-[0.2em] text-primary">Preferred time</h4>
 <div class="hidden rounded-2xl border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300" id="time-slots-status"></div>
@@ -1300,7 +1332,9 @@
         '#details-popup',
         '#review-popup'
       ]);
+
       const whatsappNumber = '351932015013';
+
       const tourConfig = {
         private: {
           label: 'Private Sailing Tour for Couples',
@@ -1311,12 +1345,14 @@
           apiTour: 'sunset'
         }
       };
+
       const reviewFeedConfig = {
         feedUrl: './reviews-feed.json',
         preferredProviderId: 'getyourguide',
         publicProviderIds: ['getyourguide', 'google'],
         maxVisibleReviews: 4
       };
+
       const fallbackReviewFeed = {
         updatedAt: '2026-03-18T00:00:00.000Z',
         providers: {
@@ -1339,7 +1375,7 @@
                 author: 'Paige',
                 date: '2025-10-13',
                 rating: 5,
-                quote: 'Best tour we\'ve been on! Loved the crew, they were young but very experienced and professional. Would 10/10 recommend to everyone!'
+                quote: 'Best tour we\\'ve been on! Loved the crew, they were young but very experienced and professional. Would 10/10 recommend to everyone!'
               }
             ]
           },
@@ -1372,6 +1408,7 @@
           }
         }
       };
+
       const tourOptions = Array.from(document.querySelectorAll('input[name="tour-option"]'));
       const selectTourNextButton = document.getElementById('select-tour-next-btn');
       const calendarContinueButton = document.getElementById('calendar-continue-button');
@@ -1389,9 +1426,19 @@
       const themeToggleButtons = Array.from(document.querySelectorAll('[data-theme-toggle]'));
       const timeSlotsStatus = document.getElementById('time-slots-status');
       const timeSlotsGrid = document.getElementById('time-slots-grid');
+
+      const calendarMonthLabel = document.getElementById('calendar-month-label');
+      const calendarDaysGrid = document.getElementById('calendar-days-grid');
+      const calendarStatus = document.getElementById('calendar-status');
+      const calendarPrevMonthButton = document.getElementById('calendar-prev-month');
+      const calendarNextMonthButton = document.getElementById('calendar-next-month');
+
       let bookingData = {};
       let scrollPosition = 0;
       let isScrollLocked = false;
+      let currentCalendarMonth = null;
+      let selectedCalendarDate = '';
+      let availableDatesSet = new Set();
 
       function applyTheme(theme) {
         root.classList.toggle('dark', theme === 'dark');
@@ -1629,6 +1676,148 @@
         });
       }
 
+      function showCalendarStatus(message) {
+        if (!calendarStatus) return;
+        calendarStatus.textContent = message;
+        calendarStatus.style.display = 'block';
+      }
+
+      function hideCalendarStatus() {
+        if (!calendarStatus) return;
+        calendarStatus.textContent = '';
+        calendarStatus.style.display = 'none';
+      }
+
+      function getMonthKey(date) {
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      }
+
+      function isSameMonth(a, b) {
+        return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
+      }
+
+      function renderCalendarMonth() {
+        if (!calendarDaysGrid || !calendarMonthLabel || !currentCalendarMonth) return;
+
+        calendarDaysGrid.innerHTML = '';
+
+        calendarMonthLabel.textContent = currentCalendarMonth.toLocaleDateString('en-US', {
+          month: 'long',
+          year: 'numeric'
+        });
+
+        const year = currentCalendarMonth.getFullYear();
+        const month = currentCalendarMonth.getMonth();
+        const firstDayIndex = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const today = new Date();
+        const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+        for (let i = 0; i < firstDayIndex; i++) {
+          const spacer = document.createElement('div');
+          calendarDaysGrid.appendChild(spacer);
+        }
+
+        for (let day = 1; day <= daysInMonth; day++) {
+          const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          const isAvailable = availableDatesSet.has(dateKey);
+          const isSelected = selectedCalendarDate === dateKey;
+          const isToday = todayKey === dateKey;
+
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.textContent = String(day);
+          button.dataset.date = dateKey;
+          button.className = 'h-11 rounded-2xl border text-sm font-semibold transition-colors';
+
+          if (isAvailable) {
+            button.className += ' border-zinc-300 bg-white text-zinc-900 hover:border-primary hover:text-primary dark:border-zinc-700 dark:bg-background-dark dark:text-zinc-100';
+          } else {
+            button.className += ' cursor-not-allowed border-zinc-200 bg-zinc-100 text-zinc-400 opacity-60 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-600';
+            button.disabled = true;
+          }
+
+          if (isToday && isAvailable) {
+            button.className += ' ring-1 ring-primary';
+          }
+
+          if (isSelected) {
+            button.className = 'h-11 rounded-2xl border border-primary bg-primary text-sm font-semibold text-white transition-colors';
+          }
+
+          calendarDaysGrid.appendChild(button);
+        }
+      }
+
+      async function loadCalendarAvailability() {
+        const selectedTour = getSelectedTour();
+
+        availableDatesSet = new Set();
+        selectedCalendarDate = '';
+        requestDateInput.value = '';
+        clearTimeSlotSelection();
+
+        if (timeSlotsGrid) {
+          timeSlotsGrid.innerHTML = '';
+          timeSlotsGrid.style.display = 'none';
+        }
+
+        hideTimeSlotsStatus();
+
+        if (!selectedTour) {
+          if (calendarDaysGrid) calendarDaysGrid.innerHTML = '';
+          showCalendarStatus('Select a tour to see available dates.');
+          updateSelectionSummary();
+          updateCalendarState();
+          return;
+        }
+
+        const apiTour = tourConfig[selectedTour.value] ? tourConfig[selectedTour.value].apiTour : '';
+        if (!apiTour || !currentCalendarMonth) {
+          if (calendarDaysGrid) calendarDaysGrid.innerHTML = '';
+          showCalendarStatus('Unable to load calendar availability.');
+          updateSelectionSummary();
+          updateCalendarState();
+          return;
+        }
+
+        showCalendarStatus('Loading available dates...');
+
+        try {
+          const monthKey = getMonthKey(currentCalendarMonth);
+          const response = await fetch(`/api/availability-calendar?tour=${encodeURIComponent(apiTour)}&month=${encodeURIComponent(monthKey)}`, {
+            cache: 'no-store'
+          });
+
+          if (!response.ok) {
+            throw new Error('Calendar availability request failed');
+          }
+
+          const data = await response.json();
+
+          if (!data.ok || !Array.isArray(data.availableDates)) {
+            throw new Error('Invalid calendar availability response');
+          }
+
+          availableDatesSet = new Set(data.availableDates);
+          renderCalendarMonth();
+
+          if (availableDatesSet.size) {
+            hideCalendarStatus();
+          } else {
+            showCalendarStatus('No available dates in this month.');
+          }
+
+          updateSelectionSummary();
+          updateCalendarState();
+        } catch (error) {
+          if (calendarDaysGrid) calendarDaysGrid.innerHTML = '';
+          showCalendarStatus('Could not load available dates. Please try again.');
+          updateSelectionSummary();
+          updateCalendarState();
+        }
+      }
+
       function renderTimeSlots(slots, selectedTourValue) {
         if (!timeSlotsGrid) return;
 
@@ -1824,7 +2013,7 @@
           data.message ? `Notes: ${data.message}` : '',
           '',
           'Please confirm availability. Thank you.'
-        ].filter(Boolean).join('\n');
+        ].filter(Boolean).join('\\n');
       }
 
       function updateOutboundLinks(data) {
@@ -1854,26 +2043,58 @@
           window.scrollTo(0, scrollPosition);
           isScrollLocked = false;
         }
-      }
 
-      if (requestDateInput) {
-        const today = new Date();
-        const maxDate = new Date(today);
-        maxDate.setFullYear(maxDate.getFullYear() + 1);
-        requestDateInput.min = today.toISOString().split('T')[0];
-        requestDateInput.max = maxDate.toISOString().split('T')[0];
-        requestDateInput.addEventListener('change', function() {
-          loadAvailability();
-        });
+        if (location.hash === '#calendar-popup') {
+          const today = new Date();
+          if (!currentCalendarMonth) {
+            currentCalendarMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+          }
+          loadCalendarAvailability();
+        }
       }
 
       tourOptions.forEach(function(option) {
         option.addEventListener('change', function() {
           clearTimeSlotSelection();
+          selectedCalendarDate = '';
+          requestDateInput.value = '';
           updateSelectTourState();
-          loadAvailability();
+          updateSelectionSummary();
+          updateCalendarState();
+          if (location.hash === '#calendar-popup') {
+            loadCalendarAvailability();
+          }
         });
       });
+
+      if (calendarDaysGrid) {
+        calendarDaysGrid.addEventListener('click', function(event) {
+          const button = event.target.closest('button[data-date]');
+          if (!button || button.disabled) return;
+
+          selectedCalendarDate = button.dataset.date;
+          requestDateInput.value = selectedCalendarDate;
+          renderCalendarMonth();
+          updateSelectionSummary();
+          loadAvailability();
+        });
+      }
+
+      if (calendarPrevMonthButton) {
+        calendarPrevMonthButton.addEventListener('click', function() {
+          if (!currentCalendarMonth) return;
+          currentCalendarMonth = new Date(currentCalendarMonth.getFullYear(), currentCalendarMonth.getMonth() - 1, 1);
+          loadCalendarAvailability();
+        });
+      }
+
+      if (calendarNextMonthButton) {
+        calendarNextMonthButton.addEventListener('click', function() {
+          if (!currentCalendarMonth) return;
+          currentCalendarMonth = new Date(currentCalendarMonth.getFullYear(), currentCalendarMonth.getMonth() + 1, 1);
+          loadCalendarAvailability();
+        });
+      }
 
       if (timeSlotsGrid) {
         timeSlotsGrid.addEventListener('change', function(event) {
@@ -1941,7 +2162,7 @@
             formData.get('occasion') ? `Occasion: ${formData.get('occasion')}` : '',
             '',
             formData.get('message') || ''
-          ].filter(Boolean).join('\n');
+          ].filter(Boolean).join('\\n');
           window.location.href = `mailto:info.boat4two@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
           if (contactFormFeedback) {
             contactFormFeedback.textContent = 'Your email app should open with a pre-filled message.';
@@ -1995,8 +2216,12 @@
       updateSelectTourState();
       updateSelectionSummary();
       updateCalendarState();
-      loadAvailability();
       loadPublicReviews();
+
+      if (!currentCalendarMonth) {
+        const today = new Date();
+        currentCalendarMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      }
     });
   </script>
 </body>
