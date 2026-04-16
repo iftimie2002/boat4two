@@ -2,7 +2,7 @@ const BOOKING_RULES = {
   timezone: "Europe/Lisbon",
   minimumNoticeHours: 24,
   bufferMinutes: 30,
-  holdMinutes: 15,
+  holdMinutes: 12,
   tours: {
     amor: {
       label: "Amor Tour",
