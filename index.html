@@ -1375,7 +1375,7 @@
                 author: 'Paige',
                 date: '2025-10-13',
                 rating: 5,
-                quote: 'Best tour we\\'ve been on! Loved the crew, they were young but very experienced and professional. Would 10/10 recommend to everyone!'
+                quote: 'Best tour we\'ve been on! Loved the crew, they were young but very experienced and professional. Would 10/10 recommend to everyone!'
               }
             ]
           },
@@ -2013,7 +2013,7 @@
           data.message ? `Notes: ${data.message}` : '',
           '',
           'Please confirm availability. Thank you.'
-        ].filter(Boolean).join('\\n');
+        ].filter(Boolean).join('\n');
       }
 
       function updateOutboundLinks(data) {
@@ -2162,7 +2162,7 @@
             formData.get('occasion') ? `Occasion: ${formData.get('occasion')}` : '',
             '',
             formData.get('message') || ''
-          ].filter(Boolean).join('\\n');
+          ].filter(Boolean).join('\n');
           window.location.href = `mailto:info.boat4two@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
           if (contactFormFeedback) {
             contactFormFeedback.textContent = 'Your email app should open with a pre-filled message.';
