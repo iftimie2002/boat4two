@@ -1297,13 +1297,15 @@
 <p data-request-summary>Select a tour to begin.</p>
 </div>
 <div class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300" id="review-details"></div>
-<div class="rounded-2xl border border-zinc-200 p-4 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">
-<p>Send your details by WhatsApp or email and we will confirm everything with you directly.</p>
+<div class="rounded-2xl border border-primary/30 bg-primary/10 p-4 text-sm text-zinc-700 dark:text-zinc-300" id="hold-countdown-box">
+<p class="font-semibold text-zinc-900 dark:text-zinc-100">Your tour is temporarily reserved.</p>
+<p class="mt-2">
+This slot is being held for you for <strong id="hold-countdown-timer">12:00</strong>. After this time, you will need to choose a date and time again, and the slot may no longer be available.
+</p>
 </div>
-    <div id="hold-countdown-box" class="rounded-2xl border border-primary/30 bg-primary/10 p-4 text-sm text-zinc-700 dark:text-zinc-300">
-  <p id="hold-countdown-text">
-    Your tour is reserved for 12:00. If the timer expires, you will need to book again and the slot may no longer be available.
-  </p>
+
+<div class="hidden rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300" id="hold-expired-message">
+<p>Your reservation time expired. Please choose a date and time again.</p>
 </div>
 <div class="flex flex-col gap-3">
 <a class="inline-flex h-12 items-center justify-center rounded-full border border-zinc-300 px-5 text-sm font-bold text-zinc-900 transition-colors hover:border-primary hover:text-primary dark:border-zinc-700 dark:text-zinc-100" href="#details-popup">Edit Details</a>
