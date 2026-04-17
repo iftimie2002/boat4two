@@ -30,29 +30,48 @@ async function getAccessToken(env) {
   return tokenData.access_token;
 }
 
+function escapeRegex(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function getDescriptionValue(description, key) {
   if (!description) return "";
-  const regex = new RegExp(`^${key}:(.*)$`, "mi");
+
+  const safeKey = escapeRegex(key);
+  const regex = new RegExp("^" + safeKey + ":(.*)$", "mi");
   const match = description.match(regex);
+
   return match ? match[1].trim() : "";
 }
 
+function getPrivateProps(event) {
+  if (
+    event &&
+    event.extendedProperties &&
+    event.extendedProperties.private
+  ) {
+    return event.extendedProperties.private;
+  }
+
+  return {};
+}
+
 function isHoldEvent(event) {
-  const privateProps = event?.extendedProperties?.private || {};
-  const summary = event?.summary || "";
-  const description = event?.description || "";
+  const privateProps = getPrivateProps(event);
+  const summary = event && event.summary ? event.summary : "";
+  const description = event && event.description ? event.description : "";
 
   return (
     privateProps.isHold === "true" ||
     Boolean(privateProps.holdId) ||
-    summary.startsWith("[HOLD]") ||
+    summary.indexOf("[HOLD]") === 0 ||
     /HOLD_ID:/i.test(description)
   );
 }
 
 function eventMatchesHoldId(event, holdId) {
-  const privateProps = event?.extendedProperties?.private || {};
-  const description = event?.description || "";
+  const privateProps = getPrivateProps(event);
+  const description = event && event.description ? event.description : "";
 
   return (
     privateProps.holdId === holdId ||
@@ -61,8 +80,8 @@ function eventMatchesHoldId(event, holdId) {
 }
 
 function getHoldExpiresAt(event) {
-  const privateProps = event?.extendedProperties?.private || {};
-  const description = event?.description || "";
+  const privateProps = getPrivateProps(event);
+  const description = event && event.description ? event.description : "";
 
   return (
     privateProps.holdExpiresAt ||
@@ -71,16 +90,21 @@ function getHoldExpiresAt(event) {
   );
 }
 
-async function listEvents(env, accessToken, extraParams = {}) {
+async function listEvents(env, accessToken, extraParams) {
   const url = new URL(
-    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(env.GOOGLE_CALENDAR_ID)}/events`
+    "https://www.googleapis.com/calendar/v3/calendars/" +
+      encodeURIComponent(env.GOOGLE_CALENDAR_ID) +
+      "/events"
   );
 
   url.searchParams.set("singleEvents", "false");
   url.searchParams.set("showDeleted", "false");
   url.searchParams.set("maxResults", "2500");
 
-  Object.entries(extraParams).forEach(([key, value]) => {
+  Object.entries(extraParams || {}).forEach(function(entry) {
+    const key = entry[0];
+    const value = entry[1];
+
     if (value !== undefined && value !== null && value !== "") {
       url.searchParams.set(key, value);
     }
@@ -88,7 +112,7 @@ async function listEvents(env, accessToken, extraParams = {}) {
 
   const response = await fetch(url.toString(), {
     headers: {
-      Authorization: `Bearer ${accessToken}`
+      Authorization: "Bearer " + accessToken
     }
   });
 
@@ -112,13 +136,15 @@ async function findHoldEventById(env, accessToken, holdId) {
     events = await listEvents(env, accessToken, {
       timeMin: from.toISOString(),
       timeMax: to.toISOString(),
-      privateExtendedProperty: `holdId=${holdId}`
+      privateExtendedProperty: "holdId=" + holdId
     });
-  } catch (_) {
+  } catch (error) {
     events = [];
   }
 
-  let match = events.find((event) => isHoldEvent(event) && eventMatchesHoldId(event, holdId));
+  let match = events.find(function(event) {
+    return isHoldEvent(event) && eventMatchesHoldId(event, holdId);
+  });
 
   if (match) {
     return match;
@@ -129,13 +155,16 @@ async function findHoldEventById(env, accessToken, holdId) {
     timeMax: to.toISOString()
   });
 
-  match = fallbackEvents.find((event) => isHoldEvent(event) && eventMatchesHoldId(event, holdId));
+  match = fallbackEvents.find(function(event) {
+    return isHoldEvent(event) && eventMatchesHoldId(event, holdId);
+  });
 
   return match || null;
 }
 
 export async function onRequestGet(context) {
-  const { request, env } = context;
+  const request = context.request;
+  const env = context.env;
 
   if (
     !env.GOOGLE_CLIENT_ID ||
