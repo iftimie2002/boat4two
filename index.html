@@ -1442,6 +1442,8 @@ This slot is being held for you for <strong id="hold-countdown-timer">12:00</str
 
       let bookingData = {};
 let activeHold = null;
+let holdCountdownInterval = null;
+let holdReleaseInProgress = false;
 let scrollPosition = 0;
 let isScrollLocked = false;
 let currentCalendarMonth = null;
@@ -1982,11 +1984,12 @@ let availableDatesSet = new Set();
 
 async function createHoldFromSelection(formValues) {
   const selection = buildSelectionData();
+  const selectedTimeSlot = getSelectedTimeSlot();
 
   const payload = {
     tour: getSelectedTour() ? getSelectedTour().value : '',
     date: requestDateInput ? requestDateInput.value : '',
-    time: getSelectedTimeSlot() ? getSelectedTimeSlot().value : '',
+    time: selectedTimeSlot ? selectedTimeSlot.dataset.rawTime : '',
     name: formValues.name || '',
     email: formValues.email || '',
     phone: formValues.phone || '',
@@ -2019,6 +2022,155 @@ async function createHoldFromSelection(formValues) {
     selection,
     hold: activeHold
   };
+}
+
+        function formatCountdown(ms) {
+  const safeMs = Math.max(0, ms);
+  const totalSeconds = Math.ceil(safeMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
+function stopHoldCountdown() {
+  if (holdCountdownInterval) {
+    clearInterval(holdCountdownInterval);
+    holdCountdownInterval = null;
+  }
+}
+
+async function releaseActiveHold(options = {}) {
+  const useBeacon = options.useBeacon === true;
+
+  if (!activeHold || !activeHold.holdId || holdReleaseInProgress) {
+    return;
+  }
+
+  holdReleaseInProgress = true;
+
+  const payload = JSON.stringify({
+    holdId: activeHold.holdId
+  });
+
+  try {
+    if (useBeacon && navigator.sendBeacon) {
+      const blob = new Blob([payload], {
+        type: 'application/json'
+      });
+
+      navigator.sendBeacon('/api/release-hold', blob);
+    } else {
+      await fetch('/api/release-hold', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: payload,
+        keepalive: true
+      });
+    }
+  } catch (error) {
+    // Do not block the user if release fails.
+  } finally {
+    activeHold = null;
+    holdReleaseInProgress = false;
+    stopHoldCountdown();
+  }
+}
+
+function startHoldCountdown(expiresAt) {
+  stopHoldCountdown();
+
+  const timerNode = document.getElementById('hold-countdown-timer');
+  const countdownBox = document.getElementById('hold-countdown-box');
+  const expiredMessage = document.getElementById('hold-expired-message');
+
+  if (countdownBox) {
+    countdownBox.classList.remove('hidden');
+  }
+
+  if (expiredMessage) {
+    expiredMessage.classList.add('hidden');
+  }
+
+  if (activeHold) {
+    activeHold.expiresAt = expiresAt;
+  }
+
+  function tick() {
+    if (!activeHold || !activeHold.expiresAt) {
+      stopHoldCountdown();
+      return;
+    }
+
+    const remainingMs = new Date(activeHold.expiresAt).getTime() - Date.now();
+
+    if (timerNode) {
+      timerNode.textContent = formatCountdown(remainingMs);
+    }
+
+    if (remainingMs <= 0) {
+      handleHoldExpired();
+    }
+  }
+
+  tick();
+  holdCountdownInterval = setInterval(tick, 1000);
+}
+
+async function handleHoldExpired() {
+  stopHoldCountdown();
+
+  const countdownBox = document.getElementById('hold-countdown-box');
+  const expiredMessage = document.getElementById('hold-expired-message');
+
+  if (countdownBox) {
+    countdownBox.classList.add('hidden');
+  }
+
+  if (expiredMessage) {
+    expiredMessage.classList.remove('hidden');
+  }
+
+  await releaseActiveHold();
+
+  bookingData = {};
+  selectedCalendarDate = '';
+
+  if (requestDateInput) {
+    requestDateInput.value = '';
+  }
+
+  clearTimeSlotSelection();
+
+  if (timeSlotsGrid) {
+    timeSlotsGrid.innerHTML = '';
+    timeSlotsGrid.style.display = 'none';
+  }
+
+  showTimeSlotsStatus('Your reservation time expired. Please choose a date and time again.');
+
+  updateSelectionSummary();
+  updateCalendarState();
+
+  window.location.hash = '#calendar-popup';
+
+  await loadCalendarAvailability();
+}
+
+function shouldKeepHoldForHash(hash) {
+  return hash === '#review-popup';
+}
+
+async function releaseHoldIfLeavingBookingFlow(nextHash) {
+  if (!activeHold || !activeHold.holdId) return;
+
+  if (shouldKeepHoldForHash(nextHash)) {
+    return;
+  }
+
+  await releaseActiveHold();
 }
 
 
@@ -2079,32 +2231,37 @@ async function createHoldFromSelection(formValues) {
       }
 
       function handleHashChange() {
-        const shouldLock = overlayHashes.has(location.hash);
-        if (shouldLock && !isScrollLocked) {
-          scrollPosition = window.pageYOffset;
-          document.body.style.position = 'fixed';
-          document.body.style.top = `-${scrollPosition}px`;
-          document.body.style.width = '100%';
-          document.body.style.overflowY = 'scroll';
-          isScrollLocked = true;
-        } else if (!shouldLock && isScrollLocked) {
-          document.body.style.position = '';
-          document.body.style.top = '';
-          document.body.style.width = '';
-          document.body.style.overflowY = '';
-          window.scrollTo(0, scrollPosition);
-          isScrollLocked = false;
-        }
+  const nextHash = location.hash;
+  const shouldLock = overlayHashes.has(location.hash);
 
-        if (location.hash === '#calendar-popup') {
-          const today = new Date();
-          if (!currentCalendarMonth) {
-            currentCalendarMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-          }
-          loadCalendarAvailability();
-        }
-      }
+  if (shouldLock && !isScrollLocked) {
+    scrollPosition = window.pageYOffset;
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollPosition}px`;
+    document.body.style.width = '100%';
+    document.body.style.overflowY = 'scroll';
+    isScrollLocked = true;
+  } else if (!shouldLock && isScrollLocked) {
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.width = '';
+    document.body.style.overflowY = '';
+    window.scrollTo(0, scrollPosition);
+    isScrollLocked = false;
+  }
 
+  if (activeHold && !shouldKeepHoldForHash(nextHash)) {
+    releaseHoldIfLeavingBookingFlow(nextHash);
+  }
+
+  if (location.hash === '#calendar-popup') {
+    const today = new Date();
+    if (!currentCalendarMonth) {
+      currentCalendarMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    }
+    loadCalendarAvailability();
+  }
+}
       tourOptions.forEach(function(option) {
         option.addEventListener('change', function() {
           clearTimeSlotSelection();
@@ -2213,8 +2370,9 @@ async function createHoldFromSelection(formValues) {
       };
 
       renderReviewDetails(bookingData);
-      updateOutboundLinks(bookingData);
-      window.location.hash = '#review-popup';
+updateOutboundLinks(bookingData);
+startHoldCountdown(result.hold.expiresAt);
+window.location.hash = '#review-popup';
     } catch (error) {
       alert(error.message || 'Could not reserve this slot. Please try another one.');
       await loadCalendarAvailability();
@@ -2260,8 +2418,20 @@ async function createHoldFromSelection(formValues) {
         });
       }
 
-      window.addEventListener('hashchange', handleHashChange);
-      handleHashChange();
+      window.addEventListener('pagehide', function() {
+  if (activeHold && activeHold.holdId) {
+    releaseActiveHold({ useBeacon: true });
+  }
+});
+
+window.addEventListener('beforeunload', function() {
+  if (activeHold && activeHold.holdId) {
+    releaseActiveHold({ useBeacon: true });
+  }
+});
+
+window.addEventListener('hashchange', handleHashChange);
+handleHashChange();
 
       const bottomSheets = document.querySelectorAll('#terms-popup, #contact-popup, #cookies-popup, #exemption-popup, #impressum-popup, #tour-private, #tour-sunset, #tour-custom');
       bottomSheets.forEach(function(sheet) {
