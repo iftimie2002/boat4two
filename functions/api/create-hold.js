@@ -191,6 +191,18 @@ export async function onRequestPost(context) {
     const occasion = cleanText(body.occasion, 200);
     const message = cleanText(body.message, 1000);
 
+    if (
+      !env.GOOGLE_CLIENT_ID ||
+      !env.GOOGLE_CLIENT_SECRET ||
+      !env.GOOGLE_REFRESH_TOKEN ||
+      !env.GOOGLE_CALENDAR_ID
+    ) {
+      return Response.json(
+        { ok: false, error: "Missing required Google environment variables." },
+        { status: 500 }
+      );
+    }
+
     if (!BOOKING_RULES.tours[tour]) {
       return Response.json({ ok: false, error: "Invalid tour." }, { status: 400 });
     }
@@ -204,13 +216,19 @@ export async function onRequestPost(context) {
     }
 
     if (!name || !email || !phone || !country) {
-      return Response.json({ ok: false, error: "Missing required customer fields." }, { status: 400 });
+      return Response.json(
+        { ok: false, error: "Missing required customer fields." },
+        { status: 400 }
+      );
     }
 
     const selectedTour = BOOKING_RULES.tours[tour];
 
     if (!selectedTour.startTimes.includes(time)) {
-      return Response.json({ ok: false, error: "Time is not valid for this tour." }, { status: 400 });
+      return Response.json(
+        { ok: false, error: "Time is not valid for this tour." },
+        { status: 400 }
+      );
     }
 
     const slotStart = makeDateInTimeZone(date, `${time}:00`, BOOKING_RULES.timezone);
@@ -223,7 +241,10 @@ export async function onRequestPost(context) {
     );
 
     if (slotStart < minAllowedDateTime) {
-      return Response.json({ ok: false, error: "This slot no longer respects minimum notice." }, { status: 409 });
+      return Response.json(
+        { ok: false, error: "This slot no longer respects minimum notice." },
+        { status: 409 }
+      );
     }
 
     const accessToken = await getAccessToken(env);
@@ -245,19 +266,22 @@ export async function onRequestPost(context) {
     );
 
     if (overlaps) {
-      return Response.json({ ok: false, error: "This slot is no longer available." }, { status: 409 });
+      return Response.json(
+        { ok: false, error: "This slot is no longer available." },
+        { status: 409 }
+      );
     }
 
     const holdExpiresAt = addMinutes(now, BOOKING_RULES.holdMinutes);
     const holdId = crypto.randomUUID();
 
     const eventBody = {
-      summary: `HOLD - ${selectedTour.label} - ${name}`,
+      summary: `[HOLD] ${selectedTour.label} - ${name}`,
       description: [
         `Temporary hold for booking flow`,
         ``,
-        `Hold ID: ${holdId}`,
-        `Hold expires at: ${holdExpiresAt.toISOString()}`,
+        `HOLD_ID: ${holdId}`,
+        `HOLD_EXPIRES_AT: ${holdExpiresAt.toISOString()}`,
         ``,
         `Tour: ${selectedTour.label}`,
         `Date: ${date}`,
@@ -281,6 +305,7 @@ export async function onRequestPost(context) {
       extendedProperties: {
         private: {
           bookingType: "hold",
+          isHold: "true",
           holdId,
           holdExpiresAt: holdExpiresAt.toISOString(),
           tour,
