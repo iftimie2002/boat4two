@@ -2187,8 +2187,6 @@ async function releaseHoldIfLeavingBookingFlow(nextHash) {
   ['Visiting from', data.country],
   ['Occasion', data.occasion],
   ['Notes', data.message],
-  ['Hold ID', data.holdId],
-  ['Hold expires at', data.holdExpiresAt ? new Date(data.holdExpiresAt).toLocaleString('en-US') : '']
 ].forEach(function(entry) {
           if (!entry[1]) return;
           const row = document.createElement('p');
