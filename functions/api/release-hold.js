@@ -41,10 +41,16 @@ function isHoldEvent(event) {
   const privateProps = event?.extendedProperties?.private || {};
   const summary = event?.summary || "";
   const description = event?.description || "";
+  const bookingType = privateProps.bookingType || "";
+
+  if (bookingType && bookingType !== "hold") {
+    return false;
+  }
 
   return (
+    bookingType === "hold" ||
     privateProps.isHold === "true" ||
-    Boolean(privateProps.holdId) ||
+    (!privateProps.paymentStatus && Boolean(privateProps.holdId)) ||
     summary.startsWith("[HOLD]") ||
     /HOLD_ID:/i.test(description)
   );
@@ -123,6 +129,28 @@ async function findHoldEventsById(env, accessToken, holdId) {
   return matching;
 }
 
+async function updateCalendarEvent(env, accessToken, eventId, patchBody) {
+  const response = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(env.GOOGLE_CALENDAR_ID)}/events/${encodeURIComponent(eventId)}`,
+    {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(patchBody)
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.error?.message || "Failed to release hold event");
+  }
+
+  return data;
+}
+
 async function parseBody(request) {
   const contentType = request.headers.get("content-type") || "";
 
@@ -185,29 +213,35 @@ export async function onRequestPost(context) {
       });
     }
 
-    let deletedCount = 0;
+    let releasedCount = 0;
 
     for (const event of holdEvents) {
-      const deleteResponse = await fetch(
-        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(env.GOOGLE_CALENDAR_ID)}/events/${encodeURIComponent(event.id)}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${accessToken}`
+      const privateProps = event.extendedProperties?.private || {};
+      const releasedAt = new Date().toISOString();
+
+      await updateCalendarEvent(env, accessToken, event.id, {
+        summary: `RELEASED HOLD - ${event.summary || "Booking"}`,
+        transparency: "transparent",
+        extendedProperties: {
+          private: {
+            ...privateProps,
+            bookingType: "released_hold",
+            isHold: "false",
+            holdExpiresAt: "",
+            releasedAt
           }
         }
-      );
+      });
 
-      if (deleteResponse.ok || deleteResponse.status === 404) {
-        deletedCount += 1;
-      }
+      releasedCount += 1;
     }
 
     return json({
       ok: true,
       released: true,
       holdId,
-      deletedCount
+      releasedCount,
+      deletedCount: 0
     });
   } catch (error) {
     return json(
@@ -219,6 +253,5 @@ export async function onRequestPost(context) {
     );
   }
 }
-
 
 

@@ -41,12 +41,27 @@ function isHoldEvent(event) {
   const privateProps = event?.extendedProperties?.private || {};
   const summary = event?.summary || "";
   const description = event?.description || "";
+  const bookingType = privateProps.bookingType || "";
+
+  if (bookingType && bookingType !== "hold") {
+    return false;
+  }
 
   return (
+    bookingType === "hold" ||
     privateProps.isHold === "true" ||
-    Boolean(privateProps.holdId) ||
+    (!privateProps.paymentStatus && Boolean(privateProps.holdId)) ||
     summary.startsWith("[HOLD]") ||
     /HOLD_ID:/i.test(description)
+  );
+}
+
+function isPendingPaymentEvent(event) {
+  const privateProps = event?.extendedProperties?.private || {};
+
+  return (
+    privateProps.bookingType === "pending_payment" ||
+    privateProps.paymentStatus === "pending"
   );
 }
 
@@ -68,6 +83,17 @@ function getHoldExpiresAt(event) {
   return (
     privateProps.holdExpiresAt ||
     getDescriptionValue(description, "HOLD_EXPIRES_AT") ||
+    ""
+  );
+}
+
+function getPaymentPendingExpiresAt(event) {
+  const privateProps = event?.extendedProperties?.private || {};
+  const description = event?.description || "";
+
+  return (
+    privateProps.paymentPendingExpiresAt ||
+    getDescriptionValue(description, "Payment pending expires at") ||
     ""
   );
 }
@@ -102,7 +128,7 @@ async function listEvents(env, accessToken, extraParams = {}) {
   return data.items || [];
 }
 
-async function getCandidateHoldEvents(env, accessToken) {
+async function getCandidateBookingEvents(env, accessToken) {
   const now = new Date();
   const from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const to = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000);
@@ -112,7 +138,29 @@ async function getCandidateHoldEvents(env, accessToken) {
     timeMax: to.toISOString()
   });
 
-  return events.filter(isHoldEvent);
+  return events.filter((event) => isHoldEvent(event) || isPendingPaymentEvent(event));
+}
+
+async function updateCalendarEvent(env, accessToken, eventId, patchBody) {
+  const response = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(env.GOOGLE_CALENDAR_ID)}/events/${encodeURIComponent(eventId)}`,
+    {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(patchBody)
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.error?.message || "Failed to expire hold event");
+  }
+
+  return data;
 }
 
 export async function onRequestGet(context) {
@@ -135,11 +183,14 @@ export async function onRequestGet(context) {
 
   try {
     const accessToken = await getAccessToken(env);
-    const holdEvents = await getCandidateHoldEvents(env, accessToken);
+    const bookingEvents = await getCandidateBookingEvents(env, accessToken);
     const nowMs = Date.now();
 
-    const expiredHoldEvents = holdEvents.filter((event) => {
-      const expiresAt = getHoldExpiresAt(event);
+    const expiredBookingEvents = bookingEvents.filter((event) => {
+      const expiresAt = isPendingPaymentEvent(event)
+        ? getPaymentPendingExpiresAt(event)
+        : getHoldExpiresAt(event);
+
       if (!expiresAt) return false;
 
       const expiresAtMs = new Date(expiresAt).getTime();
@@ -148,32 +199,42 @@ export async function onRequestGet(context) {
       return nowMs >= expiresAtMs;
     });
 
-    const deletedHoldIds = [];
-    let deletedCount = 0;
+    const expiredBookingIds = [];
+    let expiredCount = 0;
 
-    for (const event of expiredHoldEvents) {
-      const response = await fetch(
-        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(env.GOOGLE_CALENDAR_ID)}/events/${encodeURIComponent(event.id)}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${accessToken}`
+    for (const event of expiredBookingEvents) {
+      const privateProps = event.extendedProperties?.private || {};
+      const expiredAt = new Date().toISOString();
+      const wasPendingPayment = isPendingPaymentEvent(event);
+
+      await updateCalendarEvent(env, accessToken, event.id, {
+        summary: `${wasPendingPayment ? "EXPIRED PAYMENT" : "EXPIRED HOLD"} - ${event.summary || "Booking"}`,
+        transparency: "transparent",
+        extendedProperties: {
+          private: {
+            ...privateProps,
+            bookingType: wasPendingPayment ? "payment_expired" : "expired_hold",
+            isHold: "false",
+            holdExpiresAt: "",
+            paymentStatus: wasPendingPayment ? "expired" : privateProps.paymentStatus || "",
+            paymentPendingExpiresAt: "",
+            expiredAt
           }
         }
-      );
+      });
 
-      if (response.ok || response.status === 404) {
-        deletedCount += 1;
-        deletedHoldIds.push(getHoldId(event) || event.id);
-      }
+      expiredCount += 1;
+      expiredBookingIds.push(getHoldId(event) || event.id);
     }
 
     return json({
       ok: true,
-      scanned: holdEvents.length,
-      expiredFound: expiredHoldEvents.length,
-      deletedCount,
-      deletedHoldIds
+      scanned: bookingEvents.length,
+      expiredFound: expiredBookingEvents.length,
+      expiredCount,
+      expiredHoldIds: expiredBookingIds,
+      deletedCount: 0,
+      deletedHoldIds: []
     });
   } catch (error) {
     return json(

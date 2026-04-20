@@ -3,6 +3,7 @@ const BOOKING_RULES = {
   minimumNoticeHours: 24,
   bufferMinutes: 30,
   holdMinutes: 12,
+  slotLockMinutes: 2,
   tours: {
     amor: {
       label: "Amor Tour",
@@ -168,10 +169,200 @@ async function createCalendarEvent(env, accessToken, eventBody) {
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data?.error?.message || "Failed to create hold event");
+    const error = new Error(data?.error?.message || "Failed to create calendar event");
+    error.status = response.status;
+    throw error;
   }
 
   return data;
+}
+
+async function getCalendarEventById(env, accessToken, eventId) {
+  const response = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(env.GOOGLE_CALENDAR_ID)}/events/${encodeURIComponent(eventId)}`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
+    }
+  );
+
+  if (response.status === 404 || response.status === 410) {
+    return null;
+  }
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const error = new Error(data?.error?.message || "Failed to fetch calendar event");
+    error.status = response.status;
+    throw error;
+  }
+
+  return data;
+}
+
+async function updateCalendarEvent(env, accessToken, eventId, patchBody, etag = "") {
+  const headers = {
+    Authorization: `Bearer ${accessToken}`,
+    "Content-Type": "application/json"
+  };
+
+  if (etag) {
+    headers["If-Match"] = etag;
+  }
+
+  const response = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(env.GOOGLE_CALENDAR_ID)}/events/${encodeURIComponent(eventId)}`,
+    {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify(patchBody)
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const error = new Error(data?.error?.message || "Failed to update calendar event");
+    error.status = response.status;
+    throw error;
+  }
+
+  return data;
+}
+
+function buildDayLockEventId(date) {
+  return `b4tlock${date.replace(/-/g, "")}`;
+}
+
+function makeSlotLockBody(date, token, expiresAt) {
+  const lockStart = makeDateInTimeZone(date, "00:00:00", BOOKING_RULES.timezone);
+  const lockEnd = addMinutes(lockStart, 5);
+
+  return {
+    id: buildDayLockEventId(date),
+    summary: `BOOKING LOCK - ${date}`,
+    transparency: "transparent",
+    start: {
+      dateTime: lockStart.toISOString(),
+      timeZone: BOOKING_RULES.timezone
+    },
+    end: {
+      dateTime: lockEnd.toISOString(),
+      timeZone: BOOKING_RULES.timezone
+    },
+    extendedProperties: {
+      private: {
+        bookingType: "slot_lock",
+        slotLockDate: date,
+        slotLockState: "active",
+        slotLockToken: token,
+        slotLockExpiresAt: expiresAt.toISOString()
+      }
+    }
+  };
+}
+
+function slotLockIsActive(event) {
+  const privateProps = event?.extendedProperties?.private || {};
+  const expiresAt = privateProps.slotLockExpiresAt || "";
+
+  if (privateProps.bookingType !== "slot_lock" || privateProps.slotLockState !== "active") {
+    return false;
+  }
+
+  if (!expiresAt) {
+    return false;
+  }
+
+  const expiresAtMs = new Date(expiresAt).getTime();
+  return Number.isFinite(expiresAtMs) && Date.now() < expiresAtMs;
+}
+
+function bookingConflictError(message) {
+  const error = new Error(message);
+  error.status = 409;
+  return error;
+}
+
+async function acquireSlotLock(env, accessToken, date) {
+  const token = crypto.randomUUID();
+  const expiresAt = addMinutes(new Date(), BOOKING_RULES.slotLockMinutes);
+  const lockBody = makeSlotLockBody(date, token, expiresAt);
+
+  try {
+    const createdLock = await createCalendarEvent(env, accessToken, lockBody);
+    return {
+      eventId: createdLock.id,
+      etag: createdLock.etag || "",
+      token,
+      date
+    };
+  } catch (error) {
+    if (error.status !== 409) {
+      throw error;
+    }
+  }
+
+  const existingLock = await getCalendarEventById(env, accessToken, lockBody.id);
+
+  if (!existingLock) {
+    throw bookingConflictError("Another booking is being reserved for this date. Please try again in a moment.");
+  }
+
+  if (slotLockIsActive(existingLock)) {
+    throw bookingConflictError("Another booking is being reserved for this date. Please try again in a moment.");
+  }
+
+  try {
+    const { id, ...patchBody } = lockBody;
+    const updatedLock = await updateCalendarEvent(
+      env,
+      accessToken,
+      lockBody.id,
+      patchBody,
+      existingLock?.etag || ""
+    );
+
+    return {
+      eventId: updatedLock.id,
+      etag: updatedLock.etag || "",
+      token,
+      date
+    };
+  } catch (error) {
+    if (error.status === 412 || error.status === 409) {
+      throw bookingConflictError("Another booking is being reserved for this date. Please try again in a moment.");
+    }
+
+    throw error;
+  }
+}
+
+async function releaseSlotLock(env, accessToken, lock) {
+  const releasedAt = new Date().toISOString();
+
+  await updateCalendarEvent(
+    env,
+    accessToken,
+    lock.eventId,
+    {
+      summary: `BOOKING LOCK RELEASED - ${lock.date}`,
+      transparency: "transparent",
+      extendedProperties: {
+        private: {
+          bookingType: "slot_lock",
+          slotLockDate: lock.date,
+          slotLockState: "released",
+          slotLockToken: lock.token,
+          slotLockExpiresAt: "",
+          slotLockReleasedAt: releasedAt
+        }
+      }
+    },
+    lock.etag
+  );
 }
 
 export async function onRequestPost(context) {
@@ -248,105 +439,118 @@ export async function onRequestPost(context) {
     }
 
     const accessToken = await getAccessToken(env);
+    let slotLock = null;
 
-    const busyRangesRaw = await getBusyRanges(
-      env,
-      accessToken,
-      addMinutes(slotStart, -BOOKING_RULES.bufferMinutes).toISOString(),
-      slotBlockedEnd.toISOString()
-    );
+    try {
+      slotLock = await acquireSlotLock(env, accessToken, date);
 
-    const busyRanges = busyRangesRaw.map((range) => ({
-      start: new Date(range.start),
-      end: new Date(range.end)
-    }));
-
-    const overlaps = busyRanges.some((busy) =>
-      rangesOverlap(slotStart, slotBlockedEnd, busy.start, busy.end)
-    );
-
-    if (overlaps) {
-      return Response.json(
-        { ok: false, error: "This slot is no longer available." },
-        { status: 409 }
+      const busyRangesRaw = await getBusyRanges(
+        env,
+        accessToken,
+        addMinutes(slotStart, -BOOKING_RULES.bufferMinutes).toISOString(),
+        slotBlockedEnd.toISOString()
       );
-    }
 
-    const holdExpiresAt = addMinutes(now, BOOKING_RULES.holdMinutes);
-    const holdId = crypto.randomUUID();
+      const busyRanges = busyRangesRaw.map((range) => ({
+        start: new Date(range.start),
+        end: new Date(range.end)
+      }));
 
-    const eventBody = {
-      summary: `[HOLD] ${selectedTour.label} - ${name}`,
-      description: [
-        `Temporary hold for booking flow`,
-        ``,
-        `HOLD_ID: ${holdId}`,
-        `HOLD_EXPIRES_AT: ${holdExpiresAt.toISOString()}`,
-        ``,
-        `Tour: ${selectedTour.label}`,
-        `Date: ${date}`,
-        `Time: ${time}`,
-        ``,
-        `Name: ${name}`,
-        `Email: ${email}`,
-        `Phone: ${phone}`,
-        `Country: ${country}`,
-        occasion ? `Occasion: ${occasion}` : "",
-        message ? `Notes: ${message}` : ""
-      ].filter(Boolean).join("\n"),
-      start: {
-        dateTime: slotStart.toISOString(),
-        timeZone: BOOKING_RULES.timezone
-      },
-      end: {
-        dateTime: slotEnd.toISOString(),
-        timeZone: BOOKING_RULES.timezone
-      },
-      extendedProperties: {
-        private: {
-          bookingType: "hold",
-          isHold: "true",
-          holdId,
-          holdExpiresAt: holdExpiresAt.toISOString(),
-          tour,
-          date,
-          time,
-          customerName: name,
-          customerEmail: email,
-          customerPhone: phone,
-          customerCountry: country,
-          customerOccasion: occasion,
-          customerMessage: message
+      const overlaps = busyRanges.some((busy) =>
+        rangesOverlap(slotStart, slotBlockedEnd, busy.start, busy.end)
+      );
+
+      if (overlaps) {
+        return Response.json(
+          { ok: false, error: "This slot is no longer available." },
+          { status: 409 }
+        );
+      }
+
+      const holdExpiresAt = addMinutes(now, BOOKING_RULES.holdMinutes);
+      const holdId = crypto.randomUUID();
+
+      const eventBody = {
+        summary: `[HOLD] ${selectedTour.label} - ${name}`,
+        description: [
+          `Temporary hold for booking flow`,
+          ``,
+          `HOLD_ID: ${holdId}`,
+          `HOLD_EXPIRES_AT: ${holdExpiresAt.toISOString()}`,
+          ``,
+          `Tour: ${selectedTour.label}`,
+          `Date: ${date}`,
+          `Time: ${time}`,
+          ``,
+          `Name: ${name}`,
+          `Email: ${email}`,
+          `Phone: ${phone}`,
+          `Country: ${country}`,
+          occasion ? `Occasion: ${occasion}` : "",
+          message ? `Notes: ${message}` : ""
+        ].filter(Boolean).join("\n"),
+        start: {
+          dateTime: slotStart.toISOString(),
+          timeZone: BOOKING_RULES.timezone
+        },
+        end: {
+          dateTime: slotEnd.toISOString(),
+          timeZone: BOOKING_RULES.timezone
+        },
+        extendedProperties: {
+          private: {
+            bookingType: "hold",
+            isHold: "true",
+            holdId,
+            holdExpiresAt: holdExpiresAt.toISOString(),
+            tour,
+            date,
+            time,
+            customerName: name,
+            customerEmail: email,
+            customerPhone: phone,
+            customerCountry: country,
+            customerOccasion: occasion,
+            customerMessage: message
+          }
+        }
+      };
+
+      const createdEvent = await createCalendarEvent(env, accessToken, eventBody);
+
+      return Response.json({
+        ok: true,
+        holdId,
+        eventId: createdEvent.id,
+        expiresAt: holdExpiresAt.toISOString(),
+        tour,
+        date,
+        time,
+        customer: {
+          name,
+          email,
+          phone,
+          country,
+          occasion,
+          message
+        }
+      });
+    } finally {
+      if (slotLock) {
+        try {
+          await releaseSlotLock(env, accessToken, slotLock);
+        } catch (_) {
+          // The lock expires quickly; a failed best-effort release should not hide the booking result.
         }
       }
-    };
-
-    const createdEvent = await createCalendarEvent(env, accessToken, eventBody);
-
-    return Response.json({
-      ok: true,
-      holdId,
-      eventId: createdEvent.id,
-      expiresAt: holdExpiresAt.toISOString(),
-      tour,
-      date,
-      time,
-      customer: {
-        name,
-        email,
-        phone,
-        country,
-        occasion,
-        message
-      }
-    });
+    }
   } catch (error) {
     return Response.json(
       {
         ok: false,
         error: error.message || "Unknown error"
       },
-      { status: 500 }
+      { status: error.status && error.status >= 400 && error.status < 500 ? error.status : 500 }
     );
   }
 }

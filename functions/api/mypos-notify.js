@@ -1,10 +1,11 @@
 
-function textResponse(body, status = 200) {
+function textResponse(body, status = 200, extraHeaders = {}) {
   return new Response(body, {
     status,
     headers: {
       "Content-Type": "text/plain; charset=utf-8",
-      "Cache-Control": "no-store"
+      "Cache-Control": "no-store",
+      ...extraHeaders
     }
   });
 }
@@ -108,6 +109,21 @@ function base64ToBytes(base64) {
   return bytes;
 }
 
+function bytesToBase64(bytes) {
+  let binary = "";
+  const chunkSize = 0x8000;
+
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+
+  return btoa(binary);
+}
+
+function base64EncodeUtf8(value) {
+  return bytesToBase64(new TextEncoder().encode(value));
+}
+
 function pemToDerBytes(pem) {
   const base64 = String(pem || "")
     .replace(/-----BEGIN[^-]+-----/g, "")
@@ -209,7 +225,7 @@ async function verifyPostSignature(entries, signatureBase64, certificatePem) {
     .filter(([key]) => key !== "Signature")
     .map(([, value]) => String(value));
 
-  const payload = btoa(filteredValues.join("-"));
+  const payload = base64EncodeUtf8(filteredValues.join("-"));
   const publicKey = await importPublicKeyFromCertificate(certificatePem);
 
   return crypto.subtle.verify(
@@ -409,6 +425,14 @@ function buildRollbackSummary(privateProps) {
   return customerName ? `PAYMENT ROLLBACK - ${label} - ${customerName}` : `PAYMENT ROLLBACK - ${label}`;
 }
 
+function buildCancelSummary(privateProps) {
+  const tour = normalizeTour(privateProps.tour || "");
+  const label = BOOKING_RULES.tours[tour]?.label || "Booking";
+  const customerName = cleanText(privateProps.customerName, 120);
+
+  return customerName ? `PAYMENT CANCELLED - ${label} - ${customerName}` : `PAYMENT CANCELLED - ${label}`;
+}
+
 export async function onRequestPost(context) {
   const { request, env } = context;
 
@@ -460,72 +484,116 @@ export async function onRequestPost(context) {
     const event = await findEventByOrderIdOrHoldId(env, accessToken, orderId, holdId);
 
     if (!event) {
-      return textResponse("OK", 200);
+      return textResponse("OK", 200, {
+        "X-Boat4Two-Payment-State": "missing"
+      });
     }
 
     const privateProps = event.extendedProperties?.private || {};
 
-   if (ipcMethod === "IPCPurchaseNotify") {
-  if (privateProps.bookingType === "paid" || privateProps.paymentStatus === "paid") {
-    return textResponse("OK", 200);
-  }
-
-  const expectedAmount = cleanText(privateProps.paymentAmount, 40);
-  const expectedCurrency = cleanText(privateProps.paymentCurrency, 10) || BOOKING_RULES.currency;
-
-  if (expectedAmount && formatMoney(Number(expectedAmount)) !== formatMoney(Number(amount))) {
-    return textResponse("Amount mismatch", 400);
-  }
-
-  if (expectedCurrency && expectedCurrency !== currency) {
-    return textResponse("Currency mismatch", 400);
-  }
-
-  const paidAt = new Date().toISOString();
-
-  const updatedDescription = [
-    event.description || "",
-    "",
-    `Payment confirmed at: ${paidAt}`,
-    `Payment transaction ref: ${trnref}`,
-    requestDateTime ? `Payment request datetime: ${requestDateTime}` : "",
-    requestStan ? `Payment request STAN: ${requestStan}` : ""
-  ].filter(Boolean).join("\n");
-
- 
-
-  const confirmedEventBody = {
-    summary: buildPaidSummary(privateProps),
-    description: updatedDescription,
-    start: event.start,
-    end: event.end,
-    extendedProperties: {
-      private: {
-        ...privateProps,
-        bookingType: "paid",
-        paymentStatus: "paid",
-        paymentOrderId: orderId,
-        paymentTransactionRef: trnref,
-        paymentAmount: amount,
-        paymentCurrency: currency,
-        paidAt,
-        paymentRequestDateTime: requestDateTime,
-        paymentRequestSTAN: requestStan,
-        originalHoldEventId: event.id
+    if (ipcMethod === "IPCPurchaseNotify" || ipcMethod === "IPCPurchaseOK") {
+      if (privateProps.bookingType === "paid" || privateProps.paymentStatus === "paid") {
+        return textResponse("OK", 200, {
+          "X-Boat4Two-Payment-State": "paid"
+        });
       }
+
+      const expectedAmount = cleanText(privateProps.paymentAmount, 40);
+      const expectedCurrency = cleanText(privateProps.paymentCurrency, 10) || BOOKING_RULES.currency;
+
+      if (expectedAmount && formatMoney(Number(expectedAmount)) !== formatMoney(Number(amount))) {
+        return textResponse("Amount mismatch", 400);
+      }
+
+      if (expectedCurrency && expectedCurrency !== currency) {
+        return textResponse("Currency mismatch", 400);
+      }
+
+      const paidAt = new Date().toISOString();
+
+      const updatedDescription = [
+        event.description || "",
+        "",
+        `Payment confirmed at: ${paidAt}`,
+        `Payment transaction ref: ${trnref}`,
+        requestDateTime ? `Payment request datetime: ${requestDateTime}` : "",
+        requestStan ? `Payment request STAN: ${requestStan}` : ""
+      ].filter(Boolean).join("\n");
+
+      await updateCalendarEvent(env, accessToken, event.id, {
+        summary: buildPaidSummary(privateProps),
+        description: updatedDescription,
+        extendedProperties: {
+          private: {
+            ...privateProps,
+            bookingType: "paid",
+            isHold: "false",
+            holdExpiresAt: "",
+            paymentStatus: "paid",
+            paymentOrderId: orderId,
+            paymentTransactionRef: trnref,
+            paymentAmount: amount,
+            paymentCurrency: currency,
+            paidAt,
+            paymentPendingExpiresAt: "",
+            paymentRequestDateTime: requestDateTime,
+            paymentRequestSTAN: requestStan
+          }
+        }
+      });
+
+      return textResponse("OK", 200, {
+        "X-Boat4Two-Payment-State": "paid"
+      });
     }
-  };
 
-  const existingPaidEvent = await findPaidEventByOrderId(env, accessToken, orderId);
+    if (ipcMethod === "IPCPurchaseCancel") {
+      if (privateProps.bookingType === "paid" || privateProps.paymentStatus === "paid") {
+        return textResponse("OK", 200, {
+          "X-Boat4Two-Payment-State": "paid"
+        });
+      }
 
-  if (!existingPaidEvent) {
-    await createCalendarEvent(env, accessToken, confirmedEventBody);
-  }
+      const expectedAmount = cleanText(privateProps.paymentAmount, 40);
+      const expectedCurrency = cleanText(privateProps.paymentCurrency, 10) || BOOKING_RULES.currency;
 
-  await deleteCalendarEvent(env, accessToken, event.id);
+      if (expectedAmount && formatMoney(Number(expectedAmount)) !== formatMoney(Number(amount))) {
+        return textResponse("Amount mismatch", 400);
+      }
 
-  return textResponse("OK", 200);
-}
+      if (expectedCurrency && expectedCurrency !== currency) {
+        return textResponse("Currency mismatch", 400);
+      }
+
+      const cancelledAt = new Date().toISOString();
+      const updatedDescription = [
+        event.description || "",
+        "",
+        `Payment cancelled at: ${cancelledAt}`
+      ].filter(Boolean).join("\n");
+
+      await updateCalendarEvent(env, accessToken, event.id, {
+        summary: buildCancelSummary(privateProps),
+        description: updatedDescription,
+        transparency: "transparent",
+        extendedProperties: {
+          private: {
+            ...privateProps,
+            bookingType: "payment_cancelled",
+            isHold: "false",
+            holdExpiresAt: "",
+            paymentStatus: "cancelled",
+            paymentOrderId: orderId,
+            paymentPendingExpiresAt: "",
+            paymentCancelledAt: cancelledAt
+          }
+        }
+      });
+
+      return textResponse("OK", 200, {
+        "X-Boat4Two-Payment-State": "cancelled"
+      });
+    }
 
     if (ipcMethod === "IPCPurchaseRollback") {
       const updatedDescription = [
@@ -538,18 +606,24 @@ export async function onRequestPost(context) {
       await updateCalendarEvent(env, accessToken, event.id, {
         summary: buildRollbackSummary(privateProps),
         description: updatedDescription,
+        transparency: "transparent",
         extendedProperties: {
           private: {
             ...privateProps,
             bookingType: "payment_rollback",
+            isHold: "false",
+            holdExpiresAt: "",
             paymentStatus: "rolled_back",
+            paymentPendingExpiresAt: "",
             rollbackAt: new Date().toISOString(),
             paymentTransactionRef: trnref
           }
         }
       });
 
-      return textResponse("OK", 200);
+      return textResponse("OK", 200, {
+        "X-Boat4Two-Payment-State": "rolled_back"
+      });
     }
 
     return textResponse("OK", 200);

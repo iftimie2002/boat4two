@@ -22,6 +22,7 @@ function json(data, status = 200) {
 const BOOKING_RULES = {
   timezone: "Europe/Lisbon",
   currency: "EUR",
+  paymentPendingMinutes: 120,
   sourceName: "Boat4Two",
   tours: {
     amor: {
@@ -45,6 +46,10 @@ function cleanText(value, max = 500) {
 
 function formatMoney(value) {
   return Number(value).toFixed(2);
+}
+
+function addMinutes(date, minutes) {
+  return new Date(date.getTime() + minutes * 60 * 1000);
 }
 
 function parseAmount(value) {
@@ -74,11 +79,16 @@ function isHoldEvent(event) {
   const privateProps = event?.extendedProperties?.private || {};
   const summary = event?.summary || "";
   const description = event?.description || "";
+  const bookingType = privateProps.bookingType || "";
+
+  if (bookingType && bookingType !== "hold") {
+    return false;
+  }
 
   return (
-    privateProps.bookingType === "hold" ||
+    bookingType === "hold" ||
     privateProps.isHold === "true" ||
-    Boolean(privateProps.holdId) ||
+    (!privateProps.paymentStatus && Boolean(privateProps.holdId)) ||
     summary.startsWith("HOLD - ") ||
     summary.startsWith("[HOLD]") ||
     /Hold ID:/i.test(description) ||
@@ -240,6 +250,10 @@ function bytesToBase64(bytes) {
   return btoa(binary);
 }
 
+function base64EncodeUtf8(value) {
+  return bytesToBase64(new TextEncoder().encode(value));
+}
+
 function concatBytes(...arrays) {
   const total = arrays.reduce((sum, arr) => sum + arr.length, 0);
   const result = new Uint8Array(total);
@@ -394,7 +408,7 @@ async function importPrivateKey(privateKeyPem) {
 }
 
 async function signValuesInOrder(values, privateKeyPem) {
-  const payload = btoa(values.join("-"));
+  const payload = base64EncodeUtf8(values.map((value) => String(value)).join("-"));
   const key = await importPrivateKey(privateKeyPem);
 
   const signature = await crypto.subtle.sign(
@@ -570,8 +584,7 @@ export async function onRequestPost(context) {
     !env.MYPOS_CLIENT_NUMBER ||
     !env.MYPOS_KEY_INDEX ||
     !env.MYPOS_PRIVATE_KEY ||
-    !env.MYPOS_SUCCESS_URL ||
-    !env.MYPOS_CANCEL_URL
+    !env.MYPOS_PUBLIC_CERT
   ) {
     return json(
       {
@@ -630,8 +643,10 @@ export async function onRequestPost(context) {
     }
 
     const orderId = `B4T-${holdId}`;
+    const successUrl = new URL("/api/mypos-ok", request.url).toString();
+    const cancelUrl = new URL("/api/mypos-cancel", request.url).toString();
     const notifyUrl = new URL("/api/mypos-notify", request.url).toString();
-    const checkoutUrl = env.MYPOS_CHECKOUT_URL || "https://www.mypos.com/vmp/checkout";
+    const checkoutUrl = env.MYPOS_CHECKOUT_URL || "https://www.mypos.eu/vmp/checkout";
 
     const cartItems = buildCartItems(
       selectedTour.label,
@@ -649,8 +664,8 @@ export async function onRequestPost(context) {
       Amount: formatMoney(totalAmount),
       Currency: BOOKING_RULES.currency,
       OrderID: orderId,
-      URL_OK: env.MYPOS_SUCCESS_URL,
-      URL_Cancel: env.MYPOS_CANCEL_URL,
+      URL_OK: successUrl,
+      URL_Cancel: cancelUrl,
       URL_Notify: notifyUrl,
       CardTokenRequest: "0",
       KeyIndex: String(env.MYPOS_KEY_INDEX),
@@ -680,24 +695,38 @@ export async function onRequestPost(context) {
     const signature = await signValuesInOrder(Object.values(postData), env.MYPOS_PRIVATE_KEY);
     postData.Signature = signature;
 
+    const paymentStartedAtDate = new Date();
+    const paymentStartedAt = paymentStartedAtDate.toISOString();
+    const paymentPendingExpiresAt = addMinutes(
+      paymentStartedAtDate,
+      BOOKING_RULES.paymentPendingMinutes
+    ).toISOString();
     const descriptionLines = [
       holdEvent.description || "",
       "",
+      `Payment pending started at: ${paymentStartedAt}`,
+      `Payment pending expires at: ${paymentPendingExpiresAt}`,
       `Payment Order ID: ${orderId}`,
       `Payment Amount: ${formatMoney(totalAmount)} ${BOOKING_RULES.currency}`,
       extras.length ? `Payment Extras: ${JSON.stringify(extras)}` : ""
     ].filter(Boolean);
 
     await updateCalendarEvent(env, accessToken, holdEvent.id, {
+      summary: `PAYMENT PENDING - ${selectedTour.label} - ${customerName}`,
       description: descriptionLines.join("\n"),
       extendedProperties: {
         private: {
           ...privateProps,
+          bookingType: "pending_payment",
+          isHold: "false",
+          holdExpiresAt: "",
           paymentStatus: "pending",
           paymentOrderId: orderId,
           paymentAmount: formatMoney(totalAmount),
           paymentCurrency: BOOKING_RULES.currency,
-          paymentExtrasJson: JSON.stringify(extras)
+          paymentExtrasJson: JSON.stringify(extras),
+          paymentStartedAt,
+          paymentPendingExpiresAt
         }
       }
     });
