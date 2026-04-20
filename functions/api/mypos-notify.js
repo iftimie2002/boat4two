@@ -243,6 +243,35 @@ async function getAccessToken(env) {
   return tokenData.access_token;
 }
 
+
+function isPaidEvent(event) {
+  const privateProps = event?.extendedProperties?.private || {};
+  const summary = event?.summary || "";
+
+  return (
+    privateProps.bookingType === "paid" ||
+    privateProps.paymentStatus === "paid" ||
+    summary.startsWith("PAID - ")
+  );
+}
+
+async function findPaidEventByOrderId(env, accessToken, orderId) {
+  const now = new Date();
+  const from = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const to = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000);
+
+  const events = await listEvents(env, accessToken, {
+    timeMin: from.toISOString(),
+    timeMax: to.toISOString()
+  });
+
+  return (
+    events.find((event) =>
+      isPaidEvent(event) && eventMatchesOrderId(event, orderId)
+    ) || null
+  );
+}
+
 async function listEvents(env, accessToken, extraParams = {}) {
   const url = new URL(
     `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(env.GOOGLE_CALENDAR_ID)}/events`
@@ -315,6 +344,46 @@ async function updateCalendarEvent(env, accessToken, eventId, patchBody) {
 
   return data;
 }
+
+async function createCalendarEvent(env, accessToken, eventBody) {
+  const response = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(env.GOOGLE_CALENDAR_ID)}/events`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(eventBody)
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.error?.message || "Failed to create calendar event");
+  }
+
+  return data;
+}
+
+async function deleteCalendarEvent(env, accessToken, eventId) {
+  const response = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(env.GOOGLE_CALENDAR_ID)}/events/${encodeURIComponent(eventId)}`,
+    {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
+    }
+  );
+
+  if (!response.ok && response.status !== 404) {
+    const text = await response.text();
+    throw new Error(text || "Failed to delete calendar event");
+  }
+}
+
 
 function extractHoldIdFromOrderId(orderId) {
   const value = cleanText(orderId, 120);
@@ -396,48 +465,67 @@ export async function onRequestPost(context) {
 
     const privateProps = event.extendedProperties?.private || {};
 
-    if (ipcMethod === "IPCPurchaseNotify") {
-      const expectedAmount = cleanText(privateProps.paymentAmount, 40);
-      const expectedCurrency = cleanText(privateProps.paymentCurrency, 10) || BOOKING_RULES.currency;
+   if (ipcMethod === "IPCPurchaseNotify") {
+  if (privateProps.bookingType === "paid" || privateProps.paymentStatus === "paid") {
+    return textResponse("OK", 200);
+  }
 
-      if (expectedAmount && formatMoney(Number(expectedAmount)) !== formatMoney(Number(amount))) {
-        return textResponse("Amount mismatch", 400);
+  const expectedAmount = cleanText(privateProps.paymentAmount, 40);
+  const expectedCurrency = cleanText(privateProps.paymentCurrency, 10) || BOOKING_RULES.currency;
+
+  if (expectedAmount && formatMoney(Number(expectedAmount)) !== formatMoney(Number(amount))) {
+    return textResponse("Amount mismatch", 400);
+  }
+
+  if (expectedCurrency && expectedCurrency !== currency) {
+    return textResponse("Currency mismatch", 400);
+  }
+
+  const paidAt = new Date().toISOString();
+
+  const updatedDescription = [
+    event.description || "",
+    "",
+    `Payment confirmed at: ${paidAt}`,
+    `Payment transaction ref: ${trnref}`,
+    requestDateTime ? `Payment request datetime: ${requestDateTime}` : "",
+    requestStan ? `Payment request STAN: ${requestStan}` : ""
+  ].filter(Boolean).join("\n");
+
+ 
+
+  const confirmedEventBody = {
+    summary: buildPaidSummary(privateProps),
+    description: updatedDescription,
+    start: event.start,
+    end: event.end,
+    extendedProperties: {
+      private: {
+        ...privateProps,
+        bookingType: "paid",
+        paymentStatus: "paid",
+        paymentOrderId: orderId,
+        paymentTransactionRef: trnref,
+        paymentAmount: amount,
+        paymentCurrency: currency,
+        paidAt,
+        paymentRequestDateTime: requestDateTime,
+        paymentRequestSTAN: requestStan,
+        originalHoldEventId: event.id
       }
-
-      if (expectedCurrency && expectedCurrency !== currency) {
-        return textResponse("Currency mismatch", 400);
-      }
-
-      const updatedDescription = [
-        event.description || "",
-        "",
-        `Payment confirmed at: ${new Date().toISOString()}`,
-        `Payment transaction ref: ${trnref}`,
-        requestDateTime ? `Payment request datetime: ${requestDateTime}` : "",
-        requestStan ? `Payment request STAN: ${requestStan}` : ""
-      ].filter(Boolean).join("\n");
-
-      await updateCalendarEvent(env, accessToken, event.id, {
-        summary: buildPaidSummary(privateProps),
-        description: updatedDescription,
-        extendedProperties: {
-          private: {
-            ...privateProps,
-            bookingType: "paid",
-            paymentStatus: "paid",
-            paymentOrderId: orderId,
-            paymentTransactionRef: trnref,
-            paymentAmount: amount,
-            paymentCurrency: currency,
-            paidAt: new Date().toISOString(),
-            paymentRequestDateTime: requestDateTime,
-            paymentRequestSTAN: requestStan
-          }
-        }
-      });
-
-      return textResponse("OK", 200);
     }
+  };
+
+  const existingPaidEvent = await findPaidEventByOrderId(env, accessToken, orderId);
+
+  if (!existingPaidEvent) {
+    await createCalendarEvent(env, accessToken, confirmedEventBody);
+  }
+
+  await deleteCalendarEvent(env, accessToken, event.id);
+
+  return textResponse("OK", 200);
+}
 
     if (ipcMethod === "IPCPurchaseRollback") {
       const updatedDescription = [
