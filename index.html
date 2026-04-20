@@ -1308,9 +1308,19 @@ This slot is being held for you for <strong id="hold-countdown-timer">12:00</str
 <p>Your reservation time expired. Please choose a date and time again.</p>
 </div>
 <div class="flex flex-col gap-3">
-<a class="inline-flex h-12 items-center justify-center rounded-full border border-zinc-300 px-5 text-sm font-bold text-zinc-900 transition-colors hover:border-primary hover:text-primary dark:border-zinc-700 dark:text-zinc-100" href="#details-popup">Edit Details</a>
-<a class="inline-flex h-12 items-center justify-center rounded-full bg-primary text-sm font-bold text-white shadow-lg transition-transform hover:scale-105" href="#" id="review-whatsapp-button" rel="noopener noreferrer" target="_blank">Send on WhatsApp</a>
-<a class="inline-flex h-12 items-center justify-center rounded-full bg-zinc-900 text-sm font-bold text-white shadow-lg transition-transform hover:scale-105 dark:bg-zinc-100 dark:text-zinc-900" href="#" id="review-email-button">Send by Email</a>
+  <a class="inline-flex h-12 items-center justify-center rounded-full border border-zinc-300 px-5 text-sm font-bold text-zinc-900 transition-colors hover:border-primary hover:text-primary dark:border-zinc-700 dark:text-zinc-100" href="#details-popup">Edit Details</a>
+
+  <button
+    class="inline-flex h-12 items-center justify-center rounded-full bg-primary px-5 text-sm font-bold text-white shadow-lg transition-transform hover:scale-105"
+    id="review-pay-button"
+    type="button"
+  >
+    Pay Now
+  </button>
+
+  <p class="text-center text-xs text-zinc-500 dark:text-zinc-400">
+    Secure payment powered by myPOS
+  </p>
 </div>
 </div>
 </div>
@@ -1340,7 +1350,7 @@ This slot is being held for you for <strong id="hold-countdown-timer">12:00</str
         '#review-popup'
       ]);
 
-      const whatsappNumber = '351932015013';
+     
 
       const tourConfig = {
         private: {
@@ -1423,8 +1433,7 @@ This slot is being held for you for <strong id="hold-countdown-timer">12:00</str
       const requestSummaryNodes = Array.from(document.querySelectorAll('[data-request-summary]'));
       const detailsForm = document.getElementById('booking-details-form');
       const reviewDetails = document.getElementById('review-details');
-      const reviewWhatsappButton = document.getElementById('review-whatsapp-button');
-      const reviewEmailButton = document.getElementById('review-email-button');
+      const reviewPayButton = document.getElementById('review-pay-button');
       const contactForm = document.getElementById('contact-form');
       const contactFormFeedback = document.getElementById('contact-form-feedback');
       const reviewsIntro = document.getElementById('reviews-intro');
@@ -1448,6 +1457,7 @@ let scrollPosition = 0;
 let isScrollLocked = false;
 let currentCalendarMonth = null;
 let selectedCalendarDate = '';
+        let holdReleaseSuppressed = false;
 let availableDatesSet = new Set();
 
       function applyTheme(theme) {
@@ -1702,9 +1712,7 @@ let availableDatesSet = new Set();
         return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       }
 
-      function isSameMonth(a, b) {
-        return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
-      }
+      
 
       function renderCalendarMonth() {
         if (!calendarDaysGrid || !calendarMonthLabel || !currentCalendarMonth) return;
@@ -2071,14 +2079,14 @@ async function releaseActiveHold(options = {}) {
       });
     }
   } catch (error) {
-    // Do not block the user if release fails.
+    // ignore
   } finally {
     activeHold = null;
     holdReleaseInProgress = false;
+    holdReleaseSuppressed = false;
     stopHoldCountdown();
   }
 }
-
 function startHoldCountdown(expiresAt) {
   stopHoldCountdown();
 
@@ -2120,6 +2128,29 @@ function startHoldCountdown(expiresAt) {
 }
 
 async function handleHoldExpired() {
+  await expireActiveHoldFlow('Your reservation time expired. Please choose a date and time again.');
+}
+
+function shouldKeepHoldForHash(hash) {
+  return hash === '#review-popup';
+}
+
+async function releaseHoldIfLeavingBookingFlow(nextHash) {
+  if (!activeHold || !activeHold.holdId) return;
+
+  if (shouldKeepHoldForHash(nextHash)) {
+    return;
+  }
+
+  await releaseActiveHold();
+}
+        function shouldReleaseHoldOnLeave() {
+  if (holdReleaseSuppressed) return false;
+  if (!activeHold || !activeHold.holdId) return false;
+  return true;
+}
+
+        async function expireActiveHoldFlow(message) {
   stopHoldCountdown();
 
   const countdownBox = document.getElementById('hold-countdown-box');
@@ -2131,8 +2162,10 @@ async function handleHoldExpired() {
 
   if (expiredMessage) {
     expiredMessage.classList.remove('hidden');
+    expiredMessage.innerHTML = `<p>${message}</p>`;
   }
 
+  holdReleaseSuppressed = false;
   await releaseActiveHold();
 
   bookingData = {};
@@ -2149,88 +2182,64 @@ async function handleHoldExpired() {
     timeSlotsGrid.style.display = 'none';
   }
 
-  showTimeSlotsStatus('Your reservation time expired. Please choose a date and time again.');
-
+  showTimeSlotsStatus(message);
   updateSelectionSummary();
   updateCalendarState();
 
   window.location.hash = '#calendar-popup';
-
   await loadCalendarAvailability();
 }
-
-function shouldKeepHoldForHash(hash) {
-  return hash === '#review-popup';
-}
-
-async function releaseHoldIfLeavingBookingFlow(nextHash) {
-  if (!activeHold || !activeHold.holdId) return;
-
-  if (shouldKeepHoldForHash(nextHash)) {
-    return;
-  }
-
-  await releaseActiveHold();
-}
-
 
       function renderReviewDetails(data) {
   if (!reviewDetails) return;
   reviewDetails.innerHTML = '';
+
   [
-  ['Tour', data.tour],
-  ['Preferred date', data.date],
-  ['Preferred time', data.time],
-  ['Name', data.name],
-  ['Email', data.email],
-  ['Phone', data.phone],
-  ['Visiting from', data.country],
-  ['Occasion', data.occasion],
-  ['Notes', data.message],
-].forEach(function(entry) {
-          if (!entry[1]) return;
-          const row = document.createElement('p');
-          const label = document.createElement('strong');
-          label.textContent = `${entry[0]}: `;
-          row.appendChild(label);
-          row.append(document.createTextNode(entry[1]));
-          reviewDetails.appendChild(row);
-        });
-      }
+    ['Tour', data.tour],
+    ['Preferred date', data.date],
+    ['Preferred time', data.time],
+    ['Name', data.name],
+    ['Email', data.email],
+    ['Phone', data.phone],
+    ['Visiting from', data.country],
+    ['Occasion', data.occasion],
+    ['Notes', data.message]
+  ].forEach(function(entry) {
+    if (!entry[1]) return;
+    const row = document.createElement('p');
+    const label = document.createElement('strong');
+    label.textContent = `${entry[0]}: `;
+    row.appendChild(label);
+    row.append(document.createTextNode(entry[1]));
+    reviewDetails.appendChild(row);
+  });
+}
 
-      function buildOutboundMessage(data) {
-        return [
-          'Hello Boat4Two,',
-          '',
-          'I would like to request this tour:',
-          `Tour: ${data.tour}`,
-          `Preferred date: ${data.date}`,
-          `Preferred time: ${data.time}`,
-          '',
-          `Name: ${data.name}`,
-          `Email: ${data.email}`,
-          `Phone: ${data.phone}`,
-          `Visiting from: ${data.country}`,
-          data.occasion ? `Occasion: ${data.occasion}` : '',
-          data.message ? `Notes: ${data.message}` : '',
-          '',
-          'Please confirm availability. Thank you.'
-        ].filter(Boolean).join('\n');
-      }
+     // function buildOutboundMessage(data) {
+       //  return [
+       //    'Hello Boat4Two,',
+       //    '',
+          // 'I would like to request this tour:',
+          // `Tour: ${data.tour}`,
+          // `Preferred date: ${data.date}`,
+          // `Preferred time: ${data.time}`,
+           // '',
+          // `Name: ${data.name}`,
+         //  `Email: ${data.email}`,
+         //  `Phone: ${data.phone}`,
+         //  `Visiting from: ${data.country}`,
+          // data.occasion ? `Occasion: ${data.occasion}` : '',
+          // data.message ? `Notes: ${data.message}` : '',
+          // '',
+          // 'Please confirm availability. Thank you.'
+        // ].filter(Boolean).join('\n');
+     //  }
 
-      function updateOutboundLinks(data) {
-        const message = buildOutboundMessage(data);
-        if (reviewWhatsappButton) {
-          reviewWhatsappButton.href = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
-        }
-        if (reviewEmailButton) {
-          reviewEmailButton.href = `mailto:info.boat4two@gmail.com?subject=${encodeURIComponent(`${data.tour} booking request`)}&body=${encodeURIComponent(message)}`;
-        }
-      }
+     
 
       function handleHashChange() {
   const nextHash = location.hash;
-  const shouldLock = overlayHashes.has(location.hash);
+  const shouldLock = overlayHashes.has(nextHash);
 
   if (shouldLock && !isScrollLocked) {
     scrollPosition = window.pageYOffset;
@@ -2248,11 +2257,11 @@ async function releaseHoldIfLeavingBookingFlow(nextHash) {
     isScrollLocked = false;
   }
 
-  if (activeHold && !shouldKeepHoldForHash(nextHash)) {
+  if (shouldReleaseHoldOnLeave() && !shouldKeepHoldForHash(nextHash)) {
     releaseHoldIfLeavingBookingFlow(nextHash);
   }
 
-  if (location.hash === '#calendar-popup') {
+  if (nextHash === '#calendar-popup') {
     const today = new Date();
     if (!currentCalendarMonth) {
       currentCalendarMonth = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -2368,7 +2377,6 @@ async function releaseHoldIfLeavingBookingFlow(nextHash) {
       };
 
       renderReviewDetails(bookingData);
-updateOutboundLinks(bookingData);
 startHoldCountdown(result.hold.expiresAt);
 window.location.hash = '#review-popup';
     } catch (error) {
@@ -2417,13 +2425,19 @@ window.location.hash = '#review-popup';
       }
 
       window.addEventListener('pagehide', function() {
-  if (activeHold && activeHold.holdId) {
+  if (shouldReleaseHoldOnLeave()) {
     releaseActiveHold({ useBeacon: true });
   }
 });
 
 window.addEventListener('beforeunload', function() {
-  if (activeHold && activeHold.holdId) {
+  if (shouldReleaseHoldOnLeave()) {
+    releaseActiveHold({ useBeacon: true });
+  }
+});
+
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState === 'hidden' && shouldReleaseHoldOnLeave()) {
     releaseActiveHold({ useBeacon: true });
   }
 });
@@ -2479,7 +2493,75 @@ handleHashChange();
         const today = new Date();
         currentCalendarMonth = new Date(today.getFullYear(), today.getMonth(), 1);
       }
+
+async function startMyposPayment() {
+  if (!activeHold || !activeHold.holdId) {
+    alert('Your reservation hold was not found. Please choose your date and time again.');
+    await expireActiveHoldFlow('Your reservation time expired. Please choose a date and time again.');
+    return;
+  }
+
+  if (!bookingData || !bookingData.holdId) {
+    alert('Your booking details are missing. Please try again.');
+    return;
+  }
+
+  const payload = {
+    holdId: activeHold.holdId,
+    extras: []
+  };
+
+  const response = await fetch('/api/create-mypos-payment', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const contentType = response.headers.get('content-type') || '';
+
+  if (!response.ok) {
+    if (contentType.includes('application/json')) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Could not start payment.');
+    }
+
+    const text = await response.text();
+    throw new Error(text || 'Could not start payment.');
+  }
+
+  const html = await response.text();
+  document.open();
+  document.write(html);
+  document.close();
+}
+
+
+        if (reviewPayButton) {
+  reviewPayButton.addEventListener('click', async function() {
+    const originalText = reviewPayButton.textContent;
+
+    try {
+      reviewPayButton.disabled = true;
+      reviewPayButton.textContent = 'Redirecting...';
+      reviewPayButton.classList.add('opacity-70', 'pointer-events-none');
+
+      holdReleaseSuppressed = true;
+      await startMyposPayment();
+    } catch (error) {
+      holdReleaseSuppressed = false;
+      reviewPayButton.disabled = false;
+      reviewPayButton.textContent = originalText;
+      reviewPayButton.classList.remove('opacity-70', 'pointer-events-none');
+      alert(error.message || 'Could not start payment. Please try again.');
+    }
+  });
+}
+
+        
     });
+    
   </script>
 </body>
 </html>
