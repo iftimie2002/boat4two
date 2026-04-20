@@ -134,20 +134,26 @@ function normalizePemValue(pem) {
     value = value.slice(1, -1);
   }
 
-  return value.replace(/\\r\\n|\\n|\\r/g, "\n");
+  return value
+    .replace(/\\+r\\+n|\\+n|\\+r/g, "\n")
+    .replace(/\r\n|\r/g, "\n");
 }
 
-function pemToDerBytes(pem) {
+function pemToDerBytes(pem, name = "PEM") {
   const base64 = normalizePemValue(pem)
     .replace(/-----BEGIN[^-]+-----/g, "")
     .replace(/-----END[^-]+-----/g, "")
     .replace(/\s+/g, "");
 
   if (!base64) {
-    throw new Error("Invalid PEM value.");
+    throw new Error(`Invalid ${name} value. Check the PEM header, footer, and body in Cloudflare.`);
   }
 
-  return base64ToBytes(base64);
+  try {
+    return base64ToBytes(base64);
+  } catch {
+    throw new Error(`Invalid ${name} value. Check that the PEM body is valid base64 and that escaped newlines are pasted correctly.`);
+  }
 }
 
 function readDerElement(bytes, offset = 0) {
@@ -194,7 +200,7 @@ function readDerChildren(bytes, element) {
 }
 
 function extractSpkiFromCertificatePem(certificatePem) {
-  const certBytes = pemToDerBytes(certificatePem);
+  const certBytes = pemToDerBytes(certificatePem, "MYPOS_PUBLIC_CERT");
   const root = readDerElement(certBytes, 0);
   const rootChildren = readDerChildren(certBytes, root);
 

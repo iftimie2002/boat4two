@@ -7,6 +7,69 @@ function json(data, status = 200) {
   });
 }
 
+function normalizePemValue(pem) {
+  let value = String(pem || "").trim();
+
+  if (
+    (value.startsWith("\"") && value.endsWith("\"")) ||
+    (value.startsWith("'") && value.endsWith("'"))
+  ) {
+    value = value.slice(1, -1);
+  }
+
+  return value
+    .replace(/\\+r\\+n|\\+n|\\+r/g, "\n")
+    .replace(/\r\n|\r/g, "\n");
+}
+
+function summarizeInvalidBase64Characters(value) {
+  const invalid = new Set();
+
+  for (const char of value) {
+    if (!/[A-Za-z0-9+/=]/.test(char)) {
+      invalid.add(char === "\\" ? "\\\\" : char);
+    }
+  }
+
+  return Array.from(invalid).slice(0, 8);
+}
+
+function diagnosePem(value, expectedLabels) {
+  const raw = String(value || "");
+  const normalized = normalizePemValue(raw);
+  const labelMatch = normalized.match(/-----BEGIN ([^-]+)-----/);
+  const label = labelMatch ? labelMatch[1] : "";
+  const base64 = normalized
+    .replace(/-----BEGIN[^-]+-----/g, "")
+    .replace(/-----END[^-]+-----/g, "")
+    .replace(/\s+/g, "");
+  const invalidBase64Characters = summarizeInvalidBase64Characters(base64);
+  let base64Decodes = false;
+
+  try {
+    if (base64) {
+      atob(base64);
+      base64Decodes = true;
+    }
+  } catch {
+    base64Decodes = false;
+  }
+
+  return {
+    loaded: Boolean(raw),
+    hasBeginLine: /-----BEGIN [^-]+-----/.test(normalized),
+    hasEndLine: /-----END [^-]+-----/.test(normalized),
+    label: label || null,
+    labelExpected: Boolean(label && expectedLabels.includes(label)),
+    hasEscapedNewlines: /\\+r\\+n|\\+n|\\+r/.test(raw),
+    normalizedLineCount: normalized ? normalized.split("\n").length : 0,
+    hasBody: Boolean(base64),
+    bodyLengthMultipleOf4: base64.length > 0 && base64.length % 4 === 0,
+    invalidBase64Characters,
+    base64Decodes
+  };
+}
+
 export async function onRequestGet(context) {
   const { env } = context;
   const required = [
@@ -59,6 +122,15 @@ export async function onRequestGet(context) {
     usingWalletVariable: env.MYPOS_WALLET_NUMBER
       ? "MYPOS_WALLET_NUMBER"
       : (env.MYPOS_CLIENT_NUMBER ? "MYPOS_CLIENT_NUMBER" : null),
+    pemDiagnostics: {
+      MYPOS_PRIVATE_KEY: diagnosePem(env.MYPOS_PRIVATE_KEY, [
+        "PRIVATE KEY",
+        "RSA PRIVATE KEY"
+      ]),
+      MYPOS_PUBLIC_CERT: diagnosePem(env.MYPOS_PUBLIC_CERT, [
+        "CERTIFICATE"
+      ])
+    },
     message: missing.length === 0
       ? "Google and myPOS environment variables are loaded."
       : `Missing environment variables: ${missing.join(", ")}.`
