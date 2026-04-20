@@ -124,8 +124,21 @@ function base64EncodeUtf8(value) {
   return bytesToBase64(new TextEncoder().encode(value));
 }
 
+function normalizePemValue(pem) {
+  let value = String(pem || "").trim();
+
+  if (
+    (value.startsWith("\"") && value.endsWith("\"")) ||
+    (value.startsWith("'") && value.endsWith("'"))
+  ) {
+    value = value.slice(1, -1);
+  }
+
+  return value.replace(/\\r\\n|\\n|\\r/g, "\n");
+}
+
 function pemToDerBytes(pem) {
-  const base64 = String(pem || "")
+  const base64 = normalizePemValue(pem)
     .replace(/-----BEGIN[^-]+-----/g, "")
     .replace(/-----END[^-]+-----/g, "")
     .replace(/\s+/g, "");

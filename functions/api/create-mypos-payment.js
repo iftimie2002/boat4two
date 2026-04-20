@@ -337,8 +337,26 @@ function wrapPkcs1PrivateKeyToPkcs8(pkcs1Bytes) {
   );
 }
 
+function normalizePemValue(pem) {
+  let value = String(pem || "").trim();
+
+  if (
+    (value.startsWith("\"") && value.endsWith("\"")) ||
+    (value.startsWith("'") && value.endsWith("'"))
+  ) {
+    value = value.slice(1, -1);
+  }
+
+  return value.replace(/\\r\\n|\\n|\\r/g, "\n");
+}
+
+function getPemLabel(pem) {
+  const match = normalizePemValue(pem).match(/-----BEGIN ([^-]+)-----/);
+  return match ? match[1] : "";
+}
+
 function pemToDerBytes(pem) {
-  const base64 = String(pem || "")
+  const base64 = normalizePemValue(pem)
     .replace(/-----BEGIN[^-]+-----/g, "")
     .replace(/-----END[^-]+-----/g, "")
     .replace(/\s+/g, "");
@@ -419,8 +437,11 @@ function extractSpkiFromCertificatePem(certificatePem) {
 }
 
 async function importPrivateKey(privateKeyPem) {
-  const pkcs1 = pemToDerBytes(privateKeyPem);
-  const pkcs8 = wrapPkcs1PrivateKeyToPkcs8(pkcs1);
+  const label = getPemLabel(privateKeyPem);
+  const privateKeyBytes = pemToDerBytes(privateKeyPem);
+  const pkcs8 = label === "RSA PRIVATE KEY"
+    ? wrapPkcs1PrivateKeyToPkcs8(privateKeyBytes)
+    : privateKeyBytes;
 
   return crypto.subtle.importKey(
     "pkcs8",
