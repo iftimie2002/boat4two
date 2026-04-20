@@ -44,6 +44,33 @@ function cleanText(value, max = 500) {
   return String(value || "").trim().slice(0, max);
 }
 
+function getMissingEnvNames(env, names) {
+  return names.filter((name) => !env[name]);
+}
+
+function getMissingPaymentEnvNames(env) {
+  const missing = getMissingEnvNames(env, [
+    "GOOGLE_CLIENT_ID",
+    "GOOGLE_CLIENT_SECRET",
+    "GOOGLE_REFRESH_TOKEN",
+    "GOOGLE_CALENDAR_ID",
+    "MYPOS_SID",
+    "MYPOS_KEY_INDEX",
+    "MYPOS_PRIVATE_KEY",
+    "MYPOS_PUBLIC_CERT"
+  ]);
+
+  if (!getWalletNumber(env)) {
+    missing.push("MYPOS_WALLET_NUMBER");
+  }
+
+  return missing;
+}
+
+function getWalletNumber(env) {
+  return env.MYPOS_WALLET_NUMBER || env.MYPOS_CLIENT_NUMBER || "";
+}
+
 function formatMoney(value) {
   return Number(value).toFixed(2);
 }
@@ -574,22 +601,14 @@ function buildAutoSubmitHtml(actionUrl, postData) {
 
 export async function onRequestPost(context) {
   const { request, env } = context;
+  const missingEnvNames = getMissingPaymentEnvNames(env);
 
-  if (
-    !env.GOOGLE_CLIENT_ID ||
-    !env.GOOGLE_CLIENT_SECRET ||
-    !env.GOOGLE_REFRESH_TOKEN ||
-    !env.GOOGLE_CALENDAR_ID ||
-    !env.MYPOS_SID ||
-    !env.MYPOS_CLIENT_NUMBER ||
-    !env.MYPOS_KEY_INDEX ||
-    !env.MYPOS_PRIVATE_KEY ||
-    !env.MYPOS_PUBLIC_CERT
-  ) {
+  if (missingEnvNames.length) {
     return json(
       {
         ok: false,
-        error: "Missing required Google or myPOS environment variables."
+        error: `Missing required Google or myPOS environment variables: ${missingEnvNames.join(", ")}.`,
+        missing: missingEnvNames
       },
       500
     );
@@ -647,6 +666,7 @@ export async function onRequestPost(context) {
     const cancelUrl = new URL("/api/mypos-cancel", request.url).toString();
     const notifyUrl = new URL("/api/mypos-notify", request.url).toString();
     const checkoutUrl = env.MYPOS_CHECKOUT_URL || "https://www.mypos.eu/vmp/checkout";
+    const walletNumber = getWalletNumber(env);
 
     const cartItems = buildCartItems(
       selectedTour.label,
@@ -660,7 +680,7 @@ export async function onRequestPost(context) {
       IPCVersion: "1.4",
       IPCLanguage: "EN",
       SID: env.MYPOS_SID,
-      WalletNumber: env.MYPOS_CLIENT_NUMBER,
+      WalletNumber: walletNumber,
       Amount: formatMoney(totalAmount),
       Currency: BOOKING_RULES.currency,
       OrderID: orderId,
