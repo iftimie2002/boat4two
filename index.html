@@ -1325,41 +1325,26 @@ This slot is being held for you for <strong id="hold-countdown-timer">12:00</str
 </div>
 </div>
 </div>
-<div class="fixed inset-0 z-[70] hidden items-start justify-center bg-black/70 p-3 backdrop-blur-sm animate-fadeIn sm:items-center sm:p-5" id="payment-popup">
+<div class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/70 p-4 backdrop-blur-sm animate-fadeIn" id="payment-popup">
 <a aria-label="Back to booking review" class="absolute inset-0" href="#review-popup"></a>
-<div class="relative flex h-[calc(100dvh-1.5rem)] w-full max-w-4xl flex-col overflow-hidden rounded-[1.25rem] bg-background-light shadow-2xl dark:bg-background-dark sm:h-[calc(100dvh-2.5rem)]">
-<div class="flex items-center justify-between gap-3 border-b border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-950 sm:px-5">
-<div class="min-w-0">
-<p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Secure checkout</p>
-<p class="truncate text-sm font-bold text-zinc-900 dark:text-zinc-100" id="payment-frame-status">myPOS payment</p>
-</div>
-<div class="flex shrink-0 items-center gap-2">
-<button aria-label="Open checkout in a new tab" class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-zinc-300 text-zinc-700 transition-colors hover:border-primary hover:text-primary dark:border-zinc-700 dark:text-zinc-200" id="payment-open-window-button" title="Open checkout in a new tab" type="button">
-<span class="material-symbols-outlined text-[20px]">open_in_new</span>
-</button>
-<a aria-label="Back to booking review" class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-zinc-300 text-zinc-700 transition-colors hover:border-primary hover:text-primary dark:border-zinc-700 dark:text-zinc-200" href="#review-popup" title="Back to booking review">
+<div class="relative flex w-full max-w-lg flex-col gap-5 rounded-[1.25rem] bg-background-light p-6 text-center shadow-2xl dark:bg-background-dark">
+<a aria-label="Back to booking review" class="absolute right-4 top-4 inline-flex h-10 w-10 items-center justify-center rounded-full border border-zinc-300 text-zinc-700 transition-colors hover:border-primary hover:text-primary dark:border-zinc-700 dark:text-zinc-200" href="#review-popup" title="Back to booking review">
 <span class="material-symbols-outlined text-[20px]">close</span>
 </a>
-</div>
-</div>
-<div class="relative flex min-h-0 flex-1 bg-white">
-<div class="absolute inset-0 z-10 flex items-center justify-center bg-white text-sm font-semibold text-zinc-600 dark:bg-zinc-950 dark:text-zinc-300" id="payment-frame-loading">
-<span>Loading secure checkout...</span>
-</div>
-<iframe allow="payment *; publickey-credentials-get *" class="h-full w-full border-0 bg-white" id="mypos-payment-frame" referrerpolicy="no-referrer-when-downgrade" title="myPOS secure checkout"></iframe>
-<div class="absolute inset-0 z-20 hidden items-center justify-center bg-background-light p-6 text-center dark:bg-background-dark" id="payment-frame-result">
-<div class="w-full max-w-md">
 <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
-<span class="material-symbols-outlined" id="payment-result-icon">check_circle</span>
+<span class="material-symbols-outlined" id="payment-result-icon">open_in_new</span>
 </div>
-<h3 class="mt-5 text-2xl font-black text-zinc-900 dark:text-zinc-100" id="payment-result-title">Payment complete</h3>
-<p class="mt-3 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300" id="payment-result-message">Your booking payment has been received.</p>
-<div class="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
-<a class="inline-flex h-12 items-center justify-center rounded-full bg-primary px-6 text-sm font-bold text-white shadow-lg transition-transform hover:scale-105" href="/" id="payment-result-primary">Back to Home</a>
+<div>
+<p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Secure checkout</p>
+<h3 class="mt-3 text-2xl font-black text-zinc-900 dark:text-zinc-100" id="payment-result-title">Checkout opened</h3>
+<p class="mt-3 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300" id="payment-result-message">Complete your payment in the secure myPOS window. This page will stay open while you pay.</p>
+</div>
+<div class="hidden rounded-2xl bg-zinc-100 p-4 text-sm font-semibold text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300" id="payment-frame-loading">Opening secure checkout...</div>
+<div class="hidden" id="payment-frame-result"></div>
+<div class="flex flex-col gap-3 sm:flex-row sm:justify-center">
+<button class="inline-flex h-12 items-center justify-center rounded-full bg-primary px-6 text-sm font-bold text-white shadow-lg transition-transform hover:scale-105" id="payment-open-window-button" type="button">Open Checkout</button>
+<a class="hidden h-12 items-center justify-center rounded-full bg-primary px-6 text-sm font-bold text-white shadow-lg transition-transform hover:scale-105" href="/" id="payment-result-primary">Back to Home</a>
 <a class="inline-flex h-12 items-center justify-center rounded-full border border-zinc-300 px-6 text-sm font-bold text-zinc-900 transition-colors hover:border-primary hover:text-primary dark:border-zinc-700 dark:text-zinc-100" href="https://wa.me/351932015013?text=Hello%20Boat4Two%2C%20I%20need%20help%20with%20my%20booking%20payment." rel="noopener noreferrer" target="_blank">WhatsApp</a>
-</div>
-</div>
-</div>
 </div>
 </div>
 </div>
@@ -1474,9 +1459,7 @@ This slot is being held for you for <strong id="hold-countdown-timer">12:00</str
       const detailsForm = document.getElementById('booking-details-form');
       const reviewDetails = document.getElementById('review-details');
       const reviewPayButton = document.getElementById('review-pay-button');
-      const myposPaymentFrame = document.getElementById('mypos-payment-frame');
       const paymentFrameLoading = document.getElementById('payment-frame-loading');
-      const paymentFrameStatus = document.getElementById('payment-frame-status');
       const paymentFrameResult = document.getElementById('payment-frame-result');
       const paymentResultIcon = document.getElementById('payment-result-icon');
       const paymentResultTitle = document.getElementById('payment-result-title');
@@ -1506,7 +1489,9 @@ let scrollPosition = 0;
 let isScrollLocked = false;
 let currentCalendarMonth = null;
 let selectedCalendarDate = '';
-let currentMyposCheckoutHtml = '';
+let currentMyposCheckoutData = null;
+let currentPaymentWindow = null;
+let currentPaymentWindowName = '';
         let holdReleaseSuppressed = false;
 let availableDatesSet = new Set();
 
@@ -2544,7 +2529,109 @@ handleHashChange();
         currentCalendarMonth = new Date(today.getFullYear(), today.getMonth(), 1);
       }
 
-async function startMyposPayment() {
+function setPaymentPopupState(state, message) {
+  if (paymentFrameLoading) {
+    paymentFrameLoading.classList.toggle('hidden', state !== 'loading');
+    paymentFrameLoading.textContent = message || 'Opening secure checkout...';
+  }
+
+  if (paymentResultIcon) {
+    paymentResultIcon.textContent = state === 'result' ? 'check_circle' : 'open_in_new';
+  }
+
+  if (paymentResultTitle) {
+    paymentResultTitle.textContent = state === 'loading' ? 'Opening checkout' : 'Checkout opened';
+  }
+
+  if (paymentResultMessage) {
+    paymentResultMessage.textContent = state === 'loading'
+      ? 'Preparing your secure myPOS checkout window.'
+      : 'Complete your payment in the secure myPOS window. This page will stay open while you pay.';
+  }
+
+  if (paymentResultPrimary) {
+    paymentResultPrimary.classList.add('hidden');
+    paymentResultPrimary.classList.remove('inline-flex');
+  }
+}
+
+function openPaymentWindow() {
+  currentPaymentWindowName = `boat4two_mypos_${Date.now()}`;
+  currentPaymentWindow = window.open('', currentPaymentWindowName);
+
+  if (!currentPaymentWindow) {
+    return null;
+  }
+
+  currentPaymentWindow.document.open();
+  currentPaymentWindow.document.write(`<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Opening secure checkout...</title>
+  <style>
+    body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f8f6f6;color:#18181b;font-family:Inter,Arial,sans-serif}
+    main{max-width:28rem;padding:2rem;text-align:center}
+    p{color:#52525b;line-height:1.6}
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Opening secure checkout</h1>
+    <p>Please wait while Boat4Two connects you to myPOS.</p>
+  </main>
+</body>
+</html>`);
+  currentPaymentWindow.document.close();
+
+  try {
+    currentPaymentWindow.opener = null;
+  } catch (error) {
+    // ignore
+  }
+
+  return currentPaymentWindow;
+}
+
+function submitMyposForm(checkoutData, targetName) {
+  const form = document.createElement('form');
+  form.method = checkoutData.method || 'POST';
+  form.action = checkoutData.checkoutUrl;
+  form.target = targetName;
+  form.style.display = 'none';
+
+  Object.entries(checkoutData.fields || {}).forEach(function(entry) {
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = entry[0];
+    input.value = String(entry[1]);
+    form.appendChild(input);
+  });
+
+  document.body.appendChild(form);
+  form.submit();
+  form.remove();
+}
+
+function launchMyposCheckout(checkoutData, paymentWindow) {
+  currentMyposCheckoutData = checkoutData;
+  holdReleaseSuppressed = true;
+  setPaymentPopupState('ready');
+  window.location.hash = '#payment-popup';
+
+  if (paymentWindow && !paymentWindow.closed && currentPaymentWindowName) {
+    submitMyposForm(checkoutData, currentPaymentWindowName);
+    return;
+  }
+
+  if (paymentFrameLoading) {
+    paymentFrameLoading.classList.remove('hidden');
+    paymentFrameLoading.textContent = 'Your browser blocked the checkout window. Use Open Checkout to continue.';
+  }
+}
+
+async function startMyposPayment(paymentWindow) {
   if (!activeHold || !activeHold.holdId) {
     alert('Your reservation hold was not found. Please choose your date and time again.');
     await expireActiveHoldFlow('Your reservation time expired. Please choose a date and time again.');
@@ -2556,14 +2643,15 @@ async function startMyposPayment() {
     return;
   }
 
-  if (currentMyposCheckoutHtml) {
-    showMyposPaymentFrame(currentMyposCheckoutHtml);
+  if (currentMyposCheckoutData) {
+    launchMyposCheckout(currentMyposCheckoutData, paymentWindow);
     return;
   }
 
   const payload = {
     holdId: activeHold.holdId,
-    extras: []
+    extras: [],
+    responseMode: 'form'
   };
 
   const response = await fetch('/api/create-mypos-payment', {
@@ -2586,54 +2674,27 @@ async function startMyposPayment() {
     throw new Error(text || 'Could not start payment.');
   }
 
-  const html = await response.text();
-  showMyposPaymentFrame(html);
-}
-
-function resetPaymentFrameView() {
-  if (paymentFrameLoading) {
-    paymentFrameLoading.classList.remove('hidden');
+  if (!contentType.includes('application/json')) {
+    throw new Error('Could not start payment.');
   }
 
-  if (paymentFrameResult) {
-    paymentFrameResult.classList.add('hidden');
-    paymentFrameResult.classList.remove('flex');
-  }
-
-  if (paymentFrameStatus) {
-    paymentFrameStatus.textContent = 'myPOS payment';
-  }
-}
-
-function showMyposPaymentFrame(html) {
-  currentMyposCheckoutHtml = html;
-  holdReleaseSuppressed = true;
-  resetPaymentFrameView();
-
-  if (myposPaymentFrame) {
-    myposPaymentFrame.srcdoc = '';
-    myposPaymentFrame.srcdoc = html;
-  }
-
-  window.location.hash = '#payment-popup';
+  const checkoutData = await response.json();
+  launchMyposCheckout(checkoutData, paymentWindow);
 }
 
 function openCurrentPaymentInWindow() {
-  if (!currentMyposCheckoutHtml) {
+  if (!currentMyposCheckoutData) {
     return;
   }
 
-  const paymentWindow = window.open('', '_blank');
+  const paymentWindow = openPaymentWindow();
 
   if (!paymentWindow) {
     alert('Your browser blocked the checkout window. Please allow pop-ups for this site and try again.');
     return;
   }
 
-  paymentWindow.opener = null;
-  paymentWindow.document.open();
-  paymentWindow.document.write(currentMyposCheckoutHtml);
-  paymentWindow.document.close();
+  launchMyposCheckout(currentMyposCheckoutData, paymentWindow);
 }
 
 function handlePaymentFrameResult(status) {
@@ -2642,23 +2703,17 @@ function handlePaymentFrameResult(status) {
   stopHoldCountdown();
   activeHold = null;
   holdReleaseSuppressed = false;
-  currentMyposCheckoutHtml = '';
+  currentMyposCheckoutData = null;
+  currentPaymentWindow = null;
+  currentPaymentWindowName = '';
 
   if (!paid) {
     bookingData = {};
     selectedCalendarDate = '';
   }
 
-  if (myposPaymentFrame) {
-    myposPaymentFrame.srcdoc = '';
-  }
-
   if (paymentFrameLoading) {
     paymentFrameLoading.classList.add('hidden');
-  }
-
-  if (paymentFrameStatus) {
-    paymentFrameStatus.textContent = paid ? 'Payment successful' : 'Payment cancelled';
   }
 
   if (paymentResultIcon) {
@@ -2678,39 +2733,14 @@ function handlePaymentFrameResult(status) {
   if (paymentResultPrimary) {
     paymentResultPrimary.textContent = paid ? 'Back to Home' : 'Book Again';
     paymentResultPrimary.href = paid ? '/' : '#select-tour-popup';
+    paymentResultPrimary.classList.remove('hidden');
+    paymentResultPrimary.classList.add('inline-flex');
   }
 
   if (paymentFrameResult) {
-    paymentFrameResult.classList.remove('hidden');
-    paymentFrameResult.classList.add('flex');
+    paymentFrameResult.classList.add('hidden');
   }
 }
-
-
-        if (myposPaymentFrame) {
-          myposPaymentFrame.addEventListener('load', function() {
-            if (paymentFrameLoading) {
-              paymentFrameLoading.classList.add('hidden');
-            }
-
-            try {
-              const frameLocation = myposPaymentFrame.contentWindow.location.href;
-              const frameUrl = new URL(frameLocation);
-
-              if (frameUrl.origin !== window.location.origin) {
-                return;
-              }
-
-              if (frameUrl.pathname === '/payment-success.html') {
-                handlePaymentFrameResult('paid');
-              } else if (frameUrl.pathname === '/payment-cancel.html') {
-                handlePaymentFrameResult('cancelled');
-              }
-            } catch (error) {
-              // Cross-origin checkout pages cannot be inspected.
-            }
-          });
-        }
 
         window.addEventListener('message', function(event) {
           if (event.origin !== window.location.origin) {
@@ -2721,6 +2751,22 @@ function handlePaymentFrameResult(status) {
 
           if (data.type === 'boat4two-payment-result') {
             handlePaymentFrameResult(data.status);
+          }
+        });
+
+        window.addEventListener('storage', function(event) {
+          if (event.key !== 'boat4two-payment-result' || !event.newValue) {
+            return;
+          }
+
+          try {
+            const data = JSON.parse(event.newValue);
+
+            if (data.type === 'boat4two-payment-result') {
+              handlePaymentFrameResult(data.status);
+            }
+          } catch (error) {
+            // ignore
           }
         });
 
@@ -2738,12 +2784,21 @@ function handlePaymentFrameResult(status) {
       reviewPayButton.classList.add('opacity-70', 'pointer-events-none');
 
       holdReleaseSuppressed = true;
-      await startMyposPayment();
+      setPaymentPopupState('loading');
+      window.location.hash = '#payment-popup';
+
+      const paymentWindow = openPaymentWindow();
+      await startMyposPayment(paymentWindow);
       reviewPayButton.disabled = false;
       reviewPayButton.textContent = originalText;
       reviewPayButton.classList.remove('opacity-70', 'pointer-events-none');
     } catch (error) {
       holdReleaseSuppressed = false;
+      if (currentPaymentWindow && !currentPaymentWindow.closed) {
+        currentPaymentWindow.close();
+      }
+      currentPaymentWindow = null;
+      currentPaymentWindowName = '';
       reviewPayButton.disabled = false;
       reviewPayButton.textContent = originalText;
       reviewPayButton.classList.remove('opacity-70', 'pointer-events-none');

@@ -665,6 +665,7 @@ export async function onRequestPost(context) {
     const body = await request.json();
     const holdId = cleanText(body?.holdId, 120);
     const extras = sanitizeExtras(body?.extras || []);
+    const responseMode = cleanText(body?.responseMode, 40);
 
     if (!holdId) {
       return json({ ok: false, error: "Missing holdId." }, 400);
@@ -797,6 +798,15 @@ export async function onRequestPost(context) {
         }
       }
     });
+
+    if (responseMode === "form") {
+      return json({
+        ok: true,
+        checkoutUrl,
+        method: "POST",
+        fields: postData
+      });
+    }
 
     return htmlResponse(buildAutoSubmitHtml(checkoutUrl, postData));
   } catch (error) {

@@ -20,12 +20,29 @@
     };
   </script>
   <script>
-    if (window.parent && window.parent !== window) {
-      window.parent.postMessage({
+    (function() {
+      const message = {
         type: 'boat4two-payment-result',
         status: 'paid'
-      }, window.location.origin);
-    }
+      };
+
+      try {
+        localStorage.setItem('boat4two-payment-result', JSON.stringify({
+          ...message,
+          timestamp: Date.now()
+        }));
+      } catch (error) {
+        // ignore
+      }
+
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage(message, window.location.origin);
+      }
+
+      if (window.opener && !window.opener.closed) {
+        window.opener.postMessage(message, window.location.origin);
+      }
+    }());
   </script>
 </head>
 <body class="min-h-screen bg-background-light text-zinc-900">
