@@ -799,6 +799,36 @@ export async function onRequestPost(context) {
       }
     });
 
+    if (responseMode === "embedded") {
+      const keyIndexNumber = Number(env.MYPOS_KEY_INDEX);
+      const embeddedCheckoutUrl = env.MYPOS_CHECKOUT_URL || "";
+
+      return json({
+        ok: true,
+        mode: "embedded",
+        checkoutUrl: embeddedCheckoutUrl,
+        isSandbox: /checkout-test/i.test(embeddedCheckoutUrl),
+        paymentParams: {
+          sid: env.MYPOS_SID,
+          ipcLanguage: "en",
+          walletNumber,
+          amount: Number(formatMoney(totalAmount)),
+          currency: BOOKING_RULES.currency,
+          orderID: orderId,
+          urlNotify: notifyUrl,
+          urlOk: successUrl,
+          urlCancel: cancelUrl,
+          keyIndex: Number.isFinite(keyIndexNumber) ? keyIndexNumber : String(env.MYPOS_KEY_INDEX),
+          cartItems: cartItems.map((item) => ({
+            article: item.name,
+            quantity: item.quantity,
+            price: Number(formatMoney(item.unitPrice)),
+            currency: item.currency
+          }))
+        }
+      });
+    }
+
     if (responseMode === "form") {
       return json({
         ok: true,

@@ -19,6 +19,7 @@
     <link href="./apple-touch-icon.png" rel="apple-touch-icon"/>
     <link href="./apple-touch-icon-precomposed.png" rel="apple-touch-icon-precomposed"/>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="https://developers.mypos.com/repository/mypos-embedded-sdk.js" type="text/javascript"></script>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
     <script id="tailwind-config">
         tailwind.config = {
@@ -1327,22 +1328,19 @@ This slot is being held for you for <strong id="hold-countdown-timer">12:00</str
 </div>
 <div class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/70 p-4 backdrop-blur-sm animate-fadeIn" id="payment-popup">
 <a aria-label="Back to booking review" class="absolute inset-0" href="#review-popup"></a>
-<div class="relative flex w-full max-w-lg flex-col gap-5 rounded-[1.25rem] bg-background-light p-6 text-center shadow-2xl dark:bg-background-dark">
+<div class="relative flex max-h-[calc(100dvh-2rem)] w-full max-w-2xl flex-col gap-4 overflow-y-auto rounded-[1.25rem] bg-background-light p-5 shadow-2xl dark:bg-background-dark sm:p-6">
 <a aria-label="Back to booking review" class="absolute right-4 top-4 inline-flex h-10 w-10 items-center justify-center rounded-full border border-zinc-300 text-zinc-700 transition-colors hover:border-primary hover:text-primary dark:border-zinc-700 dark:text-zinc-200" href="#review-popup" title="Back to booking review">
 <span class="material-symbols-outlined text-[20px]">close</span>
 </a>
-<div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
-<span class="material-symbols-outlined" id="payment-result-icon">open_in_new</span>
-</div>
-<div>
+<div class="pr-12 text-center">
 <p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Secure checkout</p>
-<h3 class="mt-3 text-2xl font-black text-zinc-900 dark:text-zinc-100" id="payment-result-title">Checkout opened</h3>
-<p class="mt-3 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300" id="payment-result-message">Complete your payment in the secure myPOS window. This page will stay open while you pay.</p>
+<h3 class="mt-3 text-2xl font-black text-zinc-900 dark:text-zinc-100" id="payment-result-title">myPOS payment</h3>
+<p class="mt-3 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300" id="payment-result-message">Enter your card details below to complete your booking without leaving Boat4Two.</p>
 </div>
-<div class="hidden rounded-2xl bg-zinc-100 p-4 text-sm font-semibold text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300" id="payment-frame-loading">Opening secure checkout...</div>
+<div class="rounded-2xl bg-zinc-100 p-4 text-center text-sm font-semibold text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300" id="payment-frame-loading">Loading secure checkout...</div>
+<div class="min-h-[620px] w-full overflow-hidden rounded-xl bg-white" id="mypos-embedded-checkout"></div>
 <div class="hidden" id="payment-frame-result"></div>
-<div class="flex flex-col gap-3 sm:flex-row sm:justify-center">
-<button class="inline-flex h-12 items-center justify-center rounded-full bg-primary px-6 text-sm font-bold text-white shadow-lg transition-transform hover:scale-105" id="payment-open-window-button" type="button">Open Checkout</button>
+<div class="flex flex-col gap-3 text-center sm:flex-row sm:justify-center">
 <a class="hidden h-12 items-center justify-center rounded-full bg-primary px-6 text-sm font-bold text-white shadow-lg transition-transform hover:scale-105" href="/" id="payment-result-primary">Back to Home</a>
 <a class="inline-flex h-12 items-center justify-center rounded-full border border-zinc-300 px-6 text-sm font-bold text-zinc-900 transition-colors hover:border-primary hover:text-primary dark:border-zinc-700 dark:text-zinc-100" href="https://wa.me/351932015013?text=Hello%20Boat4Two%2C%20I%20need%20help%20with%20my%20booking%20payment." rel="noopener noreferrer" target="_blank">WhatsApp</a>
 </div>
@@ -1465,7 +1463,7 @@ This slot is being held for you for <strong id="hold-countdown-timer">12:00</str
       const paymentResultTitle = document.getElementById('payment-result-title');
       const paymentResultMessage = document.getElementById('payment-result-message');
       const paymentResultPrimary = document.getElementById('payment-result-primary');
-      const paymentOpenWindowButton = document.getElementById('payment-open-window-button');
+      const myposEmbeddedCheckout = document.getElementById('mypos-embedded-checkout');
       const contactForm = document.getElementById('contact-form');
       const contactFormFeedback = document.getElementById('contact-form-feedback');
       const reviewsIntro = document.getElementById('reviews-intro');
@@ -1489,9 +1487,7 @@ let scrollPosition = 0;
 let isScrollLocked = false;
 let currentCalendarMonth = null;
 let selectedCalendarDate = '';
-let currentMyposCheckoutData = null;
-let currentPaymentWindow = null;
-let currentPaymentWindowName = '';
+let currentMyposEmbeddedPayment = null;
         let holdReleaseSuppressed = false;
 let availableDatesSet = new Set();
 
@@ -2531,22 +2527,28 @@ handleHashChange();
 
 function setPaymentPopupState(state, message) {
   if (paymentFrameLoading) {
-    paymentFrameLoading.classList.toggle('hidden', state !== 'loading');
-    paymentFrameLoading.textContent = message || 'Opening secure checkout...';
+    paymentFrameLoading.classList.toggle('hidden', state !== 'loading' && state !== 'error');
+    paymentFrameLoading.textContent = message || (state === 'loading'
+      ? 'Loading secure checkout...'
+      : 'Payment could not be completed. Please try again.');
   }
 
-  if (paymentResultIcon) {
-    paymentResultIcon.textContent = state === 'result' ? 'check_circle' : 'open_in_new';
+  if (myposEmbeddedCheckout) {
+    myposEmbeddedCheckout.classList.toggle('hidden', state === 'result');
   }
 
   if (paymentResultTitle) {
-    paymentResultTitle.textContent = state === 'loading' ? 'Opening checkout' : 'Checkout opened';
+    paymentResultTitle.textContent = state === 'loading'
+      ? 'Loading myPOS checkout'
+      : (state === 'error' ? 'Payment problem' : 'myPOS payment');
   }
 
   if (paymentResultMessage) {
     paymentResultMessage.textContent = state === 'loading'
-      ? 'Preparing your secure myPOS checkout window.'
-      : 'Complete your payment in the secure myPOS window. This page will stay open while you pay.';
+      ? 'Preparing the secure embedded checkout.'
+      : (state === 'error'
+        ? 'The embedded checkout reported a problem. You can close this panel and try Pay Now again.'
+        : 'Enter your card details below to complete your booking without leaving Boat4Two.');
   }
 
   if (paymentResultPrimary) {
@@ -2555,83 +2557,81 @@ function setPaymentPopupState(state, message) {
   }
 }
 
-function openPaymentWindow() {
-  currentPaymentWindowName = `boat4two_mypos_${Date.now()}`;
-  currentPaymentWindow = window.open('', currentPaymentWindowName);
+function waitForMyposEmbeddedSdk() {
+  return new Promise(function(resolve, reject) {
+    const startedAt = Date.now();
 
-  if (!currentPaymentWindow) {
-    return null;
-  }
+    function check() {
+      if (window.MyPOSEmbedded && typeof window.MyPOSEmbedded.createPayment === 'function') {
+        resolve(window.MyPOSEmbedded);
+        return;
+      }
 
-  currentPaymentWindow.document.open();
-  currentPaymentWindow.document.write(`<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Opening secure checkout...</title>
-  <style>
-    body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f8f6f6;color:#18181b;font-family:Inter,Arial,sans-serif}
-    main{max-width:28rem;padding:2rem;text-align:center}
-    p{color:#52525b;line-height:1.6}
-  </style>
-</head>
-<body>
-  <main>
-    <h1>Opening secure checkout</h1>
-    <p>Please wait while Boat4Two connects you to myPOS.</p>
-  </main>
-</body>
-</html>`);
-  currentPaymentWindow.document.close();
+      if (Date.now() - startedAt > 8000) {
+        reject(new Error('The myPOS embedded checkout could not load. Please check your connection and try again.'));
+        return;
+      }
 
-  try {
-    currentPaymentWindow.opener = null;
-  } catch (error) {
-    // ignore
-  }
+      window.setTimeout(check, 100);
+    }
 
-  return currentPaymentWindow;
-}
-
-function submitMyposForm(checkoutData, targetName) {
-  const form = document.createElement('form');
-  form.method = checkoutData.method || 'POST';
-  form.action = checkoutData.checkoutUrl;
-  form.target = targetName;
-  form.style.display = 'none';
-
-  Object.entries(checkoutData.fields || {}).forEach(function(entry) {
-    const input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = entry[0];
-    input.value = String(entry[1]);
-    form.appendChild(input);
+    check();
   });
-
-  document.body.appendChild(form);
-  form.submit();
-  form.remove();
 }
 
-function launchMyposCheckout(checkoutData, paymentWindow) {
-  currentMyposCheckoutData = checkoutData;
+async function launchMyposEmbeddedCheckout(checkoutData) {
+  currentMyposEmbeddedPayment = checkoutData;
   holdReleaseSuppressed = true;
-  setPaymentPopupState('ready');
   window.location.hash = '#payment-popup';
+  setPaymentPopupState('loading');
 
-  if (paymentWindow && !paymentWindow.closed && currentPaymentWindowName) {
-    submitMyposForm(checkoutData, currentPaymentWindowName);
-    return;
+  if (!myposEmbeddedCheckout) {
+    throw new Error('Payment container not found.');
   }
+
+  myposEmbeddedCheckout.innerHTML = '';
+
+  const sdk = await waitForMyposEmbeddedSdk();
+  const callbacks = {
+    isSandbox: Boolean(checkoutData.isSandbox),
+    ipc_url: checkoutData.checkoutUrl || '',
+    onSuccess: function(data) {
+      handlePaymentFrameResult('paid', data);
+    },
+    onError: function(error) {
+      console.error('myPOS embedded checkout error', error);
+      setPaymentPopupState('error', 'myPOS could not complete this payment. Please try again.');
+      holdReleaseSuppressed = false;
+    },
+    onMessageReceived: function(messages) {
+      console.log('myPOS embedded checkout message', messages);
+    }
+  };
+  const customization = {
+    formBackgroundColor: '#ffffff',
+    inputBorderRadius: '8px',
+    payButtonBackgroundColor: '#e65e19',
+    payButtonBackgroundColorHover: '#c74f14',
+    payButtonBorderColor: '#e65e19',
+    payButtonBorderColorHover: '#c74f14',
+    payButtonColor: '#ffffff',
+    payButtonColorHover: '#ffffff',
+    payButtonFontSize: '15px'
+  };
+
+  await sdk.createPayment(
+    'mypos-embedded-checkout',
+    checkoutData.paymentParams,
+    callbacks,
+    customization
+  );
 
   if (paymentFrameLoading) {
-    paymentFrameLoading.classList.remove('hidden');
-    paymentFrameLoading.textContent = 'Your browser blocked the checkout window. Use Open Checkout to continue.';
+    paymentFrameLoading.classList.add('hidden');
   }
 }
 
-async function startMyposPayment(paymentWindow) {
+async function startMyposPayment() {
   if (!activeHold || !activeHold.holdId) {
     alert('Your reservation hold was not found. Please choose your date and time again.');
     await expireActiveHoldFlow('Your reservation time expired. Please choose a date and time again.');
@@ -2643,15 +2643,15 @@ async function startMyposPayment(paymentWindow) {
     return;
   }
 
-  if (currentMyposCheckoutData) {
-    launchMyposCheckout(currentMyposCheckoutData, paymentWindow);
+  if (currentMyposEmbeddedPayment) {
+    await launchMyposEmbeddedCheckout(currentMyposEmbeddedPayment);
     return;
   }
 
   const payload = {
     holdId: activeHold.holdId,
     extras: [],
-    responseMode: 'form'
+    responseMode: 'embedded'
   };
 
   const response = await fetch('/api/create-mypos-payment', {
@@ -2679,22 +2679,11 @@ async function startMyposPayment(paymentWindow) {
   }
 
   const checkoutData = await response.json();
-  launchMyposCheckout(checkoutData, paymentWindow);
-}
-
-function openCurrentPaymentInWindow() {
-  if (!currentMyposCheckoutData) {
-    return;
+  if (!checkoutData.ok || !checkoutData.paymentParams) {
+    throw new Error(checkoutData.error || 'Could not prepare embedded payment.');
   }
 
-  const paymentWindow = openPaymentWindow();
-
-  if (!paymentWindow) {
-    alert('Your browser blocked the checkout window. Please allow pop-ups for this site and try again.');
-    return;
-  }
-
-  launchMyposCheckout(currentMyposCheckoutData, paymentWindow);
+  await launchMyposEmbeddedCheckout(checkoutData);
 }
 
 function handlePaymentFrameResult(status) {
@@ -2703,9 +2692,7 @@ function handlePaymentFrameResult(status) {
   stopHoldCountdown();
   activeHold = null;
   holdReleaseSuppressed = false;
-  currentMyposCheckoutData = null;
-  currentPaymentWindow = null;
-  currentPaymentWindowName = '';
+  currentMyposEmbeddedPayment = null;
 
   if (!paid) {
     bookingData = {};
@@ -2770,10 +2757,6 @@ function handlePaymentFrameResult(status) {
           }
         });
 
-        if (paymentOpenWindowButton) {
-          paymentOpenWindowButton.addEventListener('click', openCurrentPaymentInWindow);
-        }
-
         if (reviewPayButton) {
   reviewPayButton.addEventListener('click', async function() {
     const originalText = reviewPayButton.textContent;
@@ -2787,18 +2770,12 @@ function handlePaymentFrameResult(status) {
       setPaymentPopupState('loading');
       window.location.hash = '#payment-popup';
 
-      const paymentWindow = openPaymentWindow();
-      await startMyposPayment(paymentWindow);
+      await startMyposPayment();
       reviewPayButton.disabled = false;
       reviewPayButton.textContent = originalText;
       reviewPayButton.classList.remove('opacity-70', 'pointer-events-none');
     } catch (error) {
       holdReleaseSuppressed = false;
-      if (currentPaymentWindow && !currentPaymentWindow.closed) {
-        currentPaymentWindow.close();
-      }
-      currentPaymentWindow = null;
-      currentPaymentWindowName = '';
       reviewPayButton.disabled = false;
       reviewPayButton.textContent = originalText;
       reviewPayButton.classList.remove('opacity-70', 'pointer-events-none');

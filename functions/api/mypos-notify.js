@@ -24,6 +24,16 @@ function cleanText(value, max = 500) {
   return String(value || "").trim().slice(0, max);
 }
 
+function getPayloadValue(payload, names) {
+  for (const name of names) {
+    if (payload[name] !== undefined && payload[name] !== null) {
+      return payload[name];
+    }
+  }
+
+  return "";
+}
+
 function getDescriptionValue(description, key) {
   if (!description) return "";
   const regex = new RegExp(`^${key}:(.*)$`, "mi");
@@ -482,14 +492,14 @@ export async function onRequestPost(context) {
     }
 
     const payload = Object.fromEntries(entries);
-    const ipcMethod = cleanText(payload.IPCmethod, 80);
-    const sid = cleanText(payload.SID, 80);
-    const orderId = cleanText(payload.OrderID, 120);
-    const amount = cleanText(payload.Amount, 40);
-    const currency = cleanText(payload.Currency, 10);
-    const trnref = cleanText(payload.IPC_Trnref, 120);
-    const requestDateTime = cleanText(payload.RequestDateTime, 80);
-    const requestStan = cleanText(payload.RequestSTAN, 80);
+    const ipcMethod = cleanText(getPayloadValue(payload, ["IPCmethod", "IPCMethod", "ipcMethod"]), 80);
+    const sid = cleanText(getPayloadValue(payload, ["SID", "sid"]), 80);
+    const orderId = cleanText(getPayloadValue(payload, ["OrderID", "orderID", "orderId"]), 120);
+    const amount = cleanText(getPayloadValue(payload, ["Amount", "amount"]), 40);
+    const currency = cleanText(getPayloadValue(payload, ["Currency", "currency"]), 10);
+    const trnref = cleanText(getPayloadValue(payload, ["IPC_Trnref", "ipcTrnref", "trnref"]), 120);
+    const requestDateTime = cleanText(getPayloadValue(payload, ["RequestDateTime", "requestDateTime"]), 80);
+    const requestStan = cleanText(getPayloadValue(payload, ["RequestSTAN", "requestSTAN", "requestStan"]), 80);
 
     if (sid !== env.MYPOS_SID) {
       return textResponse("Invalid SID", 400);
