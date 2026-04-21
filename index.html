@@ -113,6 +113,7 @@
         #cookies-popup:target,
         #exemption-popup:target,
         #impressum-popup:target,
+        #payment-popup:target,
         #tour-private:target,
         #tour-sunset:target,
         #tour-custom:target {
@@ -1318,9 +1319,47 @@ This slot is being held for you for <strong id="hold-countdown-timer">12:00</str
     Pay Now
   </button>
 
-  <p class="text-center text-xs text-zinc-500 dark:text-zinc-400">
+<p class="text-center text-xs text-zinc-500 dark:text-zinc-400">
     Secure payment powered by myPOS
   </p>
+</div>
+</div>
+</div>
+<div class="fixed inset-0 z-[70] hidden items-start justify-center bg-black/70 p-3 backdrop-blur-sm animate-fadeIn sm:items-center sm:p-5" id="payment-popup">
+<a aria-label="Back to booking review" class="absolute inset-0" href="#review-popup"></a>
+<div class="relative flex h-[calc(100dvh-1.5rem)] w-full max-w-4xl flex-col overflow-hidden rounded-[1.25rem] bg-background-light shadow-2xl dark:bg-background-dark sm:h-[calc(100dvh-2.5rem)]">
+<div class="flex items-center justify-between gap-3 border-b border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-950 sm:px-5">
+<div class="min-w-0">
+<p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Secure checkout</p>
+<p class="truncate text-sm font-bold text-zinc-900 dark:text-zinc-100" id="payment-frame-status">myPOS payment</p>
+</div>
+<div class="flex shrink-0 items-center gap-2">
+<button aria-label="Open checkout in a new tab" class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-zinc-300 text-zinc-700 transition-colors hover:border-primary hover:text-primary dark:border-zinc-700 dark:text-zinc-200" id="payment-open-window-button" title="Open checkout in a new tab" type="button">
+<span class="material-symbols-outlined text-[20px]">open_in_new</span>
+</button>
+<a aria-label="Back to booking review" class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-zinc-300 text-zinc-700 transition-colors hover:border-primary hover:text-primary dark:border-zinc-700 dark:text-zinc-200" href="#review-popup" title="Back to booking review">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</a>
+</div>
+</div>
+<div class="relative flex min-h-0 flex-1 bg-white">
+<div class="absolute inset-0 z-10 flex items-center justify-center bg-white text-sm font-semibold text-zinc-600 dark:bg-zinc-950 dark:text-zinc-300" id="payment-frame-loading">
+<span>Loading secure checkout...</span>
+</div>
+<iframe allow="payment *; publickey-credentials-get *" class="h-full w-full border-0 bg-white" id="mypos-payment-frame" referrerpolicy="no-referrer-when-downgrade" title="myPOS secure checkout"></iframe>
+<div class="absolute inset-0 z-20 hidden items-center justify-center bg-background-light p-6 text-center dark:bg-background-dark" id="payment-frame-result">
+<div class="w-full max-w-md">
+<div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+<span class="material-symbols-outlined" id="payment-result-icon">check_circle</span>
+</div>
+<h3 class="mt-5 text-2xl font-black text-zinc-900 dark:text-zinc-100" id="payment-result-title">Payment complete</h3>
+<p class="mt-3 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300" id="payment-result-message">Your booking payment has been received.</p>
+<div class="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+<a class="inline-flex h-12 items-center justify-center rounded-full bg-primary px-6 text-sm font-bold text-white shadow-lg transition-transform hover:scale-105" href="/" id="payment-result-primary">Back to Home</a>
+<a class="inline-flex h-12 items-center justify-center rounded-full border border-zinc-300 px-6 text-sm font-bold text-zinc-900 transition-colors hover:border-primary hover:text-primary dark:border-zinc-700 dark:text-zinc-100" href="https://wa.me/351932015013?text=Hello%20Boat4Two%2C%20I%20need%20help%20with%20my%20booking%20payment." rel="noopener noreferrer" target="_blank">WhatsApp</a>
+</div>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -1347,7 +1386,8 @@ This slot is being held for you for <strong id="hold-countdown-timer">12:00</str
         '#select-tour-popup',
         '#calendar-popup',
         '#details-popup',
-        '#review-popup'
+        '#review-popup',
+        '#payment-popup'
       ]);
 
      
@@ -1434,6 +1474,15 @@ This slot is being held for you for <strong id="hold-countdown-timer">12:00</str
       const detailsForm = document.getElementById('booking-details-form');
       const reviewDetails = document.getElementById('review-details');
       const reviewPayButton = document.getElementById('review-pay-button');
+      const myposPaymentFrame = document.getElementById('mypos-payment-frame');
+      const paymentFrameLoading = document.getElementById('payment-frame-loading');
+      const paymentFrameStatus = document.getElementById('payment-frame-status');
+      const paymentFrameResult = document.getElementById('payment-frame-result');
+      const paymentResultIcon = document.getElementById('payment-result-icon');
+      const paymentResultTitle = document.getElementById('payment-result-title');
+      const paymentResultMessage = document.getElementById('payment-result-message');
+      const paymentResultPrimary = document.getElementById('payment-result-primary');
+      const paymentOpenWindowButton = document.getElementById('payment-open-window-button');
       const contactForm = document.getElementById('contact-form');
       const contactFormFeedback = document.getElementById('contact-form-feedback');
       const reviewsIntro = document.getElementById('reviews-intro');
@@ -1457,6 +1506,7 @@ let scrollPosition = 0;
 let isScrollLocked = false;
 let currentCalendarMonth = null;
 let selectedCalendarDate = '';
+let currentMyposCheckoutHtml = '';
         let holdReleaseSuppressed = false;
 let availableDatesSet = new Set();
 
@@ -2132,7 +2182,7 @@ async function handleHoldExpired() {
 }
 
 function shouldKeepHoldForHash(hash) {
-  return hash === '#review-popup';
+  return hash === '#review-popup' || hash === '#payment-popup';
 }
 
 async function releaseHoldIfLeavingBookingFlow(nextHash) {
@@ -2506,6 +2556,11 @@ async function startMyposPayment() {
     return;
   }
 
+  if (currentMyposCheckoutHtml) {
+    showMyposPaymentFrame(currentMyposCheckoutHtml);
+    return;
+  }
+
   const payload = {
     holdId: activeHold.holdId,
     extras: []
@@ -2532,11 +2587,146 @@ async function startMyposPayment() {
   }
 
   const html = await response.text();
-  document.open();
-  document.write(html);
-  document.close();
+  showMyposPaymentFrame(html);
 }
 
+function resetPaymentFrameView() {
+  if (paymentFrameLoading) {
+    paymentFrameLoading.classList.remove('hidden');
+  }
+
+  if (paymentFrameResult) {
+    paymentFrameResult.classList.add('hidden');
+    paymentFrameResult.classList.remove('flex');
+  }
+
+  if (paymentFrameStatus) {
+    paymentFrameStatus.textContent = 'myPOS payment';
+  }
+}
+
+function showMyposPaymentFrame(html) {
+  currentMyposCheckoutHtml = html;
+  holdReleaseSuppressed = true;
+  resetPaymentFrameView();
+
+  if (myposPaymentFrame) {
+    myposPaymentFrame.srcdoc = '';
+    myposPaymentFrame.srcdoc = html;
+  }
+
+  window.location.hash = '#payment-popup';
+}
+
+function openCurrentPaymentInWindow() {
+  if (!currentMyposCheckoutHtml) {
+    return;
+  }
+
+  const paymentWindow = window.open('', '_blank');
+
+  if (!paymentWindow) {
+    alert('Your browser blocked the checkout window. Please allow pop-ups for this site and try again.');
+    return;
+  }
+
+  paymentWindow.opener = null;
+  paymentWindow.document.open();
+  paymentWindow.document.write(currentMyposCheckoutHtml);
+  paymentWindow.document.close();
+}
+
+function handlePaymentFrameResult(status) {
+  const paid = status === 'paid' || status === 'success';
+
+  stopHoldCountdown();
+  activeHold = null;
+  holdReleaseSuppressed = false;
+  currentMyposCheckoutHtml = '';
+
+  if (!paid) {
+    bookingData = {};
+    selectedCalendarDate = '';
+  }
+
+  if (myposPaymentFrame) {
+    myposPaymentFrame.srcdoc = '';
+  }
+
+  if (paymentFrameLoading) {
+    paymentFrameLoading.classList.add('hidden');
+  }
+
+  if (paymentFrameStatus) {
+    paymentFrameStatus.textContent = paid ? 'Payment successful' : 'Payment cancelled';
+  }
+
+  if (paymentResultIcon) {
+    paymentResultIcon.textContent = paid ? 'check_circle' : 'cancel';
+  }
+
+  if (paymentResultTitle) {
+    paymentResultTitle.textContent = paid ? 'Payment successful' : 'Payment cancelled';
+  }
+
+  if (paymentResultMessage) {
+    paymentResultMessage.textContent = paid
+      ? 'Your payment was completed successfully. We will confirm your booking details as soon as possible.'
+      : 'Your payment was not completed, so your booking was not confirmed.';
+  }
+
+  if (paymentResultPrimary) {
+    paymentResultPrimary.textContent = paid ? 'Back to Home' : 'Book Again';
+    paymentResultPrimary.href = paid ? '/' : '#select-tour-popup';
+  }
+
+  if (paymentFrameResult) {
+    paymentFrameResult.classList.remove('hidden');
+    paymentFrameResult.classList.add('flex');
+  }
+}
+
+
+        if (myposPaymentFrame) {
+          myposPaymentFrame.addEventListener('load', function() {
+            if (paymentFrameLoading) {
+              paymentFrameLoading.classList.add('hidden');
+            }
+
+            try {
+              const frameLocation = myposPaymentFrame.contentWindow.location.href;
+              const frameUrl = new URL(frameLocation);
+
+              if (frameUrl.origin !== window.location.origin) {
+                return;
+              }
+
+              if (frameUrl.pathname === '/payment-success.html') {
+                handlePaymentFrameResult('paid');
+              } else if (frameUrl.pathname === '/payment-cancel.html') {
+                handlePaymentFrameResult('cancelled');
+              }
+            } catch (error) {
+              // Cross-origin checkout pages cannot be inspected.
+            }
+          });
+        }
+
+        window.addEventListener('message', function(event) {
+          if (event.origin !== window.location.origin) {
+            return;
+          }
+
+          const data = event.data || {};
+
+          if (data.type === 'boat4two-payment-result') {
+            handlePaymentFrameResult(data.status);
+          }
+        });
+
+        if (paymentOpenWindowButton) {
+          paymentOpenWindowButton.addEventListener('click', openCurrentPaymentInWindow);
+        }
 
         if (reviewPayButton) {
   reviewPayButton.addEventListener('click', async function() {
@@ -2544,11 +2734,14 @@ async function startMyposPayment() {
 
     try {
       reviewPayButton.disabled = true;
-      reviewPayButton.textContent = 'Redirecting...';
+      reviewPayButton.textContent = 'Opening...';
       reviewPayButton.classList.add('opacity-70', 'pointer-events-none');
 
       holdReleaseSuppressed = true;
       await startMyposPayment();
+      reviewPayButton.disabled = false;
+      reviewPayButton.textContent = originalText;
+      reviewPayButton.classList.remove('opacity-70', 'pointer-events-none');
     } catch (error) {
       holdReleaseSuppressed = false;
       reviewPayButton.disabled = false;

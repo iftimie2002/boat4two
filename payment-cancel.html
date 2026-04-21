@@ -19,6 +19,14 @@
       }
     };
   </script>
+  <script>
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({
+        type: 'boat4two-payment-result',
+        status: 'cancelled'
+      }, window.location.origin);
+    }
+  </script>
 </head>
 <body class="min-h-screen bg-background-light text-zinc-900">
   <main class="min-h-screen flex items-center justify-center px-4">
