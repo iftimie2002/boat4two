@@ -116,25 +116,33 @@ export async function onRequestGet(context) {
     missing.push("MYPOS_WALLET_NUMBER");
   }
 
+  const pemDiagnostics = {
+    MYPOS_PRIVATE_KEY: diagnosePem(env.MYPOS_PRIVATE_KEY, [
+      "PRIVATE KEY",
+      "RSA PRIVATE KEY"
+    ]),
+    MYPOS_PUBLIC_CERT: diagnosePem(env.MYPOS_PUBLIC_CERT, [
+      "CERTIFICATE"
+    ])
+  };
+  const pemReady = pemDiagnostics.MYPOS_PRIVATE_KEY.base64Decodes &&
+    pemDiagnostics.MYPOS_PUBLIC_CERT.base64Decodes;
+  const ok = missing.length === 0 && pemReady;
+
   return json({
-    ok: missing.length === 0,
+    ok,
     loaded,
     missing,
     checkoutUrl: env.MYPOS_CHECKOUT_URL || "https://www.mypos.eu/vmp/checkout",
     usingWalletVariable: env.MYPOS_WALLET_NUMBER
       ? "MYPOS_WALLET_NUMBER"
       : (env.MYPOS_CLIENT_NUMBER ? "MYPOS_CLIENT_NUMBER" : null),
-    pemDiagnostics: {
-      MYPOS_PRIVATE_KEY: diagnosePem(env.MYPOS_PRIVATE_KEY, [
-        "PRIVATE KEY",
-        "RSA PRIVATE KEY"
-      ]),
-      MYPOS_PUBLIC_CERT: diagnosePem(env.MYPOS_PUBLIC_CERT, [
-        "CERTIFICATE"
-      ])
-    },
-    message: missing.length === 0
+    pemReady,
+    pemDiagnostics,
+    message: ok
       ? "Google and myPOS environment variables are loaded."
-      : `Missing environment variables: ${missing.join(", ")}.`
+      : (missing.length === 0
+        ? "myPOS PEM values are present but not parseable."
+        : `Missing environment variables: ${missing.join(", ")}.`)
   });
 }
