@@ -2699,6 +2699,90 @@ function waitForMyposEmbeddedSdk() {
   });
 }
 
+function getCheckoutOrderId(checkoutData) {
+  return checkoutData.orderId || checkoutData.paymentParams?.orderID || '';
+}
+
+function describeWalletError(error) {
+  if (!error) {
+    return '';
+  }
+
+  if (typeof error === 'string') {
+    return error;
+  }
+
+  if (Array.isArray(error.DeclinedPayments) && error.DeclinedPayments.length) {
+    const decline = error.DeclinedPayments[0] || {};
+    return [
+      decline.responseCodeDescription,
+      decline.responseCode ? `code ${decline.responseCode}` : ''
+    ].filter(Boolean).join(' ');
+  }
+
+  return error.responseCodeDescription ||
+    error.StatusMsg ||
+    error.statusMessage ||
+    error.message ||
+    error.error ||
+    '';
+}
+
+async function confirmMyposWalletPayment(checkoutData) {
+  const orderId = getCheckoutOrderId(checkoutData);
+
+  if (!orderId) {
+    throw new Error('The wallet payment did not return an order reference.');
+  }
+
+  const response = await fetch('/api/confirm-mypos-payment', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      holdId: activeHold?.holdId || bookingData.holdId || checkoutData.holdId || '',
+      orderId
+    })
+  });
+  const data = await response.json().catch(function() {
+    return {};
+  });
+
+  if (!response.ok || !data.ok || data.paymentStatus !== 'paid') {
+    throw new Error(data.error || 'myPOS did not confirm the wallet payment.');
+  }
+
+  return data;
+}
+
+async function getMyposWalletDeclineMessage(checkoutData, declineError) {
+  const localMessage = describeWalletError(declineError);
+  const orderId = getCheckoutOrderId(checkoutData);
+
+  if (!orderId) {
+    return localMessage;
+  }
+
+  try {
+    const response = await fetch('/api/confirm-mypos-payment', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        holdId: activeHold?.holdId || bookingData.holdId || checkoutData.holdId || '',
+        orderId
+      })
+    });
+    const data = await response.json();
+
+    return data.error || localMessage;
+  } catch (error) {
+    return localMessage || describeWalletError(error);
+  }
+}
+
 async function setupWalletButtons(sdk, checkoutData) {
   if (!paymentWalletSection || !checkoutData.walletSessionToken) {
     if (checkoutData.walletSessionError) {
@@ -2727,12 +2811,19 @@ async function setupWalletButtons(sdk, checkoutData) {
   const walletCallbacks = {
     isSandbox: Boolean(checkoutData.isSandbox),
     merchantName: 'Boat4Two',
-    onSuccess: function(data) {
-      handlePaymentFrameResult('paid', data);
+    onSuccess: async function(data) {
+      try {
+        await confirmMyposWalletPayment(checkoutData);
+        await handlePaymentFrameResult('paid', data);
+      } catch (error) {
+        console.error('myPOS wallet confirmation failed', error);
+        await handlePaymentFrameResult('cancelled', error.message || 'myPOS did not confirm the wallet payment.');
+      }
     },
-    onDecline: function(error) {
+    onDecline: async function(error) {
       console.error('myPOS wallet payment declined', error);
-      handlePaymentFrameResult('cancelled');
+      const declineMessage = await getMyposWalletDeclineMessage(checkoutData, error);
+      await handlePaymentFrameResult('cancelled', declineMessage);
     }
   };
   const jobs = [];
@@ -2898,8 +2989,9 @@ async function startMyposPayment() {
   await launchMyposEmbeddedCheckout(checkoutData);
 }
 
-async function handlePaymentFrameResult(status) {
+async function handlePaymentFrameResult(status, detailMessage) {
   const paid = status === 'paid' || status === 'success';
+  const safeDetailMessage = detailMessage ? String(detailMessage).slice(0, 220) : '';
 
   stopHoldCountdown();
 
@@ -2938,7 +3030,9 @@ async function handlePaymentFrameResult(status) {
   if (paymentResultMessage) {
     paymentResultMessage.textContent = paid
       ? 'Your payment was completed successfully. We will confirm your booking details as soon as possible.'
-      : 'Your payment was not completed, so your booking was not confirmed.';
+      : (safeDetailMessage
+        ? `Your payment was not completed, so your booking was not confirmed. myPOS detail: ${safeDetailMessage}`
+        : 'Your payment was not completed, so your booking was not confirmed.');
   }
 
   if (paymentResultPrimary) {

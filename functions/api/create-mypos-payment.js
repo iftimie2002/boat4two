@@ -27,7 +27,7 @@ const BOOKING_RULES = {
   tours: {
     amor: {
       label: "Amor Tour",
-      totalAmount: 0.10
+      totalAmount: 0.50
     },
     sunset: {
       label: "Sunset Tour",
@@ -879,6 +879,8 @@ export async function onRequestPost(context) {
       return json({
         ok: true,
         mode: "embedded",
+        holdId,
+        orderId,
         checkoutUrl: embeddedCheckoutUrl,
         isSandbox: /checkout-test/i.test(embeddedCheckoutUrl),
         walletSessionToken,
