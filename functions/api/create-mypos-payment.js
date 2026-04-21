@@ -494,6 +494,65 @@ async function signValuesInOrder(values, privateKeyPem) {
   return bytesToBase64(new Uint8Array(signature));
 }
 
+function getMyposApiUrl(env) {
+  return env.MYPOS_CHECKOUT_URL || "https://www.mypos.com/vmp/checkout";
+}
+
+async function createPaymentSessionToken(env, checkoutUrl, {
+  orderId,
+  totalAmount,
+  walletNumber,
+  cartItems
+}) {
+  const sessionData = {
+    IPCmethod: "IPCPaymentSessionCreate",
+    IPCVersion: "1.4",
+    IPCLanguage: "EN",
+    OrderID: orderId,
+    Amount: formatMoney(totalAmount),
+    Currency: BOOKING_RULES.currency,
+    SID: env.MYPOS_SID,
+    WalletNumber: walletNumber,
+    KeyIndex: String(env.MYPOS_KEY_INDEX),
+    RequestToken: "0",
+    CartItems: String(cartItems.length)
+  };
+
+  cartItems.forEach((item, index) => {
+    const row = index + 1;
+    sessionData[`Article_${row}`] = item.name;
+    sessionData[`Quantity_${row}`] = String(item.quantity);
+    sessionData[`Price_${row}`] = formatMoney(item.unitPrice);
+    sessionData[`Amount_${row}`] = formatMoney(item.amount);
+    sessionData[`Currency_${row}`] = item.currency;
+  });
+
+  sessionData.OutputFormat = "JSON";
+  sessionData.Signature = await signValuesInOrder(Object.values(sessionData), env.MYPOS_PRIVATE_KEY);
+
+  const response = await fetch(checkoutUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    body: new URLSearchParams(sessionData)
+  });
+  const text = await response.text();
+  let data = null;
+
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error("myPOS returned an invalid payment session response.");
+  }
+
+  if (!response.ok || Number(data?.Status) !== 0 || !data?.SessionToken) {
+    throw new Error(data?.StatusMsg || "Could not create myPOS wallet payment session.");
+  }
+
+  return data.SessionToken;
+}
+
 async function getAccessToken(env) {
   const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
@@ -714,6 +773,7 @@ export async function onRequestPost(context) {
     const cancelUrl = new URL("/api/mypos-cancel", request.url).toString();
     const notifyUrl = new URL("/api/mypos-notify", request.url).toString();
     const checkoutUrl = env.MYPOS_CHECKOUT_URL || "https://www.mypos.eu/vmp/checkout";
+    const myposApiUrl = getMyposApiUrl(env);
     const walletNumber = getWalletNumber(env);
 
     const cartItems = buildCartItems(
@@ -802,12 +862,27 @@ export async function onRequestPost(context) {
     if (responseMode === "embedded") {
       const keyIndexNumber = Number(env.MYPOS_KEY_INDEX);
       const embeddedCheckoutUrl = env.MYPOS_CHECKOUT_URL || "";
+      let walletSessionToken = "";
+      let walletSessionError = "";
+
+      try {
+        walletSessionToken = await createPaymentSessionToken(env, myposApiUrl, {
+          orderId,
+          totalAmount,
+          walletNumber,
+          cartItems
+        });
+      } catch (error) {
+        walletSessionError = error.message || "Could not create wallet payment session.";
+      }
 
       return json({
         ok: true,
         mode: "embedded",
         checkoutUrl: embeddedCheckoutUrl,
         isSandbox: /checkout-test/i.test(embeddedCheckoutUrl),
+        walletSessionToken,
+        walletSessionError,
         paymentParams: {
           sid: env.MYPOS_SID,
           ipcLanguage: "en",
