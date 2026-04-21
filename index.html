@@ -2692,7 +2692,6 @@ async function launchMyposEmbeddedCheckout(checkoutData) {
   myposEmbeddedCheckout.innerHTML = '';
 
   const sdk = await waitForMyposEmbeddedSdk();
-  await setupWalletButtons(sdk, checkoutData);
 
   const callbacks = {
     isSandbox: Boolean(checkoutData.isSandbox),
@@ -2731,6 +2730,10 @@ async function launchMyposEmbeddedCheckout(checkoutData) {
   if (paymentFrameLoading) {
     paymentFrameLoading.classList.add('hidden');
   }
+
+  setupWalletButtons(sdk, checkoutData).catch(function(error) {
+    console.warn('myPOS wallet buttons could not load', error);
+  });
 }
 
 async function startMyposPayment() {
