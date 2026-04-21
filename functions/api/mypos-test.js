@@ -18,6 +18,7 @@ function normalizePemValue(pem) {
   }
 
   return value
+    .replace(/\\+\//g, "/")
     .replace(/\\+r\\+n|\\+n|\\+r/g, "\n")
     .replace(/\r\n|\r/g, "\n");
 }
@@ -62,6 +63,7 @@ function diagnosePem(value, expectedLabels) {
     label: label || null,
     labelExpected: Boolean(label && expectedLabels.includes(label)),
     hasEscapedNewlines: /\\+r\\+n|\\+n|\\+r/.test(raw),
+    hasEscapedSlashes: /\\+\//.test(raw),
     normalizedLineCount: normalized ? normalized.split("\n").length : 0,
     hasBody: Boolean(base64),
     bodyLengthMultipleOf4: base64.length > 0 && base64.length % 4 === 0,

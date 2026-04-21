@@ -135,6 +135,7 @@ function normalizePemValue(pem) {
   }
 
   return value
+    .replace(/\\+\//g, "/")
     .replace(/\\+r\\+n|\\+n|\\+r/g, "\n")
     .replace(/\r\n|\r/g, "\n");
 }

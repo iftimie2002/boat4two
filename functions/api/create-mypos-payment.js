@@ -348,6 +348,7 @@ function normalizePemValue(pem) {
   }
 
   return value
+    .replace(/\\+\//g, "/")
     .replace(/\\+r\\+n|\\+n|\\+r/g, "\n")
     .replace(/\r\n|\r/g, "\n");
 }
@@ -417,6 +418,24 @@ function readDerChildren(bytes, element) {
   return children;
 }
 
+function looksLikePkcs1PrivateKey(bytes) {
+  try {
+    const root = readDerElement(bytes, 0);
+    if (root.tag !== 0x30 || root.end > bytes.length) return false;
+
+    const children = readDerChildren(bytes, root);
+    return (
+      children.length >= 9 &&
+      children[0].tag === 0x02 &&
+      children[1].tag === 0x02 &&
+      children[2].tag === 0x02 &&
+      children[3].tag === 0x02
+    );
+  } catch {
+    return false;
+  }
+}
+
 function extractSpkiFromCertificatePem(certificatePem) {
   const certBytes = pemToDerBytes(certificatePem, "MYPOS_PUBLIC_CERT");
   const root = readDerElement(certBytes, 0);
@@ -445,7 +464,8 @@ function extractSpkiFromCertificatePem(certificatePem) {
 async function importPrivateKey(privateKeyPem) {
   const label = getPemLabel(privateKeyPem);
   const privateKeyBytes = pemToDerBytes(privateKeyPem, "MYPOS_PRIVATE_KEY");
-  const pkcs8 = label === "RSA PRIVATE KEY"
+  const pkcs8 = label === "RSA PRIVATE KEY" ||
+    (!label && looksLikePkcs1PrivateKey(privateKeyBytes))
     ? wrapPkcs1PrivateKeyToPkcs8(privateKeyBytes)
     : privateKeyBytes;
 
