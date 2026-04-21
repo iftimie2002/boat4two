@@ -161,6 +161,31 @@
         .dark .text-medium-contrast {
             color: #a3a3a3;
         }
+        #payment-wallet-section {
+          box-shadow: 0 14px 32px rgba(15, 23, 42, 0.06);
+        }
+        .payment-wallet-slot {
+          align-items: center;
+          background: #050505;
+          border-radius: 9999px;
+          display: flex;
+          height: 48px;
+          justify-content: center;
+          overflow: hidden;
+          width: 100%;
+        }
+        .payment-wallet-slot > *,
+        .payment-wallet-slot button,
+        .payment-wallet-slot iframe {
+          border-radius: 9999px !important;
+          height: 48px !important;
+          max-width: 100% !important;
+          min-height: 48px !important;
+          width: 100% !important;
+        }
+        .payment-wallet-slot.wallet-single {
+          grid-column: 1 / -1;
+        }
     </style>
     <style>
         :root {
@@ -607,6 +632,10 @@
       <li>Justified operational unavailability</li>
     </ul>
     <p>In such cases, the Client may choose to reschedule or receive a full refund.</p>
+    <p>
+      To request a cancellation or refund, email <a href="mailto:reservas.boat4two@gmail.com" class="underline">reservas.boat4two@gmail.com</a> with your booking name, tour date, and payment reference.
+    </p>
+    <a class="mt-3 inline-flex h-11 items-center justify-center rounded-full bg-primary px-5 text-sm font-bold text-white shadow-lg transition-transform hover:scale-105" href="mailto:reservas.boat4two@gmail.com?subject=Cancellation%20or%20refund%20request%20-%20Boat4Two&body=Hello%20Boat4Two%2C%0A%0AI%20would%20like%20to%20request%20a%20cancellation%20or%20refund.%0A%0ABooking%20name%3A%20%0ATour%20date%3A%20%0APayment%20reference%3A%20%0A%0AThank%20you.">Request cancellation/refund</a>
   </section>
 
   <section>
@@ -1338,14 +1367,29 @@ This slot is being held for you for <strong id="hold-countdown-timer">12:00</str
 <p class="mt-3 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300" id="payment-result-message">Enter your card details below to complete your booking without leaving Boat4Two.</p>
 </div>
 <div class="rounded-2xl bg-zinc-100 p-4 text-center text-sm font-semibold text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300" id="payment-frame-loading">Loading secure checkout...</div>
-<div class="hidden space-y-3 rounded-xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950" id="payment-wallet-section">
+<div class="hidden space-y-3 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950" id="payment-wallet-section">
+<div class="flex items-center justify-between gap-3">
+<p class="text-xs font-bold uppercase tracking-[0.18em] text-zinc-500 dark:text-zinc-400">Express checkout</p>
+<span class="text-xs font-semibold text-primary">myPOS</span>
+</div>
 <div class="grid gap-3 sm:grid-cols-2">
-<div class="min-h-[48px]" id="payment-apple-pay-button"></div>
-<div class="min-h-[48px]" id="payment-google-pay-button"></div>
+<div class="payment-wallet-slot" id="payment-apple-pay-button"></div>
+<div class="payment-wallet-slot" id="payment-google-pay-button"></div>
 </div>
 <p class="hidden text-center text-xs text-zinc-500 dark:text-zinc-400" id="payment-wallet-status"></p>
 </div>
 <div class="min-h-[620px] w-full overflow-hidden rounded-xl bg-white" id="mypos-embedded-checkout"></div>
+<div class="space-y-3 rounded-2xl border border-zinc-200 bg-white p-4 text-sm leading-relaxed text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300" id="payment-policy-summary">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined mt-0.5 text-primary">verified_user</span>
+<p><strong class="text-zinc-900 dark:text-zinc-100">Secure card payment.</strong> Payments are processed by myPOS. The secure card form displays the available card schemes, including Visa and Mastercard where supported by myPOS.</p>
+</div>
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined mt-0.5 text-primary">policy</span>
+<p><strong class="text-zinc-900 dark:text-zinc-100">Cancellation and refunds.</strong> Cancel 48+ hours before the activity for a full refund. Cancellations between 24 and 48 hours receive a 50% refund. Less than 24 hours before the activity or no-show is non-refundable. If Boat4Two cancels for weather, safety, technical, or operational reasons, you may reschedule or receive a full refund.</p>
+</div>
+<a class="inline-flex h-11 w-full items-center justify-center rounded-full bg-zinc-900 px-5 text-sm font-bold text-white shadow-lg transition-transform hover:scale-105 dark:bg-zinc-100 dark:text-zinc-900 sm:w-auto" href="mailto:reservas.boat4two@gmail.com?subject=Cancellation%20or%20refund%20request%20-%20Boat4Two&body=Hello%20Boat4Two%2C%0A%0AI%20would%20like%20to%20request%20a%20cancellation%20or%20refund.%0A%0ABooking%20name%3A%20%0ATour%20date%3A%20%0APayment%20reference%3A%20%0A%0AThank%20you.">Request cancellation/refund</a>
+</div>
 <div class="hidden" id="payment-frame-result"></div>
 <div class="flex flex-col gap-3 text-center sm:flex-row sm:justify-center">
 <a class="hidden h-12 items-center justify-center rounded-full bg-primary px-6 text-sm font-bold text-white shadow-lg transition-transform hover:scale-105" href="/" id="payment-result-primary">Back to Home</a>
@@ -1475,6 +1519,7 @@ This slot is being held for you for <strong id="hold-countdown-timer">12:00</str
       const paymentApplePayButton = document.getElementById('payment-apple-pay-button');
       const paymentGooglePayButton = document.getElementById('payment-google-pay-button');
       const paymentWalletStatus = document.getElementById('payment-wallet-status');
+      const paymentPolicySummary = document.getElementById('payment-policy-summary');
       const contactForm = document.getElementById('contact-form');
       const contactFormFeedback = document.getElementById('contact-form-feedback');
       const reviewsIntro = document.getElementById('reviews-intro');
@@ -1499,6 +1544,7 @@ let isScrollLocked = false;
 let currentCalendarMonth = null;
 let selectedCalendarDate = '';
 let currentMyposEmbeddedPayment = null;
+let paymentCancellationInProgress = false;
         let holdReleaseSuppressed = false;
 let availableDatesSet = new Set();
 
@@ -2129,6 +2175,41 @@ async function releaseActiveHold(options = {}) {
     stopHoldCountdown();
   }
 }
+
+async function releaseUnpaidPaymentReservation() {
+  if (paymentCancellationInProgress) {
+    return;
+  }
+
+  paymentCancellationInProgress = true;
+  currentMyposEmbeddedPayment = null;
+  holdReleaseSuppressed = false;
+
+  try {
+    await releaseActiveHold();
+
+    bookingData = {};
+    selectedCalendarDate = '';
+
+    if (requestDateInput) {
+      requestDateInput.value = '';
+    }
+
+    clearTimeSlotSelection();
+    updateSelectionSummary();
+    updateCalendarState();
+  } finally {
+    paymentCancellationInProgress = false;
+  }
+}
+
+async function cancelUnpaidPaymentFlow(message) {
+  await releaseUnpaidPaymentReservation();
+  showTimeSlotsStatus(message);
+  window.location.hash = '#calendar-popup';
+  await loadCalendarAvailability();
+}
+
 function startHoldCountdown(expiresAt) {
   stopHoldCountdown();
 
@@ -2279,7 +2360,7 @@ async function releaseHoldIfLeavingBookingFlow(nextHash) {
 
      
 
-      function handleHashChange() {
+      async function handleHashChange() {
   const nextHash = location.hash;
   const shouldLock = overlayHashes.has(nextHash);
 
@@ -2299,8 +2380,13 @@ async function releaseHoldIfLeavingBookingFlow(nextHash) {
     isScrollLocked = false;
   }
 
+  if (currentMyposEmbeddedPayment && nextHash !== '#payment-popup') {
+    await cancelUnpaidPaymentFlow('Payment was not completed, so the slot was released. Please choose a date and time again.');
+    return;
+  }
+
   if (shouldReleaseHoldOnLeave() && !shouldKeepHoldForHash(nextHash)) {
-    releaseHoldIfLeavingBookingFlow(nextHash);
+    await releaseHoldIfLeavingBookingFlow(nextHash);
   }
 
   if (nextHash === '#calendar-popup') {
@@ -2567,6 +2653,10 @@ function setPaymentPopupState(state, message) {
     paymentResultPrimary.classList.remove('inline-flex');
   }
 
+  if (paymentPolicySummary) {
+    paymentPolicySummary.classList.remove('hidden');
+  }
+
   if (state === 'loading') {
     if (paymentWalletSection) {
       paymentWalletSection.classList.add('hidden');
@@ -2621,10 +2711,12 @@ async function setupWalletButtons(sdk, checkoutData) {
 
   if (paymentApplePayButton) {
     paymentApplePayButton.innerHTML = '';
+    paymentApplePayButton.classList.remove('hidden', 'wallet-single');
   }
 
   if (paymentGooglePayButton) {
     paymentGooglePayButton.innerHTML = '';
+    paymentGooglePayButton.classList.remove('hidden', 'wallet-single');
   }
 
   if (paymentWalletStatus) {
@@ -2640,7 +2732,7 @@ async function setupWalletButtons(sdk, checkoutData) {
     },
     onDecline: function(error) {
       console.error('myPOS wallet payment declined', error);
-      setPaymentPopupState('error', 'The wallet payment was declined. You can try again or use card details below.');
+      handlePaymentFrameResult('cancelled');
     }
   };
   const jobs = [];
@@ -2676,6 +2768,22 @@ async function setupWalletButtons(sdk, checkoutData) {
 
   if (!hasAppleButton && !hasGoogleButton) {
     paymentWalletSection.classList.add('hidden');
+    return;
+  }
+
+  if (!hasAppleButton && paymentApplePayButton) {
+    paymentApplePayButton.classList.add('hidden');
+  }
+
+  if (!hasGoogleButton && paymentGooglePayButton) {
+    paymentGooglePayButton.classList.add('hidden');
+  }
+
+  if (hasAppleButton !== hasGoogleButton) {
+    const visibleButton = hasAppleButton ? paymentApplePayButton : paymentGooglePayButton;
+    if (visibleButton) {
+      visibleButton.classList.add('wallet-single');
+    }
   }
 }
 
@@ -2701,8 +2809,7 @@ async function launchMyposEmbeddedCheckout(checkoutData) {
     },
     onError: function(error) {
       console.error('myPOS embedded checkout error', error);
-      setPaymentPopupState('error', 'myPOS could not complete this payment. Please try again.');
-      holdReleaseSuppressed = false;
+      handlePaymentFrameResult('cancelled');
     },
     onMessageReceived: function(messages) {
       console.log('myPOS embedded checkout message', messages);
@@ -2791,17 +2898,17 @@ async function startMyposPayment() {
   await launchMyposEmbeddedCheckout(checkoutData);
 }
 
-function handlePaymentFrameResult(status) {
+async function handlePaymentFrameResult(status) {
   const paid = status === 'paid' || status === 'success';
 
   stopHoldCountdown();
-  activeHold = null;
-  holdReleaseSuppressed = false;
-  currentMyposEmbeddedPayment = null;
 
   if (!paid) {
-    bookingData = {};
-    selectedCalendarDate = '';
+    await releaseUnpaidPaymentReservation();
+  } else {
+    activeHold = null;
+    holdReleaseSuppressed = false;
+    currentMyposEmbeddedPayment = null;
   }
 
   if (paymentFrameLoading) {
@@ -2814,6 +2921,10 @@ function handlePaymentFrameResult(status) {
 
   if (myposEmbeddedCheckout) {
     myposEmbeddedCheckout.classList.add('hidden');
+  }
+
+  if (paymentPolicySummary) {
+    paymentPolicySummary.classList.add('hidden');
   }
 
   if (paymentResultIcon) {

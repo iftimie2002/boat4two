@@ -232,6 +232,34 @@ async function updateCalendarEvent(env, accessToken, eventId, patchBody, etag = 
   return data;
 }
 
+async function deleteCalendarEvent(env, accessToken, eventId, etag = "") {
+  const headers = {
+    Authorization: `Bearer ${accessToken}`
+  };
+
+  if (etag) {
+    headers["If-Match"] = etag;
+  }
+
+  const response = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(env.GOOGLE_CALENDAR_ID)}/events/${encodeURIComponent(eventId)}`,
+    {
+      method: "DELETE",
+      headers
+    }
+  );
+
+  if (response.status === 404 || response.status === 410) {
+    return;
+  }
+
+  if (!response.ok) {
+    const error = new Error("Failed to delete calendar event");
+    error.status = response.status;
+    throw error;
+  }
+}
+
 function buildDayLockEventId(date) {
   return `b4tlock${date.replace(/-/g, "")}`;
 }
@@ -341,28 +369,7 @@ async function acquireSlotLock(env, accessToken, date) {
 }
 
 async function releaseSlotLock(env, accessToken, lock) {
-  const releasedAt = new Date().toISOString();
-
-  await updateCalendarEvent(
-    env,
-    accessToken,
-    lock.eventId,
-    {
-      summary: `BOOKING LOCK RELEASED - ${lock.date}`,
-      transparency: "transparent",
-      extendedProperties: {
-        private: {
-          bookingType: "slot_lock",
-          slotLockDate: lock.date,
-          slotLockState: "released",
-          slotLockToken: lock.token,
-          slotLockExpiresAt: "",
-          slotLockReleasedAt: releasedAt
-        }
-      }
-    },
-    lock.etag
-  );
+  await deleteCalendarEvent(env, accessToken, lock.eventId, lock.etag);
 }
 
 export async function onRequestPost(context) {

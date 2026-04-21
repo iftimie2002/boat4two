@@ -37,21 +37,34 @@ function getDescriptionValue(description, key) {
   return match ? match[1].trim() : "";
 }
 
-function isHoldEvent(event) {
+function isReleasableBookingEvent(event) {
   const privateProps = event?.extendedProperties?.private || {};
   const summary = event?.summary || "";
   const description = event?.description || "";
   const bookingType = privateProps.bookingType || "";
 
-  if (bookingType && bookingType !== "hold") {
+  if (bookingType === "paid" || privateProps.paymentStatus === "paid" || summary.startsWith("PAID - ")) {
     return false;
   }
 
   return (
     bookingType === "hold" ||
+    bookingType === "pending_payment" ||
+    bookingType === "released_hold" ||
+    bookingType === "expired_hold" ||
+    bookingType === "payment_expired" ||
+    bookingType === "payment_cancelled" ||
+    bookingType === "payment_rollback" ||
     privateProps.isHold === "true" ||
-    (!privateProps.paymentStatus && Boolean(privateProps.holdId)) ||
+    Boolean(privateProps.holdId) ||
+    Boolean(privateProps.paymentOrderId) ||
     summary.startsWith("[HOLD]") ||
+    summary.startsWith("PAYMENT PENDING - ") ||
+    summary.startsWith("RELEASED HOLD - ") ||
+    summary.startsWith("EXPIRED HOLD - ") ||
+    summary.startsWith("EXPIRED PAYMENT - ") ||
+    summary.startsWith("PAYMENT CANCELLED - ") ||
+    summary.startsWith("PAYMENT ROLLBACK - ") ||
     /HOLD_ID:/i.test(description)
   );
 }
@@ -113,7 +126,7 @@ async function findHoldEventsById(env, accessToken, holdId) {
     events = [];
   }
 
-  let matching = events.filter((event) => isHoldEvent(event) && eventMatchesHoldId(event, holdId));
+  let matching = events.filter((event) => isReleasableBookingEvent(event) && eventMatchesHoldId(event, holdId));
 
   if (matching.length) {
     return matching;
@@ -124,31 +137,30 @@ async function findHoldEventsById(env, accessToken, holdId) {
     timeMax: to.toISOString()
   });
 
-  matching = fallbackEvents.filter((event) => isHoldEvent(event) && eventMatchesHoldId(event, holdId));
+  matching = fallbackEvents.filter((event) => isReleasableBookingEvent(event) && eventMatchesHoldId(event, holdId));
 
   return matching;
 }
 
-async function updateCalendarEvent(env, accessToken, eventId, patchBody) {
+async function deleteCalendarEvent(env, accessToken, eventId) {
   const response = await fetch(
     `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(env.GOOGLE_CALENDAR_ID)}/events/${encodeURIComponent(eventId)}`,
     {
-      method: "PATCH",
+      method: "DELETE",
       headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(patchBody)
+        Authorization: `Bearer ${accessToken}`
+      }
     }
   );
 
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data?.error?.message || "Failed to release hold event");
+  if (response.status === 404 || response.status === 410) {
+    return;
   }
 
-  return data;
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || "Failed to delete hold event");
+  }
 }
 
 async function parseBody(request) {
@@ -213,35 +225,19 @@ export async function onRequestPost(context) {
       });
     }
 
-    let releasedCount = 0;
+    let deletedCount = 0;
 
     for (const event of holdEvents) {
-      const privateProps = event.extendedProperties?.private || {};
-      const releasedAt = new Date().toISOString();
-
-      await updateCalendarEvent(env, accessToken, event.id, {
-        summary: `RELEASED HOLD - ${event.summary || "Booking"}`,
-        transparency: "transparent",
-        extendedProperties: {
-          private: {
-            ...privateProps,
-            bookingType: "released_hold",
-            isHold: "false",
-            holdExpiresAt: "",
-            releasedAt
-          }
-        }
-      });
-
-      releasedCount += 1;
+      await deleteCalendarEvent(env, accessToken, event.id);
+      deletedCount += 1;
     }
 
     return json({
       ok: true,
       released: true,
       holdId,
-      releasedCount,
-      deletedCount: 0
+      releasedCount: deletedCount,
+      deletedCount
     });
   } catch (error) {
     return json(
@@ -253,5 +249,4 @@ export async function onRequestPost(context) {
     );
   }
 }
-
 

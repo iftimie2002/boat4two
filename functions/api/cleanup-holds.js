@@ -37,13 +37,24 @@ function getDescriptionValue(description, key) {
   return match ? match[1].trim() : "";
 }
 
+function isPaidEvent(event) {
+  const privateProps = event?.extendedProperties?.private || {};
+  const summary = event?.summary || "";
+
+  return (
+    privateProps.bookingType === "paid" ||
+    privateProps.paymentStatus === "paid" ||
+    summary.startsWith("PAID - ")
+  );
+}
+
 function isHoldEvent(event) {
   const privateProps = event?.extendedProperties?.private || {};
   const summary = event?.summary || "";
   const description = event?.description || "";
   const bookingType = privateProps.bookingType || "";
 
-  if (bookingType && bookingType !== "hold") {
+  if (isPaidEvent(event) || (bookingType && bookingType !== "hold")) {
     return false;
   }
 
@@ -59,10 +70,68 @@ function isHoldEvent(event) {
 function isPendingPaymentEvent(event) {
   const privateProps = event?.extendedProperties?.private || {};
 
+  if (isPaidEvent(event)) {
+    return false;
+  }
+
   return (
     privateProps.bookingType === "pending_payment" ||
     privateProps.paymentStatus === "pending"
   );
+}
+
+function isStaleUnpaidArtifactEvent(event) {
+  const privateProps = event?.extendedProperties?.private || {};
+  const summary = event?.summary || "";
+  const bookingType = privateProps.bookingType || "";
+
+  if (isPaidEvent(event)) {
+    return false;
+  }
+
+  return (
+    bookingType === "released_hold" ||
+    bookingType === "expired_hold" ||
+    bookingType === "payment_expired" ||
+    bookingType === "payment_cancelled" ||
+    bookingType === "payment_rollback" ||
+    summary.startsWith("RELEASED HOLD - ") ||
+    summary.startsWith("EXPIRED HOLD - ") ||
+    summary.startsWith("EXPIRED PAYMENT - ") ||
+    summary.startsWith("PAYMENT CANCELLED - ") ||
+    summary.startsWith("PAYMENT ROLLBACK - ")
+  );
+}
+
+function isSlotLockEvent(event) {
+  const privateProps = event?.extendedProperties?.private || {};
+  const summary = event?.summary || "";
+
+  return (
+    privateProps.bookingType === "slot_lock" ||
+    summary.startsWith("BOOKING LOCK - ") ||
+    summary.startsWith("BOOKING LOCK RELEASED - ")
+  );
+}
+
+function slotLockNeedsCleanup(event, nowMs) {
+  const privateProps = event?.extendedProperties?.private || {};
+  const expiresAt = privateProps.slotLockExpiresAt || "";
+
+  if (!isSlotLockEvent(event)) {
+    return false;
+  }
+
+  if (privateProps.slotLockState !== "active") {
+    return true;
+  }
+
+  if (!expiresAt) {
+    return true;
+  }
+
+  const expiresAtMs = new Date(expiresAt).getTime();
+  return Number.isNaN(expiresAtMs) || nowMs >= expiresAtMs;
 }
 
 function getHoldId(event) {
@@ -138,29 +207,33 @@ async function getCandidateBookingEvents(env, accessToken) {
     timeMax: to.toISOString()
   });
 
-  return events.filter((event) => isHoldEvent(event) || isPendingPaymentEvent(event));
+  return events.filter((event) =>
+    isHoldEvent(event) ||
+    isPendingPaymentEvent(event) ||
+    isStaleUnpaidArtifactEvent(event) ||
+    isSlotLockEvent(event)
+  );
 }
 
-async function updateCalendarEvent(env, accessToken, eventId, patchBody) {
+async function deleteCalendarEvent(env, accessToken, eventId) {
   const response = await fetch(
     `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(env.GOOGLE_CALENDAR_ID)}/events/${encodeURIComponent(eventId)}`,
     {
-      method: "PATCH",
+      method: "DELETE",
       headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(patchBody)
+        Authorization: `Bearer ${accessToken}`
+      }
     }
   );
 
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data?.error?.message || "Failed to expire hold event");
+  if (response.status === 404 || response.status === 410) {
+    return;
   }
 
-  return data;
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || "Failed to delete unpaid booking event");
+  }
 }
 
 export async function onRequestGet(context) {
@@ -187,6 +260,14 @@ export async function onRequestGet(context) {
     const nowMs = Date.now();
 
     const expiredBookingEvents = bookingEvents.filter((event) => {
+      if (isStaleUnpaidArtifactEvent(event)) {
+        return true;
+      }
+
+      if (slotLockNeedsCleanup(event, nowMs)) {
+        return true;
+      }
+
       const expiresAt = isPendingPaymentEvent(event)
         ? getPaymentPendingExpiresAt(event)
         : getHoldExpiresAt(event);
@@ -203,26 +284,7 @@ export async function onRequestGet(context) {
     let expiredCount = 0;
 
     for (const event of expiredBookingEvents) {
-      const privateProps = event.extendedProperties?.private || {};
-      const expiredAt = new Date().toISOString();
-      const wasPendingPayment = isPendingPaymentEvent(event);
-
-      await updateCalendarEvent(env, accessToken, event.id, {
-        summary: `${wasPendingPayment ? "EXPIRED PAYMENT" : "EXPIRED HOLD"} - ${event.summary || "Booking"}`,
-        transparency: "transparent",
-        extendedProperties: {
-          private: {
-            ...privateProps,
-            bookingType: wasPendingPayment ? "payment_expired" : "expired_hold",
-            isHold: "false",
-            holdExpiresAt: "",
-            paymentStatus: wasPendingPayment ? "expired" : privateProps.paymentStatus || "",
-            paymentPendingExpiresAt: "",
-            expiredAt
-          }
-        }
-      });
-
+      await deleteCalendarEvent(env, accessToken, event.id);
       expiredCount += 1;
       expiredBookingIds.push(getHoldId(event) || event.id);
     }
@@ -233,8 +295,8 @@ export async function onRequestGet(context) {
       expiredFound: expiredBookingEvents.length,
       expiredCount,
       expiredHoldIds: expiredBookingIds,
-      deletedCount: 0,
-      deletedHoldIds: []
+      deletedCount: expiredCount,
+      deletedHoldIds: expiredBookingIds
     });
   } catch (error) {
     return json(

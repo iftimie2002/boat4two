@@ -595,30 +595,7 @@ export async function onRequestPost(context) {
         return textResponse("Currency mismatch", 400);
       }
 
-      const cancelledAt = new Date().toISOString();
-      const updatedDescription = [
-        event.description || "",
-        "",
-        `Payment cancelled at: ${cancelledAt}`
-      ].filter(Boolean).join("\n");
-
-      await updateCalendarEvent(env, accessToken, event.id, {
-        summary: buildCancelSummary(privateProps),
-        description: updatedDescription,
-        transparency: "transparent",
-        extendedProperties: {
-          private: {
-            ...privateProps,
-            bookingType: "payment_cancelled",
-            isHold: "false",
-            holdExpiresAt: "",
-            paymentStatus: "cancelled",
-            paymentOrderId: orderId,
-            paymentPendingExpiresAt: "",
-            paymentCancelledAt: cancelledAt
-          }
-        }
-      });
+      await deleteCalendarEvent(env, accessToken, event.id);
 
       return textResponse("OK", 200, {
         "X-Boat4Two-Payment-State": "cancelled"
@@ -626,30 +603,13 @@ export async function onRequestPost(context) {
     }
 
     if (ipcMethod === "IPCPurchaseRollback") {
-      const updatedDescription = [
-        event.description || "",
-        "",
-        `Payment rollback received at: ${new Date().toISOString()}`,
-        trnref ? `Rollback transaction ref: ${trnref}` : ""
-      ].filter(Boolean).join("\n");
+      if (privateProps.bookingType === "paid" || privateProps.paymentStatus === "paid") {
+        return textResponse("OK", 200, {
+          "X-Boat4Two-Payment-State": "paid"
+        });
+      }
 
-      await updateCalendarEvent(env, accessToken, event.id, {
-        summary: buildRollbackSummary(privateProps),
-        description: updatedDescription,
-        transparency: "transparent",
-        extendedProperties: {
-          private: {
-            ...privateProps,
-            bookingType: "payment_rollback",
-            isHold: "false",
-            holdExpiresAt: "",
-            paymentStatus: "rolled_back",
-            paymentPendingExpiresAt: "",
-            rollbackAt: new Date().toISOString(),
-            paymentTransactionRef: trnref
-          }
-        }
-      });
+      await deleteCalendarEvent(env, accessToken, event.id);
 
       return textResponse("OK", 200, {
         "X-Boat4Two-Payment-State": "rolled_back"
