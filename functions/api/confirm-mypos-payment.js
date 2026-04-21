@@ -466,6 +466,7 @@ async function getMyposPaymentStatus(env, orderId) {
 }
 
 function getDeclineMessage(statusData) {
+  const paymentStatus = Number(statusData?.PaymentStatus);
   const declined = Array.isArray(statusData?.DeclinedPayments)
     ? statusData.DeclinedPayments
     : [];
@@ -475,7 +476,22 @@ function getDeclineMessage(statusData) {
 
   if (description && code) return `${description} (${code})`;
   if (description) return description;
-  if (cleanText(statusData?.StatusMsg, 160)) return cleanText(statusData.StatusMsg, 160);
+
+  if (paymentStatus === 2) {
+    return "myPOS still reports this wallet payment as pending. Please wait a moment before trying again.";
+  }
+
+  if (paymentStatus === 3) {
+    return "myPOS reports this wallet payment as unsuccessful.";
+  }
+
+  if (paymentStatus === 4) {
+    return "myPOS reports this wallet payment was reversed.";
+  }
+
+  if (Number.isNaN(paymentStatus)) {
+    return "myPOS did not return a final payment status for this order.";
+  }
 
   return "The wallet payment was not approved.";
 }

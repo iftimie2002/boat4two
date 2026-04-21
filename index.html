@@ -2728,6 +2728,18 @@ function describeWalletError(error) {
     '';
 }
 
+function wait(ms) {
+  return new Promise(function(resolve) {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+function isPendingPaymentError(data) {
+  return data &&
+    data.paymentStatus === 'pending' &&
+    data.paymentStatusCode === 2;
+}
+
 async function confirmMyposWalletPayment(checkoutData) {
   const orderId = getCheckoutOrderId(checkoutData);
 
@@ -2735,25 +2747,39 @@ async function confirmMyposWalletPayment(checkoutData) {
     throw new Error('The wallet payment did not return an order reference.');
   }
 
-  const response = await fetch('/api/confirm-mypos-payment', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      holdId: activeHold?.holdId || bookingData.holdId || checkoutData.holdId || '',
-      orderId
-    })
-  });
-  const data = await response.json().catch(function() {
-    return {};
-  });
+  let lastData = null;
 
-  if (!response.ok || !data.ok || data.paymentStatus !== 'paid') {
-    throw new Error(data.error || 'myPOS did not confirm the wallet payment.');
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    if (attempt > 0) {
+      await wait(1200);
+    }
+
+    const response = await fetch('/api/confirm-mypos-payment', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        holdId: activeHold?.holdId || bookingData.holdId || checkoutData.holdId || '',
+        orderId
+      })
+    });
+    const data = await response.json().catch(function() {
+      return {};
+    });
+
+    lastData = data;
+
+    if (response.ok && data.ok && data.paymentStatus === 'paid') {
+      return data;
+    }
+
+    if (!isPendingPaymentError(data)) {
+      throw new Error(data.error || 'myPOS did not confirm the wallet payment.');
+    }
   }
 
-  return data;
+  throw new Error(lastData?.error || 'myPOS did not confirm the wallet payment.');
 }
 
 async function getMyposWalletDeclineMessage(checkoutData, declineError) {
