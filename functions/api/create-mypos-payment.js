@@ -290,6 +290,7 @@ function decodeWalletSessionToken(token) {
     const parts = String(decoded?.info || "").split("-");
 
     return {
+      merchantIdentifier: parts[0] || "",
       cardSchemes: parts[1] || "",
       applePayAvailable: parts[2] === "1",
       googlePayAvailable: parts[3] === "1",

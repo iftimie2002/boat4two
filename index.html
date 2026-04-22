@@ -2732,6 +2732,14 @@ function combineWalletMessages() {
   return messages.join(' ');
 }
 
+function makeWalletError(message, statusData) {
+  const error = new Error(cleanWalletMessage(message) || 'The wallet payment was not approved.');
+  if (statusData) {
+    error.statusData = statusData;
+  }
+  return error;
+}
+
 function describeWalletError(error) {
   if (!error) {
     return '';
@@ -2756,6 +2764,9 @@ function describeWalletError(error) {
   const contentMessage = typeof error.Content === 'string'
     ? describeWalletError(error.Content)
     : '';
+  const statusDataMessage = error.statusData
+    ? describeWalletError(error.statusData)
+    : '';
 
   return combineWalletMessages(
     error.responseCodeDescription,
@@ -2765,6 +2776,7 @@ function describeWalletError(error) {
     error.error,
     error.Status && Number(error.Status) !== 0 ? `myPOS status ${error.Status}.` : '',
     error.responseCode ? `myPOS response code ${error.responseCode}.` : '',
+    statusDataMessage,
     contentMessage
   );
 }
@@ -2854,6 +2866,153 @@ async function getMyposWalletDeclineMessage(checkoutData, declineError, walletMe
   }
 }
 
+function getApplePayNetworks(sessionMeta) {
+  const cardSchemes = sessionMeta?.cardSchemes || '';
+  const networks = [];
+
+  if (cardSchemes.includes('V')) {
+    networks.push('visa', 'vPay');
+  }
+
+  if (cardSchemes.includes('M')) {
+    networks.push('masterCard', 'maestro');
+  }
+
+  return networks.length ? networks : ['visa', 'masterCard'];
+}
+
+function getApplePayAmount(checkoutData) {
+  const amount = Number(checkoutData.paymentParams?.amount || 0);
+  return Number.isFinite(amount) && amount > 0
+    ? amount.toFixed(2)
+    : String(checkoutData.walletSessionMeta?.applePay?.amount || '0');
+}
+
+function createBoat4TwoApplePayButton(buttonId, checkoutData, callbacks) {
+  return new Promise(function(resolve, reject) {
+    if (!window.ApplePaySession) {
+      reject(new Error('Apple Pay is not available in this browser.'));
+      return;
+    }
+
+    const container = document.getElementById(buttonId);
+    const sessionToken = checkoutData.walletSessionTokens?.applePay || checkoutData.walletSessionToken || '';
+    const sessionMeta = checkoutData.walletSessionMeta?.applePay || {};
+    const merchantIdentifier = sessionMeta.merchantIdentifier || '';
+
+    if (!container || !sessionToken || !merchantIdentifier) {
+      reject(new Error('Apple Pay is missing myPOS session data.'));
+      return;
+    }
+
+    container.innerHTML = '';
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.setAttribute('aria-label', 'Pay with Apple Pay');
+    button.style.appearance = 'none';
+    button.style.background = '#000';
+    button.style.border = '0';
+    button.style.borderRadius = '9999px';
+    button.style.cursor = 'pointer';
+    button.style.display = 'block';
+    button.style.height = '48px';
+    button.style.width = '100%';
+    button.style.setProperty('-webkit-appearance', '-apple-pay-button');
+    button.style.setProperty('-apple-pay-button-type', 'plain');
+    button.style.setProperty('-apple-pay-button-style', 'black');
+
+    button.addEventListener('click', function() {
+      const request = {
+        countryCode: String(sessionMeta.merchantCountry || 'PT').toUpperCase(),
+        currencyCode: sessionMeta.currency || checkoutData.paymentParams?.currency || 'EUR',
+        merchantCapabilities: ['supports3DS', 'supportsCredit', 'supportsDebit'],
+        supportedNetworks: getApplePayNetworks(sessionMeta),
+        total: {
+          label: callbacks.merchantName || 'Boat4Two',
+          amount: getApplePayAmount(checkoutData),
+          type: 'final'
+        }
+      };
+      const session = new ApplePaySession(6, request);
+
+      session.onvalidatemerchant = async function(event) {
+        try {
+          const response = await fetch('/api/mypos-apple-pay', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              action: 'validate',
+              validationUrl: event.validationURL,
+              domain: window.location.hostname,
+              merchantIdentifier,
+              sessionToken
+            })
+          });
+          const data = await response.json().catch(function() {
+            return {};
+          });
+
+          if (!response.ok || !data.ok || !data.merchantSession) {
+            throw makeWalletError(data.error || 'Apple Pay merchant validation failed.', data.statusData);
+          }
+
+          session.completeMerchantValidation(data.merchantSession);
+        } catch (error) {
+          if (callbacks.onDecline) {
+            Promise.resolve(callbacks.onDecline(error)).catch(function(callbackError) {
+              console.error('Apple Pay decline callback failed', callbackError);
+            });
+          }
+          session.abort();
+        }
+      };
+
+      session.onpaymentauthorized = async function(event) {
+        try {
+          const response = await fetch('/api/mypos-apple-pay', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              action: 'process',
+              applePayToken: event.payment.token,
+              sessionToken
+            })
+          });
+          const data = await response.json().catch(function() {
+            return {};
+          });
+
+          if (!response.ok || !data.ok) {
+            throw makeWalletError(data.error || 'Apple Pay was not approved by myPOS.', data.statusData);
+          }
+
+          session.completePayment(ApplePaySession.STATUS_SUCCESS);
+
+          if (callbacks.onSuccess) {
+            await callbacks.onSuccess(data.statusData || data);
+          }
+        } catch (error) {
+          session.completePayment(ApplePaySession.STATUS_FAILURE);
+
+          if (callbacks.onDecline) {
+            await callbacks.onDecline(error);
+          }
+        }
+      };
+
+      session.begin();
+    });
+
+    container.appendChild(button);
+    resolve(sessionMeta);
+  });
+}
+
 async function setupWalletButtons(sdk, checkoutData) {
   const applePaySessionToken = checkoutData.walletSessionTokens?.applePay || checkoutData.walletSessionToken || '';
   const googlePaySessionToken = checkoutData.walletSessionTokens?.googlePay || checkoutData.walletSessionToken || '';
@@ -2911,9 +3070,9 @@ async function setupWalletButtons(sdk, checkoutData) {
 
   if (paymentApplePayButton && applePaySessionToken && applePaySessionEnabled && sdk.IS_APPLE_PAY_AVAILABLE && typeof sdk.createApplePayButton === 'function') {
     jobs.push(
-      sdk.createApplePayButton(
+      createBoat4TwoApplePayButton(
         'payment-apple-pay-button',
-        applePaySessionToken,
+        checkoutData,
         makeWalletCallbacks('applePay')
       ).catch(function(error) {
         console.warn('Apple Pay button unavailable', error);
