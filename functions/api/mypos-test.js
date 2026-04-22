@@ -72,6 +72,16 @@ function diagnosePem(value, expectedLabels) {
   };
 }
 
+function isMyposSandboxUrl(value) {
+  return /checkout-test/i.test(String(value || ""));
+}
+
+function getMyposEmbeddedCheckoutUrl(env) {
+  return isMyposSandboxUrl(env.MYPOS_CHECKOUT_URL)
+    ? "https://mypos.com/vmp/checkout-test"
+    : "https://mypos.com/vmp/checkout";
+}
+
 export async function onRequestGet(context) {
   const { env } = context;
   const required = [
@@ -133,7 +143,10 @@ export async function onRequestGet(context) {
     ok,
     loaded,
     missing,
-    checkoutUrl: env.MYPOS_CHECKOUT_URL || "https://www.mypos.eu/vmp/checkout",
+    checkoutUrl: env.MYPOS_CHECKOUT_URL || "https://mypos.com/vmp/checkout",
+    configuredCheckoutUrl: env.MYPOS_CHECKOUT_URL || null,
+    embeddedSdkUrl: getMyposEmbeddedCheckoutUrl(env),
+    embeddedSdkHostNote: "Wallet buttons use the same host hardcoded by the myPOS Embedded SDK.",
     usingWalletVariable: env.MYPOS_WALLET_NUMBER
       ? "MYPOS_WALLET_NUMBER"
       : (env.MYPOS_CLIENT_NUMBER ? "MYPOS_CLIENT_NUMBER" : null),

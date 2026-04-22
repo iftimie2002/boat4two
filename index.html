@@ -2707,29 +2707,66 @@ function getCheckoutOrderId(checkoutData, walletMethod) {
   return checkoutData.orderId || checkoutData.paymentParams?.orderID || '';
 }
 
+function cleanWalletMessage(value) {
+  const message = String(value || '').trim();
+  if (!message || /^success$/i.test(message)) {
+    return '';
+  }
+  return message;
+}
+
+function combineWalletMessages() {
+  const seen = new Set();
+  const messages = [];
+
+  Array.from(arguments).forEach(function(message) {
+    const cleaned = cleanWalletMessage(message);
+    const key = cleaned.toLowerCase();
+
+    if (cleaned && !seen.has(key)) {
+      seen.add(key);
+      messages.push(cleaned);
+    }
+  });
+
+  return messages.join(' ');
+}
+
 function describeWalletError(error) {
   if (!error) {
     return '';
   }
 
   if (typeof error === 'string') {
-    return error;
+    try {
+      return describeWalletError(JSON.parse(error));
+    } catch (_) {
+      return cleanWalletMessage(error);
+    }
   }
 
   if (Array.isArray(error.DeclinedPayments) && error.DeclinedPayments.length) {
     const decline = error.DeclinedPayments[0] || {};
-    return [
+    return combineWalletMessages(
       decline.responseCodeDescription,
-      decline.responseCode ? `code ${decline.responseCode}` : ''
-    ].filter(Boolean).join(' ');
+      decline.responseCode ? `myPOS response code ${decline.responseCode}.` : ''
+    );
   }
 
-  return error.responseCodeDescription ||
-    error.StatusMsg ||
-    error.statusMessage ||
-    error.message ||
-    error.error ||
-    '';
+  const contentMessage = typeof error.Content === 'string'
+    ? describeWalletError(error.Content)
+    : '';
+
+  return combineWalletMessages(
+    error.responseCodeDescription,
+    error.StatusMsg,
+    error.statusMessage,
+    error.message,
+    error.error,
+    error.Status && Number(error.Status) !== 0 ? `myPOS status ${error.Status}.` : '',
+    error.responseCode ? `myPOS response code ${error.responseCode}.` : '',
+    contentMessage
+  );
 }
 
 function wait(ms) {
@@ -2806,8 +2843,12 @@ async function getMyposWalletDeclineMessage(checkoutData, declineError, walletMe
       })
     });
     const data = await response.json();
+    const serverMessage = combineWalletMessages(
+      data.error,
+      describeWalletError(data.statusData)
+    );
 
-    return data.error || localMessage;
+    return combineWalletMessages(localMessage, serverMessage);
   } catch (error) {
     return localMessage || describeWalletError(error);
   }
@@ -2816,6 +2857,10 @@ async function getMyposWalletDeclineMessage(checkoutData, declineError, walletMe
 async function setupWalletButtons(sdk, checkoutData) {
   const applePaySessionToken = checkoutData.walletSessionTokens?.applePay || checkoutData.walletSessionToken || '';
   const googlePaySessionToken = checkoutData.walletSessionTokens?.googlePay || checkoutData.walletSessionToken || '';
+  const applePaySessionMeta = checkoutData.walletSessionMeta?.applePay || null;
+  const googlePaySessionMeta = checkoutData.walletSessionMeta?.googlePay || null;
+  const applePaySessionEnabled = !applePaySessionMeta || applePaySessionMeta.applePayAvailable !== false;
+  const googlePaySessionEnabled = !googlePaySessionMeta || googlePaySessionMeta.googlePayAvailable !== false;
 
   if (!paymentWalletSection || (!applePaySessionToken && !googlePaySessionToken)) {
     if (checkoutData.walletSessionError) {
@@ -2864,7 +2909,7 @@ async function setupWalletButtons(sdk, checkoutData) {
 
   const jobs = [];
 
-  if (paymentApplePayButton && applePaySessionToken && sdk.IS_APPLE_PAY_AVAILABLE && typeof sdk.createApplePayButton === 'function') {
+  if (paymentApplePayButton && applePaySessionToken && applePaySessionEnabled && sdk.IS_APPLE_PAY_AVAILABLE && typeof sdk.createApplePayButton === 'function') {
     jobs.push(
       sdk.createApplePayButton(
         'payment-apple-pay-button',
@@ -2876,7 +2921,7 @@ async function setupWalletButtons(sdk, checkoutData) {
     );
   }
 
-  if (paymentGooglePayButton && googlePaySessionToken && typeof sdk.createGooglePayButton === 'function') {
+  if (paymentGooglePayButton && googlePaySessionToken && googlePaySessionEnabled && typeof sdk.createGooglePayButton === 'function') {
     jobs.push(
       sdk.createGooglePayButton(
         'payment-google-pay-button',

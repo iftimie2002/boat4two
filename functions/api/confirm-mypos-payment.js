@@ -23,6 +23,9 @@ const BOOKING_RULES = {
   }
 };
 
+const MYPOS_EMBEDDED_PRODUCTION_URL = "https://mypos.com/vmp/checkout";
+const MYPOS_EMBEDDED_TEST_URL = "https://mypos.com/vmp/checkout-test";
+
 function cleanText(value, max = 500) {
   return String(value || "").trim().slice(0, max);
 }
@@ -31,8 +34,14 @@ function getWalletNumber(env) {
   return env.MYPOS_WALLET_NUMBER || env.MYPOS_CLIENT_NUMBER || "";
 }
 
+function isMyposSandboxUrl(value) {
+  return /checkout-test/i.test(String(value || ""));
+}
+
 function getMyposApiUrl(env) {
-  return env.MYPOS_CHECKOUT_URL || "https://www.mypos.eu/vmp/checkout";
+  return isMyposSandboxUrl(env.MYPOS_CHECKOUT_URL)
+    ? MYPOS_EMBEDDED_TEST_URL
+    : MYPOS_EMBEDDED_PRODUCTION_URL;
 }
 
 function getDescriptionValue(description, key) {

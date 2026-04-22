@@ -40,6 +40,9 @@ const BOOKING_RULES = {
   }
 };
 
+const MYPOS_EMBEDDED_PRODUCTION_URL = "https://mypos.com/vmp/checkout";
+const MYPOS_EMBEDDED_TEST_URL = "https://mypos.com/vmp/checkout-test";
+
 function cleanText(value, max = 500) {
   return String(value || "").trim().slice(0, max);
 }
@@ -281,6 +284,24 @@ function base64EncodeUtf8(value) {
   return bytesToBase64(new TextEncoder().encode(value));
 }
 
+function decodeWalletSessionToken(token) {
+  try {
+    const decoded = JSON.parse(atob(token));
+    const parts = String(decoded?.info || "").split("-");
+
+    return {
+      cardSchemes: parts[1] || "",
+      applePayAvailable: parts[2] === "1",
+      googlePayAvailable: parts[3] === "1",
+      currency: parts[4] || "",
+      amount: parts[5] || "",
+      merchantCountry: parts[6] || ""
+    };
+  } catch (_) {
+    return null;
+  }
+}
+
 function concatBytes(...arrays) {
   const total = arrays.reduce((sum, arr) => sum + arr.length, 0);
   const result = new Uint8Array(total);
@@ -494,8 +515,22 @@ async function signValuesInOrder(values, privateKeyPem) {
   return bytesToBase64(new Uint8Array(signature));
 }
 
+function isMyposSandboxUrl(value) {
+  return /checkout-test/i.test(String(value || ""));
+}
+
+function getMyposHostedCheckoutUrl(env) {
+  return env.MYPOS_CHECKOUT_URL || MYPOS_EMBEDDED_PRODUCTION_URL;
+}
+
+function getMyposEmbeddedCheckoutUrl(env) {
+  return isMyposSandboxUrl(env.MYPOS_CHECKOUT_URL)
+    ? MYPOS_EMBEDDED_TEST_URL
+    : MYPOS_EMBEDDED_PRODUCTION_URL;
+}
+
 function getMyposApiUrl(env) {
-  return env.MYPOS_CHECKOUT_URL || "https://www.mypos.eu/vmp/checkout";
+  return getMyposEmbeddedCheckoutUrl(env);
 }
 
 async function createPaymentSessionToken(env, checkoutUrl, {
@@ -547,7 +582,8 @@ async function createPaymentSessionToken(env, checkoutUrl, {
   }
 
   if (!response.ok || Number(data?.Status) !== 0 || !data?.SessionToken) {
-    throw new Error(data?.StatusMsg || "Could not create myPOS wallet payment session.");
+    const host = new URL(checkoutUrl).host;
+    throw new Error(`${data?.StatusMsg || "Could not create myPOS wallet payment session."} (${host})`);
   }
 
   return data.SessionToken;
@@ -776,7 +812,7 @@ export async function onRequestPost(context) {
     const successUrl = new URL("/api/mypos-ok", request.url).toString();
     const cancelUrl = new URL("/api/mypos-cancel", request.url).toString();
     const notifyUrl = new URL("/api/mypos-notify", request.url).toString();
-    const checkoutUrl = env.MYPOS_CHECKOUT_URL || "https://www.mypos.eu/vmp/checkout";
+    const checkoutUrl = getMyposHostedCheckoutUrl(env);
     const myposApiUrl = getMyposApiUrl(env);
     const walletNumber = getWalletNumber(env);
 
@@ -869,10 +905,12 @@ export async function onRequestPost(context) {
 
     if (responseMode === "embedded") {
       const keyIndexNumber = Number(env.MYPOS_KEY_INDEX);
-      const embeddedCheckoutUrl = env.MYPOS_CHECKOUT_URL || "";
+      const embeddedCheckoutUrl = getMyposEmbeddedCheckoutUrl(env);
       let walletSessionToken = "";
       let applePaySessionToken = "";
       let googlePaySessionToken = "";
+      let applePaySessionMeta = null;
+      let googlePaySessionMeta = null;
       let walletSessionError = "";
 
       try {
@@ -882,6 +920,7 @@ export async function onRequestPost(context) {
           walletNumber,
           cartItems
         });
+        applePaySessionMeta = decodeWalletSessionToken(applePaySessionToken);
       } catch (error) {
         walletSessionError = error.message || "Could not create Apple Pay payment session.";
       }
@@ -893,6 +932,7 @@ export async function onRequestPost(context) {
           walletNumber,
           cartItems
         });
+        googlePaySessionMeta = decodeWalletSessionToken(googlePaySessionToken);
       } catch (error) {
         walletSessionError = walletSessionError
           ? `${walletSessionError} ${error.message || "Could not create Google Pay payment session."}`
@@ -908,11 +948,15 @@ export async function onRequestPost(context) {
         orderId,
         walletOrderIds,
         checkoutUrl: embeddedCheckoutUrl,
-        isSandbox: /checkout-test/i.test(embeddedCheckoutUrl),
+        isSandbox: isMyposSandboxUrl(embeddedCheckoutUrl),
         walletSessionToken,
         walletSessionTokens: {
           applePay: applePaySessionToken,
           googlePay: googlePaySessionToken
+        },
+        walletSessionMeta: {
+          applePay: applePaySessionMeta,
+          googlePay: googlePaySessionMeta
         },
         walletSessionError,
         paymentParams: {
