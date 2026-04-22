@@ -495,7 +495,7 @@ async function signValuesInOrder(values, privateKeyPem) {
 }
 
 function getMyposApiUrl(env) {
-  return env.MYPOS_CHECKOUT_URL || "https://www.mypos.com/vmp/checkout";
+  return env.MYPOS_CHECKOUT_URL || "https://www.mypos.eu/vmp/checkout";
 }
 
 async function createPaymentSessionToken(env, checkoutUrl, {

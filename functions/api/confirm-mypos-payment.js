@@ -32,7 +32,7 @@ function getWalletNumber(env) {
 }
 
 function getMyposApiUrl(env) {
-  return env.MYPOS_CHECKOUT_URL || "https://www.mypos.com/vmp/checkout";
+  return env.MYPOS_CHECKOUT_URL || "https://www.mypos.eu/vmp/checkout";
 }
 
 function getDescriptionValue(description, key) {
