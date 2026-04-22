@@ -769,6 +769,10 @@ export async function onRequestPost(context) {
     }
 
     const orderId = `B4T-${holdId}`;
+    const walletOrderIds = {
+      applePay: `${orderId}-AP`,
+      googlePay: `${orderId}-GP`
+    };
     const successUrl = new URL("/api/mypos-ok", request.url).toString();
     const cancelUrl = new URL("/api/mypos-cancel", request.url).toString();
     const notifyUrl = new URL("/api/mypos-notify", request.url).toString();
@@ -835,6 +839,8 @@ export async function onRequestPost(context) {
       `Payment pending started at: ${paymentStartedAt}`,
       `Payment pending expires at: ${paymentPendingExpiresAt}`,
       `Payment Order ID: ${orderId}`,
+      `Apple Pay Order ID: ${walletOrderIds.applePay}`,
+      `Google Pay Order ID: ${walletOrderIds.googlePay}`,
       `Payment Amount: ${formatMoney(totalAmount)} ${BOOKING_RULES.currency}`,
       extras.length ? `Payment Extras: ${JSON.stringify(extras)}` : ""
     ].filter(Boolean);
@@ -850,6 +856,8 @@ export async function onRequestPost(context) {
           holdExpiresAt: "",
           paymentStatus: "pending",
           paymentOrderId: orderId,
+          walletApplePayOrderId: walletOrderIds.applePay,
+          walletGooglePayOrderId: walletOrderIds.googlePay,
           paymentAmount: formatMoney(totalAmount),
           paymentCurrency: BOOKING_RULES.currency,
           paymentExtrasJson: JSON.stringify(extras),
@@ -863,27 +871,49 @@ export async function onRequestPost(context) {
       const keyIndexNumber = Number(env.MYPOS_KEY_INDEX);
       const embeddedCheckoutUrl = env.MYPOS_CHECKOUT_URL || "";
       let walletSessionToken = "";
+      let applePaySessionToken = "";
+      let googlePaySessionToken = "";
       let walletSessionError = "";
 
       try {
-        walletSessionToken = await createPaymentSessionToken(env, myposApiUrl, {
-          orderId,
+        applePaySessionToken = await createPaymentSessionToken(env, myposApiUrl, {
+          orderId: walletOrderIds.applePay,
           totalAmount,
           walletNumber,
           cartItems
         });
       } catch (error) {
-        walletSessionError = error.message || "Could not create wallet payment session.";
+        walletSessionError = error.message || "Could not create Apple Pay payment session.";
       }
+
+      try {
+        googlePaySessionToken = await createPaymentSessionToken(env, myposApiUrl, {
+          orderId: walletOrderIds.googlePay,
+          totalAmount,
+          walletNumber,
+          cartItems
+        });
+      } catch (error) {
+        walletSessionError = walletSessionError
+          ? `${walletSessionError} ${error.message || "Could not create Google Pay payment session."}`
+          : (error.message || "Could not create Google Pay payment session.");
+      }
+
+      walletSessionToken = applePaySessionToken || googlePaySessionToken;
 
       return json({
         ok: true,
         mode: "embedded",
         holdId,
         orderId,
+        walletOrderIds,
         checkoutUrl: embeddedCheckoutUrl,
         isSandbox: /checkout-test/i.test(embeddedCheckoutUrl),
         walletSessionToken,
+        walletSessionTokens: {
+          applePay: applePaySessionToken,
+          googlePay: googlePaySessionToken
+        },
         walletSessionError,
         paymentParams: {
           sid: env.MYPOS_SID,

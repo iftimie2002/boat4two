@@ -2699,7 +2699,11 @@ function waitForMyposEmbeddedSdk() {
   });
 }
 
-function getCheckoutOrderId(checkoutData) {
+function getCheckoutOrderId(checkoutData, walletMethod) {
+  if (walletMethod && checkoutData.walletOrderIds?.[walletMethod]) {
+    return checkoutData.walletOrderIds[walletMethod];
+  }
+
   return checkoutData.orderId || checkoutData.paymentParams?.orderID || '';
 }
 
@@ -2740,8 +2744,8 @@ function isPendingPaymentError(data) {
     data.paymentStatusCode === 2;
 }
 
-async function confirmMyposWalletPayment(checkoutData) {
-  const orderId = getCheckoutOrderId(checkoutData);
+async function confirmMyposWalletPayment(checkoutData, walletMethod) {
+  const orderId = getCheckoutOrderId(checkoutData, walletMethod);
 
   if (!orderId) {
     throw new Error('The wallet payment did not return an order reference.');
@@ -2782,9 +2786,9 @@ async function confirmMyposWalletPayment(checkoutData) {
   throw new Error(lastData?.error || 'myPOS did not confirm the wallet payment.');
 }
 
-async function getMyposWalletDeclineMessage(checkoutData, declineError) {
+async function getMyposWalletDeclineMessage(checkoutData, declineError, walletMethod) {
   const localMessage = describeWalletError(declineError);
-  const orderId = getCheckoutOrderId(checkoutData);
+  const orderId = getCheckoutOrderId(checkoutData, walletMethod);
 
   if (!orderId) {
     return localMessage;
@@ -2810,7 +2814,10 @@ async function getMyposWalletDeclineMessage(checkoutData, declineError) {
 }
 
 async function setupWalletButtons(sdk, checkoutData) {
-  if (!paymentWalletSection || !checkoutData.walletSessionToken) {
+  const applePaySessionToken = checkoutData.walletSessionTokens?.applePay || checkoutData.walletSessionToken || '';
+  const googlePaySessionToken = checkoutData.walletSessionTokens?.googlePay || checkoutData.walletSessionToken || '';
+
+  if (!paymentWalletSection || (!applePaySessionToken && !googlePaySessionToken)) {
     if (checkoutData.walletSessionError) {
       console.warn('myPOS wallet buttons unavailable', checkoutData.walletSessionError);
     }
@@ -2834,44 +2841,47 @@ async function setupWalletButtons(sdk, checkoutData) {
     paymentWalletStatus.textContent = '';
   }
 
-  const walletCallbacks = {
-    isSandbox: Boolean(checkoutData.isSandbox),
-    merchantName: 'Boat4Two',
-    onSuccess: async function(data) {
-      try {
-        await confirmMyposWalletPayment(checkoutData);
-        await handlePaymentFrameResult('paid', data);
-      } catch (error) {
-        console.error('myPOS wallet confirmation failed', error);
-        await handlePaymentFrameResult('cancelled', error.message || 'myPOS did not confirm the wallet payment.');
+  function makeWalletCallbacks(walletMethod) {
+    return {
+      isSandbox: Boolean(checkoutData.isSandbox),
+      merchantName: 'Boat4Two',
+      onSuccess: async function(data) {
+        try {
+          await confirmMyposWalletPayment(checkoutData, walletMethod);
+          await handlePaymentFrameResult('paid', data);
+        } catch (error) {
+          console.error('myPOS wallet confirmation failed', error);
+          await handlePaymentFrameResult('cancelled', error.message || 'myPOS did not confirm the wallet payment.');
+        }
+      },
+      onDecline: async function(error) {
+        console.error('myPOS wallet payment declined', error);
+        const declineMessage = await getMyposWalletDeclineMessage(checkoutData, error, walletMethod);
+        await handlePaymentFrameResult('cancelled', declineMessage);
       }
-    },
-    onDecline: async function(error) {
-      console.error('myPOS wallet payment declined', error);
-      const declineMessage = await getMyposWalletDeclineMessage(checkoutData, error);
-      await handlePaymentFrameResult('cancelled', declineMessage);
-    }
-  };
+    };
+  }
+
   const jobs = [];
 
-  if (paymentApplePayButton && sdk.IS_APPLE_PAY_AVAILABLE && typeof sdk.createApplePayButton === 'function') {
+  if (paymentApplePayButton && applePaySessionToken && sdk.IS_APPLE_PAY_AVAILABLE && typeof sdk.createApplePayButton === 'function') {
     jobs.push(
       sdk.createApplePayButton(
         'payment-apple-pay-button',
-        checkoutData.walletSessionToken,
-        walletCallbacks
+        applePaySessionToken,
+        makeWalletCallbacks('applePay')
       ).catch(function(error) {
         console.warn('Apple Pay button unavailable', error);
       })
     );
   }
 
-  if (paymentGooglePayButton && typeof sdk.createGooglePayButton === 'function') {
+  if (paymentGooglePayButton && googlePaySessionToken && typeof sdk.createGooglePayButton === 'function') {
     jobs.push(
       sdk.createGooglePayButton(
         'payment-google-pay-button',
-        checkoutData.walletSessionToken,
-        walletCallbacks
+        googlePaySessionToken,
+        makeWalletCallbacks('googlePay')
       ).catch(function(error) {
         console.warn('Google Pay button unavailable', error);
       })

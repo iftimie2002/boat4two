@@ -75,7 +75,11 @@ function eventMatchesOrderId(event, orderId) {
 
   return (
     privateProps.paymentOrderId === orderId ||
-    getDescriptionValue(description, "Payment Order ID") === orderId
+    privateProps.walletApplePayOrderId === orderId ||
+    privateProps.walletGooglePayOrderId === orderId ||
+    getDescriptionValue(description, "Payment Order ID") === orderId ||
+    getDescriptionValue(description, "Apple Pay Order ID") === orderId ||
+    getDescriptionValue(description, "Google Pay Order ID") === orderId
   );
 }
 
@@ -434,7 +438,7 @@ async function deleteCalendarEvent(env, accessToken, eventId) {
 function extractHoldIdFromOrderId(orderId) {
   const value = cleanText(orderId, 120);
   if (value.startsWith("B4T-")) {
-    return value.slice(4);
+    return value.slice(4).replace(/-(AP|GP)$/i, "");
   }
   return "";
 }
