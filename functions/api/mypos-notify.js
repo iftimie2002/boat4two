@@ -1,4 +1,5 @@
 import { getGoogleAccessToken } from "./_google.js";
+import { maybeSendBookingConfirmationEmail } from "./_booking-email.js";
 
 function textResponse(body, status = 200, extraHeaders = {}) {
   return new Response(body, {
@@ -373,6 +374,26 @@ async function updateCalendarEvent(env, accessToken, eventId, patchBody) {
   return data;
 }
 
+async function applyConfirmationEmailPatch(env, accessToken, event, paymentData = {}) {
+  const emailResult = await maybeSendBookingConfirmationEmail(env, event, paymentData);
+
+  if (!emailResult.shouldPatch || !emailResult.patchPrivateProps) {
+    return emailResult;
+  }
+
+  const privateProps = event?.extendedProperties?.private || {};
+  await updateCalendarEvent(env, accessToken, event.id, {
+    extendedProperties: {
+      private: {
+        ...privateProps,
+        ...emailResult.patchPrivateProps
+      }
+    }
+  });
+
+  return emailResult;
+}
+
 async function createCalendarEvent(env, accessToken, eventBody) {
   const response = await fetch(
     `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(env.GOOGLE_CALENDAR_ID)}/events`,
@@ -505,6 +526,11 @@ export async function onRequestPost(context) {
 
     if (ipcMethod === "IPCPurchaseNotify" || ipcMethod === "IPCPurchaseOK") {
       if (privateProps.bookingType === "paid" || privateProps.paymentStatus === "paid") {
+        await applyConfirmationEmailPatch(env, accessToken, event, {
+          amount,
+          currency,
+          paymentTransactionRef: trnref
+        });
         return textResponse("OK", 200, {
           "X-Boat4Two-Payment-State": "paid"
         });
@@ -532,7 +558,7 @@ export async function onRequestPost(context) {
         requestStan ? `Payment request STAN: ${requestStan}` : ""
       ].filter(Boolean).join("\n");
 
-      await updateCalendarEvent(env, accessToken, event.id, {
+      const paidEvent = await updateCalendarEvent(env, accessToken, event.id, {
         summary: buildPaidSummary(privateProps),
         description: updatedDescription,
         extendedProperties: {
@@ -552,6 +578,11 @@ export async function onRequestPost(context) {
             paymentRequestSTAN: requestStan
           }
         }
+      });
+      await applyConfirmationEmailPatch(env, accessToken, paidEvent, {
+        amount,
+        currency,
+        paymentTransactionRef: trnref
       });
 
       return textResponse("OK", 200, {

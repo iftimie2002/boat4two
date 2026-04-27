@@ -1,4 +1,5 @@
 import { getGoogleAccessToken, getGoogleCalendarErrorPayload } from "./_google.js";
+import { maybeSendBookingConfirmationEmail } from "./_booking-email.js";
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -389,6 +390,26 @@ async function updateCalendarEvent(env, accessToken, eventId, patchBody) {
   return data;
 }
 
+async function applyConfirmationEmailPatch(env, accessToken, event, paymentData = {}) {
+  const emailResult = await maybeSendBookingConfirmationEmail(env, event, paymentData);
+
+  if (!emailResult.shouldPatch || !emailResult.patchPrivateProps) {
+    return emailResult;
+  }
+
+  const privateProps = event?.extendedProperties?.private || {};
+  await updateCalendarEvent(env, accessToken, event.id, {
+    extendedProperties: {
+      private: {
+        ...privateProps,
+        ...emailResult.patchPrivateProps
+      }
+    }
+  });
+
+  return emailResult;
+}
+
 async function deleteCalendarEvent(env, accessToken, eventId) {
   const response = await fetch(
     `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(env.GOOGLE_CALENDAR_ID)}/events/${encodeURIComponent(eventId)}`,
@@ -525,6 +546,7 @@ export async function onRequestPost(context) {
           paymentStatus: "paid",
           paymentStatusCode: paymentStatus,
           calendarState: "missing",
+          confirmationEmailStatus: "missing_event",
           statusData
         });
       }
@@ -554,7 +576,7 @@ export async function onRequestPost(context) {
         statusData?.DateTime ? `Payment datetime: ${cleanText(statusData.DateTime, 80)}` : ""
       ].filter(Boolean).join("\n");
 
-      await updateCalendarEvent(env, accessToken, event.id, {
+      const paidEvent = await updateCalendarEvent(env, accessToken, event.id, {
         summary: buildPaidSummary(privateProps),
         description: updatedDescription,
         extendedProperties: {
@@ -574,12 +596,19 @@ export async function onRequestPost(context) {
           }
         }
       });
+      const emailResult = await applyConfirmationEmailPatch(env, accessToken, paidEvent, {
+        amount,
+        currency,
+        paymentReference: cleanText(statusData?.PaymentReference, 120),
+        paymentTransactionRef: trnref
+      });
 
       return json({
         ok: true,
         paymentStatus: "paid",
         paymentStatusCode: paymentStatus,
         calendarState: "paid",
+        confirmationEmailStatus: emailResult.status,
         statusData
       });
     }

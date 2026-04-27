@@ -166,18 +166,26 @@
         }
         .payment-wallet-slot {
           align-items: center;
-          background: #050505;
-          border-radius: 9999px;
+          background: rgba(255, 255, 255, 0.98);
+          border: 1px solid rgba(24, 24, 27, 0.08);
+          border-radius: 1rem;
+          box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
           display: flex;
-          height: 48px;
+          height: 56px;
           justify-content: center;
           overflow: hidden;
+          padding: 4px;
           width: 100%;
+        }
+        .dark .payment-wallet-slot {
+          background: #09172a;
+          border-color: rgba(120, 143, 168, 0.2);
+          box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
         }
         .payment-wallet-slot > *,
         .payment-wallet-slot button,
         .payment-wallet-slot iframe {
-          border-radius: 9999px !important;
+          border-radius: 0.875rem !important;
           height: 48px !important;
           max-width: 100% !important;
           min-height: 48px !important;
@@ -185,6 +193,8 @@
         }
         .payment-wallet-slot.wallet-single {
           grid-column: 1 / -1;
+          max-width: 360px;
+          justify-self: center;
         }
     </style>
     <style>
@@ -314,7 +324,7 @@
 <div class="max-w-2xl">
 <p class="text-sm font-semibold uppercase tracking-[0.25em] text-primary">Made for two</p>
 <h2 class="mt-4 text-3xl font-black text-zinc-900 dark:text-zinc-100 sm:text-4xl">Choose your experience</h2>
-<p class="mt-4 max-w-xl text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">Private tours, drinks and snacks, kayak, SUP, snorkeling gear, and a Polaroid photo album included.</p>
+<p class="mt-4 max-w-xl text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">Private tours, drinks and snacks, kayak, SUP, snorkeling gear, and a Polaroid photo album included. Pricing starts at 85,00€ per person, with checkout completed as one booking for 2 guests.</p>
 </div>
 <div class="mt-12 grid gap-6 lg:grid-cols-[1fr_1fr_0.85fr]">
 <article class="overflow-hidden rounded-[2rem] border border-zinc-200 bg-white shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
@@ -323,6 +333,13 @@
 <p class="text-sm font-semibold uppercase tracking-[0.2em] text-primary">3.5 hours · Ferragudo</p>
 <h3 class="mt-3 text-2xl font-black text-zinc-900 dark:text-zinc-100">Private Sailing Tour for Couples</h3>
 <p class="mt-4 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">A private daytime sailing tour for two, with drinks, snacks, water activities, and a Polaroid photo album included.</p>
+<div class="mt-5 flex items-end justify-between gap-4 rounded-[1.5rem] bg-primary/10 px-4 py-3">
+<div>
+<p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Price</p>
+<p class="mt-1 text-2xl font-black text-zinc-900 dark:text-zinc-100">85,00€ <span class="text-sm font-semibold text-zinc-500 dark:text-zinc-400">per person</span></p>
+</div>
+<p class="text-right text-xs font-medium text-zinc-600 dark:text-zinc-300">170,00€ total<br/>charged together for 2 guests</p>
+</div>
 <div class="mt-6 flex flex-wrap gap-2 text-xs font-semibold text-zinc-600 dark:text-zinc-300">
 <span class="rounded-full bg-primary/10 px-3 py-1 text-primary">Guide in 3 languages</span>
 <span class="rounded-full bg-zinc-100 px-3 py-1 dark:bg-zinc-800">Photos included</span>
@@ -340,6 +357,13 @@
 <p class="text-sm font-semibold uppercase tracking-[0.2em] text-primary">3.5 hours · Ferragudo</p>
 <h3 class="mt-3 text-2xl font-black text-zinc-900 dark:text-zinc-100">Sunset Private Sailing Tour for Couples</h3>
 <p class="mt-4 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">A private sunset sailing tour for two, with drinks, snacks, water activities, and sunset views from the sea.</p>
+<div class="mt-5 flex items-end justify-between gap-4 rounded-[1.5rem] bg-primary/10 px-4 py-3">
+<div>
+<p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Price</p>
+<p class="mt-1 text-2xl font-black text-zinc-900 dark:text-zinc-100">95,00€ <span class="text-sm font-semibold text-zinc-500 dark:text-zinc-400">per person</span></p>
+</div>
+<p class="text-right text-xs font-medium text-zinc-600 dark:text-zinc-300">190,00€ total<br/>charged together for 2 guests</p>
+</div>
 <div class="mt-6 flex flex-wrap gap-2 text-xs font-semibold text-zinc-600 dark:text-zinc-300">
 <span class="rounded-full bg-primary/10 px-3 py-1 text-primary">6:00 PM departure</span>
 <span class="rounded-full bg-zinc-100 px-3 py-1 dark:bg-zinc-800">Sunset on the water</span>
@@ -1000,6 +1024,10 @@
 <p class="text-sm font-semibold uppercase tracking-[0.2em] text-primary">3.5 hours · Ferragudo · Private group</p>
 <h2 class="mt-3 text-3xl font-black text-zinc-900 dark:text-zinc-100">Private Sailing Tour for Couples</h2>
 <p class="mt-4 text-base leading-relaxed">A private sailing tour for couples along the Algarve coast, with drinks, snacks, water activities, and a Polaroid photo album included.</p>
+<div class="mt-5 inline-flex items-end gap-3 rounded-full bg-primary/10 px-5 py-3">
+<p class="text-2xl font-black text-zinc-900 dark:text-zinc-100">85,00€</p>
+<p class="text-sm font-semibold text-zinc-600 dark:text-zinc-300">per person · 170,00€ total for 2 guests</p>
+</div>
 </div>
 <section>
 <h3 class="text-lg font-bold text-zinc-900 dark:text-zinc-100">Highlights</h3>
@@ -1079,6 +1107,10 @@
 <p class="text-sm font-semibold uppercase tracking-[0.2em] text-primary">3.5 hours · Ferragudo · Private group</p>
 <h2 class="mt-3 text-3xl font-black text-zinc-900 dark:text-zinc-100">Sunset Private Sailing Tour for Couples</h2>
 <p class="mt-4 text-base leading-relaxed">A private sunset sailing tour for couples, with drinks, snacks, water activities, and sunset views from the sea.</p>
+<div class="mt-5 inline-flex items-end gap-3 rounded-full bg-primary/10 px-5 py-3">
+<p class="text-2xl font-black text-zinc-900 dark:text-zinc-100">95,00€</p>
+<p class="text-sm font-semibold text-zinc-600 dark:text-zinc-300">per person · 190,00€ total for 2 guests</p>
+</div>
 </div>
 <section>
 <h3 class="text-lg font-bold text-zinc-900 dark:text-zinc-100">Highlights</h3>
@@ -1196,15 +1228,23 @@
 <label class="relative block">
 <input class="peer sr-only" data-label="Private Sailing Tour for Couples" name="tour-option" type="radio" value="private"/>
 <div class="rounded-2xl border border-zinc-300 p-4 transition-colors cursor-pointer peer-checked:border-primary peer-checked:bg-primary peer-checked:text-white dark:border-zinc-700">
+<div class="flex items-start justify-between gap-3">
 <p class="text-sm font-bold">Private Sailing Tour for Couples</p>
+<p class="text-right text-sm font-black">85,00€<span class="block text-[11px] font-semibold opacity-80">per person</span></p>
+</div>
 <p class="mt-1 text-xs opacity-80">3.5 hours · Ferragudo · 10:00 AM or 2:00 PM</p>
+<p class="mt-2 text-xs font-medium opacity-80">170,00€ total charged together for 2 guests</p>
 </div>
 </label>
 <label class="relative block">
 <input class="peer sr-only" data-label="Sunset Private Sailing Tour for Couples" name="tour-option" type="radio" value="sunset"/>
 <div class="rounded-2xl border border-zinc-300 p-4 transition-colors cursor-pointer peer-checked:border-primary peer-checked:bg-primary peer-checked:text-white dark:border-zinc-700">
+<div class="flex items-start justify-between gap-3">
 <p class="text-sm font-bold">Sunset Private Sailing Tour for Couples</p>
+<p class="text-right text-sm font-black">95,00€<span class="block text-[11px] font-semibold opacity-80">per person</span></p>
+</div>
 <p class="mt-1 text-xs opacity-80">3.5 hours · Ferragudo · 6:00 PM</p>
+<p class="mt-2 text-xs font-medium opacity-80">190,00€ total charged together for 2 guests</p>
 </div>
 </label>
 </div>
@@ -1327,6 +1367,13 @@
 <div class="rounded-2xl bg-primary/10 p-4 text-sm text-zinc-700 dark:text-zinc-300">
 <p data-request-summary>Select a tour to begin.</p>
 </div>
+<div class="flex items-center justify-between rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm dark:border-zinc-800 dark:bg-zinc-900">
+<div>
+<p class="font-semibold text-zinc-900 dark:text-zinc-100">Total due today</p>
+<p class="text-xs text-zinc-500 dark:text-zinc-400" id="review-price-note">Choose a tour to see the final amount for 2 guests.</p>
+</div>
+<p class="text-xl font-black text-zinc-900 dark:text-zinc-100" id="review-price-total">--</p>
+</div>
 <div class="space-y-2 text-sm text-zinc-700 dark:text-zinc-300" id="review-details"></div>
 <div class="rounded-2xl border border-primary/30 bg-primary/10 p-4 text-sm text-zinc-700 dark:text-zinc-300" id="hold-countdown-box">
 <p class="font-semibold text-zinc-900 dark:text-zinc-100">Your tour is temporarily reserved.</p>
@@ -1365,6 +1412,13 @@ This slot is being held for you for <strong id="hold-countdown-timer">12:00</str
 <p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Secure checkout</p>
 <h3 class="mt-3 text-2xl font-black text-zinc-900 dark:text-zinc-100" id="payment-result-title">myPOS payment</h3>
 <p class="mt-3 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300" id="payment-result-message">Enter your card details below to complete your booking without leaving Boat4Two.</p>
+</div>
+<div class="hidden items-center justify-between rounded-2xl border border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-950" id="payment-amount-summary">
+<div>
+<p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Total due</p>
+<p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400" id="payment-amount-note">Charged together for 2 guests.</p>
+</div>
+<p class="text-2xl font-black text-zinc-900 dark:text-zinc-100" id="payment-amount-value">--</p>
 </div>
 <div class="rounded-2xl bg-zinc-100 p-4 text-center text-sm font-semibold text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300" id="payment-frame-loading">Loading secure checkout...</div>
 <div class="hidden space-y-3 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950" id="payment-wallet-section">
@@ -1429,11 +1483,15 @@ This slot is being held for you for <strong id="hold-countdown-timer">12:00</str
       const tourConfig = {
         private: {
           label: 'Private Sailing Tour for Couples',
-          apiTour: 'amor'
+          apiTour: 'amor',
+          totalPrice: 170,
+          perPersonPrice: 85
         },
         sunset: {
           label: 'Sunset Private Sailing Tour for Couples',
-          apiTour: 'sunset'
+          apiTour: 'sunset',
+          totalPrice: 190,
+          perPersonPrice: 95
         }
       };
 
@@ -1507,6 +1565,8 @@ This slot is being held for you for <strong id="hold-countdown-timer">12:00</str
       const requestSummaryNodes = Array.from(document.querySelectorAll('[data-request-summary]'));
       const detailsForm = document.getElementById('booking-details-form');
       const reviewDetails = document.getElementById('review-details');
+      const reviewPriceTotal = document.getElementById('review-price-total');
+      const reviewPriceNote = document.getElementById('review-price-note');
       const reviewPayButton = document.getElementById('review-pay-button');
       const paymentFrameLoading = document.getElementById('payment-frame-loading');
       const paymentFrameResult = document.getElementById('payment-frame-result');
@@ -1520,6 +1580,9 @@ This slot is being held for you for <strong id="hold-countdown-timer">12:00</str
       const paymentGooglePayButton = document.getElementById('payment-google-pay-button');
       const paymentWalletStatus = document.getElementById('payment-wallet-status');
       const paymentPolicySummary = document.getElementById('payment-policy-summary');
+      const paymentAmountSummary = document.getElementById('payment-amount-summary');
+      const paymentAmountValue = document.getElementById('payment-amount-value');
+      const paymentAmountNote = document.getElementById('payment-amount-note');
       const contactForm = document.getElementById('contact-form');
       const contactFormFeedback = document.getElementById('contact-form-feedback');
       const reviewsIntro = document.getElementById('reviews-intro');
@@ -1547,6 +1610,63 @@ let currentMyposEmbeddedPayment = null;
 let paymentCancellationInProgress = false;
         let holdReleaseSuppressed = false;
 let availableDatesSet = new Set();
+
+      function formatEuroPrice(value) {
+        const amount = Number(value);
+        if (!Number.isFinite(amount)) {
+          return '';
+        }
+
+        return `${amount.toFixed(2).replace('.', ',')}€`;
+      }
+
+      function getSelectedTourConfig() {
+        const selectedTour = getSelectedTour();
+        return selectedTour ? tourConfig[selectedTour.value] || null : null;
+      }
+
+      function updateDisplayedPricing() {
+        const selectedTourConfig = getSelectedTourConfig();
+        const totalLabel = selectedTourConfig ? formatEuroPrice(selectedTourConfig.totalPrice) : '--';
+
+        if (reviewPriceTotal) {
+          reviewPriceTotal.textContent = totalLabel;
+        }
+
+        if (reviewPriceNote) {
+          reviewPriceNote.textContent = selectedTourConfig
+            ? `${formatEuroPrice(selectedTourConfig.perPersonPrice)} per person · charged together for 2 guests.`
+            : 'Choose a tour to see the final amount for 2 guests.';
+        }
+
+        if (reviewPayButton) {
+          reviewPayButton.textContent = selectedTourConfig
+            ? `Pay ${formatEuroPrice(selectedTourConfig.totalPrice)} total`
+            : 'Pay Now';
+        }
+      }
+
+      function setPaymentAmountSummary(amount, note) {
+        const numericAmount = Number(amount);
+
+        if (!paymentAmountSummary || !paymentAmountValue) {
+          return;
+        }
+
+        if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+          paymentAmountSummary.classList.add('hidden');
+          paymentAmountSummary.classList.remove('flex');
+          paymentAmountValue.textContent = '--';
+          return;
+        }
+
+        paymentAmountValue.textContent = formatEuroPrice(numericAmount);
+        if (paymentAmountNote) {
+          paymentAmountNote.textContent = note || 'Charged together for 2 guests.';
+        }
+        paymentAmountSummary.classList.remove('hidden');
+        paymentAmountSummary.classList.add('flex');
+      }
 
       function applyTheme(theme) {
         root.classList.toggle('dark', theme === 'dark');
@@ -2056,10 +2176,13 @@ let availableDatesSet = new Set();
       function buildSelectionData() {
         const selectedTour = getSelectedTour();
         const selectedTime = getSelectedTimeSlot();
+        const selectedTourConfig = selectedTour ? tourConfig[selectedTour.value] || null : null;
         return {
           tour: selectedTour ? selectedTour.dataset.label : '',
           date: requestDateInput ? formatDate(requestDateInput.value) : '',
-          time: selectedTime ? selectedTime.value : ''
+          time: selectedTime ? selectedTime.value : '',
+          pricePerPerson: selectedTourConfig ? `${formatEuroPrice(selectedTourConfig.perPersonPrice)} per person` : '',
+          priceTotal: selectedTourConfig ? `${formatEuroPrice(selectedTourConfig.totalPrice)} total` : ''
         };
       }
 
@@ -2082,6 +2205,7 @@ let availableDatesSet = new Set();
         requestSummaryNodes.forEach(function(node) {
           node.textContent = summary;
         });
+        updateDisplayedPricing();
       }
 
       function selectionIsComplete() {
@@ -2340,6 +2464,7 @@ async function releaseHoldIfLeavingBookingFlow(nextHash) {
     ['Tour', data.tour],
     ['Preferred date', data.date],
     ['Preferred time', data.time],
+    ['Price', data.pricePerPerson && data.priceTotal ? `${data.pricePerPerson} (${data.priceTotal})` : ''],
     ['Name', data.name],
     ['Email', data.email],
     ['Phone', data.phone],
@@ -2519,6 +2644,8 @@ async function releaseHoldIfLeavingBookingFlow(nextHash) {
         tour: selection.tour,
         date: selection.date,
         time: selection.time,
+        pricePerPerson: selection.pricePerPerson,
+        priceTotal: selection.priceTotal,
         holdId: result.hold.holdId,
         holdExpiresAt: result.hold.expiresAt
       };
@@ -2677,6 +2804,7 @@ function setPaymentPopupState(state, message) {
   }
 
   if (state === 'loading') {
+    setPaymentAmountSummary(null);
     if (paymentWalletSection) {
       paymentWalletSection.classList.add('hidden');
     }
@@ -2932,7 +3060,7 @@ function createBoat4TwoApplePayButton(buttonId, checkoutData, callbacks) {
     button.style.appearance = 'none';
     button.style.background = '#000';
     button.style.border = '0';
-    button.style.borderRadius = '9999px';
+    button.style.borderRadius = '14px';
     button.style.cursor = 'pointer';
     button.style.display = 'block';
     button.style.height = '48px';
@@ -3070,8 +3198,8 @@ async function setupWalletButtons(sdk, checkoutData) {
       merchantName: 'Boat4Two',
       onSuccess: async function(data) {
         try {
-          await confirmMyposWalletPayment(checkoutData, walletMethod);
-          await handlePaymentFrameResult('paid', data);
+          const confirmationData = await confirmMyposWalletPayment(checkoutData, walletMethod);
+          await handlePaymentFrameResult('paid', confirmationData || data);
         } catch (error) {
           console.error('myPOS wallet confirmation failed', error);
           await handlePaymentFrameResult('cancelled', error.message || 'myPOS did not confirm the wallet payment.');
@@ -3142,6 +3270,7 @@ async function launchMyposEmbeddedCheckout(checkoutData) {
   holdReleaseSuppressed = true;
   window.location.hash = '#payment-popup';
   setPaymentPopupState('loading');
+  setPaymentAmountSummary(checkoutData.paymentParams?.amount, 'Charged together for 2 guests.');
 
   if (!myposEmbeddedCheckout) {
     throw new Error('Payment container not found.');
@@ -3245,12 +3374,15 @@ async function startMyposPayment() {
     throw new Error(getPublicBookingApiMessage(checkoutData, 'Could not prepare embedded payment.'));
   }
 
+  setPaymentAmountSummary(checkoutData.paymentParams?.amount, 'Charged together for 2 guests.');
   await launchMyposEmbeddedCheckout(checkoutData);
 }
 
 async function handlePaymentFrameResult(status, detailMessage) {
   const paid = status === 'paid' || status === 'success';
-  const safeDetailMessage = detailMessage ? String(detailMessage).slice(0, 220) : '';
+  const detailPayload = detailMessage && typeof detailMessage === 'object' ? detailMessage : null;
+  const safeDetailMessage = detailPayload ? '' : (detailMessage ? String(detailMessage).slice(0, 220) : '');
+  const confirmationEmailStatus = detailPayload?.confirmationEmailStatus || '';
 
   stopHoldCountdown();
 
@@ -3278,6 +3410,11 @@ async function handlePaymentFrameResult(status, detailMessage) {
     paymentPolicySummary.classList.add('hidden');
   }
 
+  if (paymentAmountSummary) {
+    paymentAmountSummary.classList.add('hidden');
+    paymentAmountSummary.classList.remove('flex');
+  }
+
   if (paymentResultIcon) {
     paymentResultIcon.textContent = paid ? 'check_circle' : 'cancel';
   }
@@ -3288,7 +3425,9 @@ async function handlePaymentFrameResult(status, detailMessage) {
 
   if (paymentResultMessage) {
     paymentResultMessage.textContent = paid
-      ? 'Your payment was completed successfully. We will confirm your booking details as soon as possible.'
+      ? (confirmationEmailStatus === 'sent'
+        ? 'Your payment was completed successfully and your confirmation email is on its way.'
+        : 'Your payment was completed successfully. Your booking is confirmed.')
       : (safeDetailMessage
         ? `Your payment was not completed, so your booking was not confirmed. myPOS detail: ${safeDetailMessage}`
         : 'Your payment was not completed, so your booking was not confirmed.');
