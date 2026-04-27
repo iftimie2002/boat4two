@@ -291,6 +291,32 @@ async function sendBookingEmail(env, sendPayload) {
     throw new Error("Missing BOOKING_EMAIL binding or Cloudflare Email API credentials.");
   }
 
+  const restPayload = {
+    to: sendPayload.to,
+    from: typeof sendPayload.from === "string"
+      ? sendPayload.from
+      : {
+          address: sendPayload.from?.email || sendPayload.from?.address || "",
+          name: sendPayload.from?.name || ""
+        },
+    subject: sendPayload.subject,
+    html: sendPayload.html,
+    text: sendPayload.text
+  };
+
+  if (sendPayload.replyTo) {
+    restPayload.reply_to = typeof sendPayload.replyTo === "string"
+      ? sendPayload.replyTo
+      : {
+          address: sendPayload.replyTo?.email || sendPayload.replyTo?.address || "",
+          name: sendPayload.replyTo?.name || ""
+        };
+  }
+
+  if (sendPayload.bcc) {
+    restPayload.bcc = sendPayload.bcc;
+  }
+
   const response = await fetch(
     `${CLOUDFLARE_EMAIL_API_BASE}/accounts/${encodeURIComponent(accountId)}/email/sending/send`,
     {
@@ -299,7 +325,7 @@ async function sendBookingEmail(env, sendPayload) {
         Authorization: `Bearer ${apiToken}`,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify(sendPayload)
+      body: JSON.stringify(restPayload)
     }
   );
 
