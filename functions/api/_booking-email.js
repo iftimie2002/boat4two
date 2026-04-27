@@ -1,10 +1,12 @@
 const BOOKING_TIMEZONE = "Europe/Lisbon";
-const DEFAULT_FROM_EMAIL = "reservas@boat4two.com";
+const DEFAULT_FROM_EMAIL = "reservas.boat4two@gmail.com";
 const DEFAULT_REPLY_TO_EMAIL = "reservas.boat4two@gmail.com";
 const DEFAULT_SUPPORT_EMAIL = "reservas.boat4two@gmail.com";
 const DEFAULT_SUPPORT_PHONE = "+351932015013";
 const DEFAULT_SITE_URL = "https://boat4two.com";
 const CLOUDFLARE_EMAIL_API_BASE = "https://api.cloudflare.com/client/v4";
+const GMAIL_API_SEND_URL = "https://gmail.googleapis.com/gmail/v1/users/me/messages/send";
+const GOOGLE_OAUTH_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const TOUR_LABELS = {
   amor: "Private Sailing Tour for Couples",
   sunset: "Sunset Private Sailing Tour for Couples",
@@ -97,6 +99,150 @@ function escapeHtml(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+function sanitizeHeaderValue(value, max = 998) {
+  return cleanText(String(value || "").replace(/[\r\n]+/g, " "), max);
+}
+
+function escapeHeaderDisplayName(value) {
+  return sanitizeHeaderValue(value, 120).replace(/"/g, '\\"');
+}
+
+function formatAddress(address) {
+  if (!address) {
+    return "";
+  }
+
+  if (typeof address === "string") {
+    return sanitizeHeaderValue(address, 320);
+  }
+
+  const email = sanitizeHeaderValue(address.email || address.address, 320);
+  const name = escapeHeaderDisplayName(address.name || "");
+
+  if (!email) {
+    return "";
+  }
+
+  return name ? `"${name}" <${email}>` : email;
+}
+
+function formatAddressList(addresses) {
+  const values = Array.isArray(addresses) ? addresses : [addresses];
+  return values
+    .map((entry) => formatAddress(entry))
+    .filter(Boolean)
+    .join(", ");
+}
+
+function bytesToBase64(bytes) {
+  let binary = "";
+
+  for (let i = 0; i < bytes.length; i += 1) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+
+  return btoa(binary);
+}
+
+function utf8ToBase64(value) {
+  return bytesToBase64(new TextEncoder().encode(String(value || "")));
+}
+
+function utf8ToBase64Url(value) {
+  return utf8ToBase64(value)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
+}
+
+function foldBase64(base64Value, lineLength = 76) {
+  return String(base64Value || "").match(new RegExp(`.{1,${lineLength}}`, "g"))?.join("\r\n") || "";
+}
+
+function buildMimeMessage(sendPayload) {
+  const boundary = `boat4two_${crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36)}`;
+  const plainTextBody = foldBase64(utf8ToBase64(sendPayload.text || ""));
+  const htmlBody = foldBase64(utf8ToBase64(sendPayload.html || ""));
+  const headers = [
+    `From: ${formatAddress(sendPayload.from)}`,
+    `To: ${formatAddressList(sendPayload.to)}`,
+    sendPayload.bcc ? `Bcc: ${formatAddressList(sendPayload.bcc)}` : "",
+    sendPayload.replyTo ? `Reply-To: ${formatAddress(sendPayload.replyTo)}` : "",
+    `Subject: ${sanitizeHeaderValue(sendPayload.subject, 320)}`,
+    "MIME-Version: 1.0",
+    `Content-Type: multipart/alternative; boundary="${boundary}"`
+  ].filter(Boolean);
+
+  return [
+    ...headers,
+    "",
+    `--${boundary}`,
+    'Content-Type: text/plain; charset="UTF-8"',
+    "Content-Transfer-Encoding: base64",
+    "",
+    plainTextBody,
+    "",
+    `--${boundary}`,
+    'Content-Type: text/html; charset="UTF-8"',
+    "Content-Transfer-Encoding: base64",
+    "",
+    htmlBody,
+    "",
+    `--${boundary}--`,
+    ""
+  ].join("\r\n");
+}
+
+function getGmailCredentials(env) {
+  return {
+    clientId: cleanText(env.GMAIL_CLIENT_ID || env.GOOGLE_CLIENT_ID, 240),
+    clientSecret: cleanText(env.GMAIL_CLIENT_SECRET || env.GOOGLE_CLIENT_SECRET, 240),
+    refreshToken: cleanText(env.GMAIL_REFRESH_TOKEN || env.GOOGLE_REFRESH_TOKEN, 800),
+    fromEmail: cleanText(env.GMAIL_FROM_EMAIL || env.BOOKING_CONFIRMATION_FROM_EMAIL, 240) || DEFAULT_FROM_EMAIL
+  };
+}
+
+function hasGmailCredentials(env) {
+  const credentials = getGmailCredentials(env);
+  return Boolean(credentials.clientId && credentials.clientSecret && credentials.refreshToken);
+}
+
+async function getGmailAccessToken(env) {
+  const credentials = getGmailCredentials(env);
+
+  if (!credentials.clientId || !credentials.clientSecret || !credentials.refreshToken) {
+    throw new Error("Missing Gmail API credentials.");
+  }
+
+  const response = await fetch(GOOGLE_OAUTH_TOKEN_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    body: new URLSearchParams({
+      client_id: credentials.clientId,
+      client_secret: credentials.clientSecret,
+      refresh_token: credentials.refreshToken,
+      grant_type: "refresh_token"
+    })
+  });
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok || !data?.access_token) {
+    const errorMessage = cleanText(
+      data?.error_description || data?.error || "Could not refresh Gmail access token.",
+      240
+    );
+    throw new Error(errorMessage);
+  }
+
+  return {
+    accessToken: data.access_token,
+    fromEmail: credentials.fromEmail
+  };
 }
 
 function buildBookingEmailModel(env, event, paymentData = {}) {
@@ -275,6 +421,10 @@ export async function maybeSendBookingConfirmationEmail(env, event, paymentData 
 }
 
 async function sendBookingEmail(env, sendPayload) {
+  if (hasGmailCredentials(env)) {
+    return sendBookingEmailWithGmail(env, sendPayload);
+  }
+
   if (env.BOOKING_EMAIL && typeof env.BOOKING_EMAIL.send === "function") {
     return env.BOOKING_EMAIL.send(sendPayload);
   }
@@ -338,5 +488,40 @@ async function sendBookingEmail(env, sendPayload) {
 
   return {
     messageId: cleanText(data?.result?.queued?.[0] || data?.result?.delivered?.[0] || "", 200)
+  };
+}
+
+async function sendBookingEmailWithGmail(env, sendPayload) {
+  const { accessToken, fromEmail } = await getGmailAccessToken(env);
+  const gmailPayload = {
+    ...sendPayload,
+    from: {
+      email: fromEmail,
+      name: sendPayload.from?.name || "Boat4Two Reservations"
+    }
+  };
+  const rawMessage = utf8ToBase64Url(buildMimeMessage(gmailPayload));
+  const response = await fetch(GMAIL_API_SEND_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      raw: rawMessage
+    })
+  });
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok || !data?.id) {
+    const gmailError = cleanText(
+      data?.error?.message || data?.error_description || "Gmail API request failed.",
+      260
+    );
+    throw new Error(gmailError);
+  }
+
+  return {
+    messageId: cleanText(data.id, 200)
   };
 }
