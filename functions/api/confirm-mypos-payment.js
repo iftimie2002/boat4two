@@ -1,3 +1,5 @@
+import { getGoogleAccessToken, getGoogleCalendarErrorPayload } from "./_google.js";
+
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -315,29 +317,6 @@ async function signValuesInOrder(values, privateKeyPem) {
   return bytesToBase64(new Uint8Array(signature));
 }
 
-async function getAccessToken(env) {
-  const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded"
-    },
-    body: new URLSearchParams({
-      client_id: env.GOOGLE_CLIENT_ID,
-      client_secret: env.GOOGLE_CLIENT_SECRET,
-      refresh_token: env.GOOGLE_REFRESH_TOKEN,
-      grant_type: "refresh_token"
-    })
-  });
-
-  const tokenData = await tokenResponse.json();
-
-  if (!tokenResponse.ok || !tokenData.access_token) {
-    throw new Error("Failed to refresh Google access token");
-  }
-
-  return tokenData.access_token;
-}
-
 async function listEvents(env, accessToken, extraParams = {}) {
   const url = new URL(
     `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(env.GOOGLE_CALENDAR_ID)}/events`
@@ -536,7 +515,7 @@ export async function onRequestPost(context) {
 
     const statusData = await getMyposPaymentStatus(env, orderId);
     const paymentStatus = Number(statusData?.PaymentStatus);
-    const accessToken = await getAccessToken(env);
+    const accessToken = await getGoogleAccessToken(env);
     const event = await findEventByOrderIdOrHoldId(env, accessToken, orderId, holdId);
 
     if (paymentStatus === 1) {
@@ -619,7 +598,7 @@ export async function onRequestPost(context) {
   } catch (error) {
     return json({
       ok: false,
-      error: error.message || "Unknown error"
+      ...getGoogleCalendarErrorPayload(error)
     }, 500);
   }
 }

@@ -1,3 +1,5 @@
+import { getGoogleAccessToken, getGoogleCalendarErrorPayload } from "./_google.js";
+
 const BOOKING_RULES = {
   timezone: "Europe/Lisbon"
 };
@@ -91,27 +93,20 @@ export async function onRequestGet(context) {
   }
 
   try {
-    const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded"
-      },
-      body: new URLSearchParams({
-        client_id: GOOGLE_CLIENT_ID,
-        client_secret: GOOGLE_CLIENT_SECRET,
-        refresh_token: GOOGLE_REFRESH_TOKEN,
-        grant_type: "refresh_token"
-      })
-    });
+    let accessToken = "";
 
-    const tokenData = await tokenResponse.json();
-
-    if (!tokenResponse.ok || !tokenData.access_token) {
+    try {
+      accessToken = await getGoogleAccessToken(context.env);
+    } catch (error) {
       return Response.json(
         {
           ok: false,
           step: "refresh_token_exchange_failed",
-          details: tokenData
+          ...getGoogleCalendarErrorPayload(error),
+          details: error?.details || null,
+          adminHint: error?.code === "google_refresh_token_invalid"
+            ? "Reconnect GOOGLE_REFRESH_TOKEN in Cloudflare Workers & Pages."
+            : ""
         },
         { status: 500 }
       );
@@ -125,7 +120,7 @@ export async function onRequestGet(context) {
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${tokenData.access_token}`,
+          Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json"
         },
         body: JSON.stringify({

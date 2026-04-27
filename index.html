@@ -1796,6 +1796,25 @@ let availableDatesSet = new Set();
         calendarStatus.style.display = 'none';
       }
 
+      async function readResponseJsonSafely(response) {
+        try {
+          return await response.json();
+        } catch (_) {
+          return null;
+        }
+      }
+
+      function getPublicBookingApiMessage(data, fallbackMessage) {
+        const publicMessage = typeof data?.publicMessage === 'string'
+          ? data.publicMessage.trim()
+          : '';
+        const errorMessage = typeof data?.error === 'string'
+          ? data.error.trim()
+          : '';
+
+        return publicMessage || errorMessage || fallbackMessage;
+      }
+
       function getMonthKey(date) {
         return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       }
@@ -1895,14 +1914,14 @@ let availableDatesSet = new Set();
             cache: 'no-store'
           });
 
+          const data = await readResponseJsonSafely(response);
+
           if (!response.ok) {
-            throw new Error('Calendar availability request failed');
+            throw new Error(getPublicBookingApiMessage(data, 'Could not load available dates. Please try again.'));
           }
 
-          const data = await response.json();
-
-          if (!data.ok || !Array.isArray(data.availableDates)) {
-            throw new Error('Invalid calendar availability response');
+          if (!data?.ok || !Array.isArray(data.availableDates)) {
+            throw new Error(getPublicBookingApiMessage(data, 'Could not load available dates. Please try again.'));
           }
 
           availableDatesSet = new Set(data.availableDates);
@@ -1918,7 +1937,7 @@ let availableDatesSet = new Set();
           updateCalendarState();
         } catch (error) {
           if (calendarDaysGrid) calendarDaysGrid.innerHTML = '';
-          showCalendarStatus('Could not load available dates. Please try again.');
+          showCalendarStatus(error.message || 'Could not load available dates. Please try again.');
           updateSelectionSummary();
           updateCalendarState();
         }
@@ -2012,14 +2031,14 @@ let availableDatesSet = new Set();
             cache: 'no-store'
           });
 
+          const data = await readResponseJsonSafely(response);
+
           if (!response.ok) {
-            throw new Error('Availability request failed');
+            throw new Error(getPublicBookingApiMessage(data, 'Could not load availability. Please try again.'));
           }
 
-          const data = await response.json();
-
-          if (!data.ok || !Array.isArray(data.slots)) {
-            throw new Error('Invalid availability response');
+          if (!data?.ok || !Array.isArray(data.slots)) {
+            throw new Error(getPublicBookingApiMessage(data, 'Could not load availability. Please try again.'));
           }
 
           renderTimeSlots(data.slots, selectedTour.value);
@@ -2028,7 +2047,7 @@ let availableDatesSet = new Set();
             timeSlotsGrid.innerHTML = '';
             timeSlotsGrid.style.display = 'none';
           }
-          showTimeSlotsStatus('Could not load availability. Please try again.');
+          showTimeSlotsStatus(error.message || 'Could not load availability. Please try again.');
           updateSelectionSummary();
           updateCalendarState();
         }
@@ -2102,10 +2121,10 @@ async function createHoldFromSelection(formValues) {
     body: JSON.stringify(payload)
   });
 
-  const data = await response.json();
+  const data = await readResponseJsonSafely(response);
 
-  if (!response.ok || !data.ok) {
-    throw new Error(data.error || 'Could not reserve this slot.');
+  if (!response.ok || !data?.ok) {
+    throw new Error(getPublicBookingApiMessage(data, 'Could not reserve this slot.'));
   }
 
   activeHold = {
@@ -3068,7 +3087,7 @@ async function setupWalletButtons(sdk, checkoutData) {
 
   const jobs = [];
 
-  if (paymentApplePayButton && applePaySessionToken && applePaySessionEnabled && sdk.IS_APPLE_PAY_AVAILABLE && typeof sdk.createApplePayButton === 'function') {
+  if (paymentApplePayButton && applePaySessionToken && applePaySessionEnabled && window.ApplePaySession) {
     jobs.push(
       createBoat4TwoApplePayButton(
         'payment-apple-pay-button',
@@ -3209,8 +3228,8 @@ async function startMyposPayment() {
 
   if (!response.ok) {
     if (contentType.includes('application/json')) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Could not start payment.');
+      const errorData = await readResponseJsonSafely(response);
+      throw new Error(getPublicBookingApiMessage(errorData, 'Could not start payment.'));
     }
 
     const text = await response.text();
@@ -3221,9 +3240,9 @@ async function startMyposPayment() {
     throw new Error('Could not start payment.');
   }
 
-  const checkoutData = await response.json();
-  if (!checkoutData.ok || !checkoutData.paymentParams) {
-    throw new Error(checkoutData.error || 'Could not prepare embedded payment.');
+  const checkoutData = await readResponseJsonSafely(response);
+  if (!checkoutData?.ok || !checkoutData.paymentParams) {
+    throw new Error(getPublicBookingApiMessage(checkoutData, 'Could not prepare embedded payment.'));
   }
 
   await launchMyposEmbeddedCheckout(checkoutData);

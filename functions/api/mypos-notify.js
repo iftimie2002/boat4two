@@ -1,3 +1,4 @@
+import { getGoogleAccessToken } from "./_google.js";
 
 function textResponse(body, status = 200, extraHeaders = {}) {
   return new Response(body, {
@@ -270,29 +271,6 @@ async function verifyPostSignature(entries, signatureBase64, certificatePem) {
   );
 }
 
-async function getAccessToken(env) {
-  const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded"
-    },
-    body: new URLSearchParams({
-      client_id: env.GOOGLE_CLIENT_ID,
-      client_secret: env.GOOGLE_CLIENT_SECRET,
-      refresh_token: env.GOOGLE_REFRESH_TOKEN,
-      grant_type: "refresh_token"
-    })
-  });
-
-  const tokenData = await tokenResponse.json();
-
-  if (!tokenResponse.ok || !tokenData.access_token) {
-    throw new Error("Failed to refresh Google access token");
-  }
-
-  return tokenData.access_token;
-}
-
 
 function isPaidEvent(event) {
   const privateProps = event?.extendedProperties?.private || {};
@@ -514,7 +492,7 @@ export async function onRequestPost(context) {
       return textResponse("Invalid OrderID", 400);
     }
 
-    const accessToken = await getAccessToken(env);
+    const accessToken = await getGoogleAccessToken(env);
     const event = await findEventByOrderIdOrHoldId(env, accessToken, orderId, holdId);
 
     if (!event) {

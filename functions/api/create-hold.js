@@ -1,3 +1,5 @@
+import { getGoogleAccessToken, getGoogleCalendarErrorPayload } from "./_google.js";
+
 const BOOKING_RULES = {
   timezone: "Europe/Lisbon",
   minimumNoticeHours: 24,
@@ -106,27 +108,6 @@ function normalizeTimeInput(value) {
 
 function cleanText(value, max = 500) {
   return String(value || "").trim().slice(0, max);
-}
-
-async function getAccessToken(env) {
-  const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      client_id: env.GOOGLE_CLIENT_ID,
-      client_secret: env.GOOGLE_CLIENT_SECRET,
-      refresh_token: env.GOOGLE_REFRESH_TOKEN,
-      grant_type: "refresh_token"
-    })
-  });
-
-  const tokenData = await tokenResponse.json();
-
-  if (!tokenResponse.ok || !tokenData.access_token) {
-    throw new Error("Failed to refresh Google access token");
-  }
-
-  return tokenData.access_token;
 }
 
 async function getBusyRanges(env, accessToken, timeMin, timeMax) {
@@ -445,7 +426,7 @@ export async function onRequestPost(context) {
       );
     }
 
-    const accessToken = await getAccessToken(env);
+    const accessToken = await getGoogleAccessToken(env);
     let slotLock = null;
 
     try {
@@ -555,7 +536,7 @@ export async function onRequestPost(context) {
     return Response.json(
       {
         ok: false,
-        error: error.message || "Unknown error"
+        ...getGoogleCalendarErrorPayload(error)
       },
       { status: error.status && error.status >= 400 && error.status < 500 ? error.status : 500 }
     );

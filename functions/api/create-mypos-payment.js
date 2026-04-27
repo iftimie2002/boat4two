@@ -1,3 +1,4 @@
+import { getGoogleAccessToken, getGoogleCalendarErrorPayload } from "./_google.js";
 
 function htmlResponse(html, status = 200) {
   return new Response(html, {
@@ -590,29 +591,6 @@ async function createPaymentSessionToken(env, checkoutUrl, {
   return data.SessionToken;
 }
 
-async function getAccessToken(env) {
-  const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded"
-    },
-    body: new URLSearchParams({
-      client_id: env.GOOGLE_CLIENT_ID,
-      client_secret: env.GOOGLE_CLIENT_SECRET,
-      refresh_token: env.GOOGLE_REFRESH_TOKEN,
-      grant_type: "refresh_token"
-    })
-  });
-
-  const tokenData = await tokenResponse.json();
-
-  if (!tokenResponse.ok || !tokenData.access_token) {
-    throw new Error("Failed to refresh Google access token");
-  }
-
-  return tokenData.access_token;
-}
-
 async function listEvents(env, accessToken, extraParams = {}) {
   const url = new URL(
     `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(env.GOOGLE_CALENDAR_ID)}/events`
@@ -767,7 +745,7 @@ export async function onRequestPost(context) {
       return json({ ok: false, error: "Missing holdId." }, 400);
     }
 
-    const accessToken = await getAccessToken(env);
+    const accessToken = await getGoogleAccessToken(env);
     const holdEvent = await findHoldEventById(env, accessToken, holdId);
 
     if (!holdEvent) {
@@ -995,7 +973,7 @@ export async function onRequestPost(context) {
     return json(
       {
         ok: false,
-        error: error.message || "Unknown error"
+        ...getGoogleCalendarErrorPayload(error)
       },
       500
     );

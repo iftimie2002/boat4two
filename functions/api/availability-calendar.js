@@ -1,3 +1,5 @@
+import { getGoogleAccessToken, getGoogleCalendarErrorPayload } from "./_google.js";
+
 const BOOKING_RULES = {
   timezone: "Europe/Lisbon",
   minimumNoticeHours: 24,
@@ -76,29 +78,6 @@ function makeDateInTimeZone(dateStr, timeStr, timeZone) {
   return new Date(utcGuess.getTime() - offsetMinutes * 60 * 1000);
 }
 
-async function getAccessToken(env) {
-  const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded"
-    },
-    body: new URLSearchParams({
-      client_id: env.GOOGLE_CLIENT_ID,
-      client_secret: env.GOOGLE_CLIENT_SECRET,
-      refresh_token: env.GOOGLE_REFRESH_TOKEN,
-      grant_type: "refresh_token"
-    })
-  });
-
-  const tokenData = await tokenResponse.json();
-
-  if (!tokenResponse.ok || !tokenData.access_token) {
-    throw new Error("Failed to refresh Google access token");
-  }
-
-  return tokenData.access_token;
-}
-
 async function getBusyRanges(env, accessToken, timeMin, timeMax) {
   const response = await fetch("https://www.googleapis.com/calendar/v3/freeBusy", {
     method: "POST",
@@ -164,7 +143,7 @@ export async function onRequestGet(context) {
       now.getTime() + BOOKING_RULES.minimumNoticeHours * 60 * 60 * 1000
     );
 
-    const accessToken = await getAccessToken(env);
+    const accessToken = await getGoogleAccessToken(env);
 
     const firstDay = `${month}-01`;
     const lastDay = `${month}-${String(getDaysInMonth(year, monthIndex)).padStart(2, "0")}`;
@@ -221,7 +200,7 @@ export async function onRequestGet(context) {
     return Response.json(
       {
         ok: false,
-        error: error.message || "Unknown error"
+        ...getGoogleCalendarErrorPayload(error)
       },
       { status: 500 }
     );
