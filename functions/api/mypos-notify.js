@@ -500,6 +500,10 @@ export async function onRequestPost(context) {
     const orderId = cleanText(getPayloadValue(payload, ["OrderID", "orderID", "orderId"]), 120);
     const amount = cleanText(getPayloadValue(payload, ["Amount", "amount"]), 40);
     const currency = cleanText(getPayloadValue(payload, ["Currency", "currency"]), 10);
+    const paymentReference = cleanText(
+      getPayloadValue(payload, ["PaymentReference", "paymentReference"]),
+      120
+    );
     const trnref = cleanText(getPayloadValue(payload, ["IPC_Trnref", "ipcTrnref", "trnref"]), 120);
     const requestDateTime = cleanText(getPayloadValue(payload, ["RequestDateTime", "requestDateTime"]), 80);
     const requestStan = cleanText(getPayloadValue(payload, ["RequestSTAN", "requestSTAN", "requestStan"]), 80);
@@ -529,6 +533,7 @@ export async function onRequestPost(context) {
         await applyConfirmationEmailPatch(env, accessToken, event, {
           amount,
           currency,
+          paymentReference,
           paymentTransactionRef: trnref
         });
         return textResponse("OK", 200, {
@@ -570,6 +575,7 @@ export async function onRequestPost(context) {
             paymentStatus: "paid",
             paymentOrderId: orderId,
             paymentTransactionRef: trnref,
+            paymentReference,
             paymentAmount: amount,
             paymentCurrency: currency,
             paidAt,
@@ -582,6 +588,7 @@ export async function onRequestPost(context) {
       await applyConfirmationEmailPatch(env, accessToken, paidEvent, {
         amount,
         currency,
+        paymentReference,
         paymentTransactionRef: trnref
       });
 

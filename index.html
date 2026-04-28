@@ -3426,8 +3426,10 @@ async function handlePaymentFrameResult(status, detailMessage) {
   if (paymentResultMessage) {
     paymentResultMessage.textContent = paid
       ? (confirmationEmailStatus === 'sent'
-        ? 'Your payment was completed successfully and your confirmation email is on its way.'
-        : 'Your payment was completed successfully. Your booking is confirmed.')
+        ? 'Your payment was completed successfully and your confirmation emails are on their way.'
+        : (confirmationEmailStatus === 'partial'
+          ? 'Your payment was completed successfully. Your booking is confirmed, and we are still preparing your tour details email.'
+          : 'Your payment was completed successfully. Your booking is confirmed.'))
       : (safeDetailMessage
         ? `Your payment was not completed, so your booking was not confirmed. myPOS detail: ${safeDetailMessage}`
         : 'Your payment was not completed, so your booking was not confirmed.');

@@ -7,11 +7,56 @@ const DEFAULT_SITE_URL = "https://boat4two.com";
 const CLOUDFLARE_EMAIL_API_BASE = "https://api.cloudflare.com/client/v4";
 const GMAIL_API_SEND_URL = "https://gmail.googleapis.com/gmail/v1/users/me/messages/send";
 const GOOGLE_OAUTH_TOKEN_URL = "https://oauth2.googleapis.com/token";
-const TOUR_LABELS = {
-  amor: "Private Sailing Tour for Couples",
-  sunset: "Sunset Private Sailing Tour for Couples",
-  custom: "Custom Private Tour"
+const MEETING_POINT_NAME = "Boat4Two";
+const MEETING_POINT_ADDRESS = "R. Infante Santo, 8400-252 Ferragudo, Portugal";
+const MEETING_POINT_MAPS_URL = "https://maps.app.goo.gl/V7J4hK9nDfdwuRDQ8?g_st=ic";
+
+const TOUR_DETAILS = {
+  amor: {
+    label: "Private Sailing Tour for Couples",
+    durationLabel: "3.5 hours",
+    durationMinutes: 210
+  },
+  sunset: {
+    label: "Sunset Private Sailing Tour for Couples",
+    durationLabel: "3.5 hours",
+    durationMinutes: 210
+  },
+  custom: {
+    label: "Custom Private Tour",
+    durationLabel: "Custom duration",
+    durationMinutes: 210
+  }
 };
+
+const INCLUDED_ITEMS = [
+  "Private sailing tour for one couple only",
+  "Skipper and guide on board",
+  "Drinks and snacks",
+  "Kayak",
+  "SUP",
+  "Snorkeling gear",
+  "Short sailing lesson, if you would like",
+  "Small Polaroid photo album with pictures taken during the trip"
+];
+
+const BRING_ITEMS = [
+  "Swimwear",
+  "Towel",
+  "Sunscreen",
+  "Sunglasses",
+  "Hat",
+  "Light jacket, especially for sunset tours",
+  "Comfortable clothes",
+  "Any personal medication you may need"
+];
+
+const IMPORTANT_NOTES = [
+  "For safety reasons, the exact route, stops, and water activities may depend on sea and weather conditions on the day.",
+  "The skipper always has the final decision regarding navigation, stops, water activities, and safety on board.",
+  "Guests must not board under the influence of alcohol or recreational drugs.",
+  "Life vests must be used when required, especially during kayak, SUP, or swimming-related activities."
+];
 
 function cleanText(value, max = 240) {
   return String(value || "").trim().slice(0, max);
@@ -139,8 +184,8 @@ function formatAddressList(addresses) {
 function bytesToBase64(bytes) {
   let binary = "";
 
-  for (let i = 0; i < bytes.length; i += 1) {
-    binary += String.fromCharCode(bytes[i]);
+  for (let index = 0; index < bytes.length; index += 1) {
+    binary += String.fromCharCode(bytes[index]);
   }
 
   return btoa(binary);
@@ -161,8 +206,84 @@ function foldBase64(base64Value, lineLength = 76) {
   return String(base64Value || "").match(new RegExp(`.{1,${lineLength}}`, "g"))?.join("\r\n") || "";
 }
 
+function renderListItems(items) {
+  return items.map((item) => `<li style="margin:0 0 8px;">${escapeHtml(item)}</li>`).join("");
+}
+
+function buildEmailShell({ title, introHtml, sectionsHtml, footerHtml }) {
+  return `<!doctype html>
+<html lang="en">
+<body style="margin:0;padding:0;background:#f8f6f6;color:#211611;font-family:Arial,sans-serif;">
+  <div style="max-width:640px;margin:0 auto;padding:32px 16px;">
+    <div style="background:#ffffff;border:1px solid #eadfd9;border-radius:24px;padding:32px;">
+      <p style="margin:0 0 12px;font-size:12px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#e65e19;">Boat4Two</p>
+      <h1 style="margin:0 0 16px;font-size:28px;line-height:1.2;color:#211611;">${escapeHtml(title)}</h1>
+      <div style="margin:0 0 24px;font-size:16px;line-height:1.6;color:#4a3b34;">
+        ${introHtml}
+      </div>
+      ${sectionsHtml}
+      <div style="border-top:1px solid #eadfd9;padding-top:20px;color:#4a3b34;font-size:14px;line-height:1.7;">
+        ${footerHtml}
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
+function buildCardSection(title, bodyHtml, tone = "soft") {
+  const background = tone === "white" ? "#ffffff" : "#fff7f3";
+  const border = tone === "white" ? "#eadfd9" : "#f1d9cc";
+
+  return `<div style="border:1px solid ${border};background:${background};border-radius:20px;padding:20px 22px;margin:0 0 20px;">
+    <p style="margin:0 0 12px;font-size:13px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#e65e19;">${escapeHtml(title)}</p>
+    ${bodyHtml}
+  </div>`;
+}
+
+function getTimeZoneParts(dateInput, timeZone) {
+  const formatter = new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23"
+  });
+
+  const map = {};
+  formatter.formatToParts(dateInput).forEach((part) => {
+    if (part.type !== "literal") {
+      map[part.type] = part.value;
+    }
+  });
+
+  return map;
+}
+
+function formatIcsUtc(dateInput) {
+  return new Date(dateInput).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+}
+
+function formatIcsZoned(dateInput, timeZone) {
+  const parts = getTimeZoneParts(new Date(dateInput), timeZone);
+  return `${parts.year}${parts.month}${parts.day}T${parts.hour}${parts.minute}${parts.second}`;
+}
+
+function escapeIcsText(value) {
+  return String(value || "")
+    .replace(/\\/g, "\\\\")
+    .replace(/\r?\n/g, "\\n")
+    .replace(/;/g, "\\;")
+    .replace(/,/g, "\\,");
+}
+
 function buildMimeMessage(sendPayload) {
-  const boundary = `boat4two_${crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36)}`;
+  const hasAttachments = Array.isArray(sendPayload.attachments) && sendPayload.attachments.length > 0;
+  const topBoundary = `boat4two_${crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36)}`;
+  const altBoundary = `${topBoundary}_alt`;
   const plainTextBody = foldBase64(utf8ToBase64(sendPayload.text || ""));
   const htmlBody = foldBase64(utf8ToBase64(sendPayload.html || ""));
   const headers = [
@@ -172,27 +293,67 @@ function buildMimeMessage(sendPayload) {
     sendPayload.replyTo ? `Reply-To: ${formatAddress(sendPayload.replyTo)}` : "",
     `Subject: ${sanitizeHeaderValue(sendPayload.subject, 320)}`,
     "MIME-Version: 1.0",
-    `Content-Type: multipart/alternative; boundary="${boundary}"`
+    `Content-Type: multipart/${hasAttachments ? "mixed" : "alternative"}; boundary="${topBoundary}"`
   ].filter(Boolean);
 
-  return [
+  const bodyLines = [
     ...headers,
     "",
-    `--${boundary}`,
-    'Content-Type: text/plain; charset="UTF-8"',
-    "Content-Transfer-Encoding: base64",
+    hasAttachments ? `--${topBoundary}` : `--${topBoundary}`,
+    hasAttachments
+      ? `Content-Type: multipart/alternative; boundary="${altBoundary}"`
+      : 'Content-Type: text/plain; charset="UTF-8"',
+    hasAttachments ? "" : "Content-Transfer-Encoding: base64",
+    hasAttachments ? "" : plainTextBody
+  ];
+
+  if (hasAttachments) {
+    bodyLines.push(
+      "",
+      `--${altBoundary}`,
+      'Content-Type: text/plain; charset="UTF-8"',
+      "Content-Transfer-Encoding: base64",
+      "",
+      plainTextBody,
+      "",
+      `--${altBoundary}`,
+      'Content-Type: text/html; charset="UTF-8"',
+      "Content-Transfer-Encoding: base64",
+      "",
+      htmlBody,
+      "",
+      `--${altBoundary}--`
+    );
+
+    sendPayload.attachments.forEach((attachment) => {
+      bodyLines.push(
+        "",
+        `--${topBoundary}`,
+        `Content-Type: ${attachment.contentType}; name="${sanitizeHeaderValue(attachment.filename, 160)}"`,
+        `Content-Disposition: ${attachment.contentDisposition || "attachment"}; filename="${sanitizeHeaderValue(attachment.filename, 160)}"`,
+        "Content-Transfer-Encoding: base64",
+        "",
+        foldBase64(attachment.contentBase64 || "")
+      );
+    });
+
+    bodyLines.push("", `--${topBoundary}--`, "");
+    return bodyLines.join("\r\n");
+  }
+
+  bodyLines.push(
     "",
-    plainTextBody,
-    "",
-    `--${boundary}`,
+    `--${topBoundary}`,
     'Content-Type: text/html; charset="UTF-8"',
     "Content-Transfer-Encoding: base64",
     "",
     htmlBody,
     "",
-    `--${boundary}--`,
+    `--${topBoundary}--`,
     ""
-  ].join("\r\n");
+  );
+
+  return bodyLines.join("\r\n");
 }
 
 function getGmailCredentials(env) {
@@ -200,7 +361,9 @@ function getGmailCredentials(env) {
     clientId: cleanText(env.GMAIL_CLIENT_ID || env.GOOGLE_CLIENT_ID, 240),
     clientSecret: cleanText(env.GMAIL_CLIENT_SECRET || env.GOOGLE_CLIENT_SECRET, 240),
     refreshToken: cleanText(env.GMAIL_REFRESH_TOKEN || env.GOOGLE_REFRESH_TOKEN, 800),
-    fromEmail: cleanText(env.GMAIL_FROM_EMAIL || env.BOOKING_CONFIRMATION_FROM_EMAIL, 240) || DEFAULT_FROM_EMAIL
+    fromEmail:
+      cleanText(env.GMAIL_FROM_EMAIL || env.BOOKING_CONFIRMATION_FROM_EMAIL, 240) ||
+      DEFAULT_FROM_EMAIL
   };
 }
 
@@ -247,14 +410,21 @@ async function getGmailAccessToken(env) {
 
 function buildBookingEmailModel(env, event, paymentData = {}) {
   const privateProps = event?.extendedProperties?.private || {};
+  const rawTour = cleanText(privateProps.tour, 80).toLowerCase();
+  const details = TOUR_DETAILS[rawTour] || TOUR_DETAILS.custom;
+  const startIso = cleanText(event?.start?.dateTime || "", 80);
+  const endIso = cleanText(event?.end?.dateTime || "", 80);
+  const timeZone = cleanText(event?.start?.timeZone || event?.end?.timeZone, 80) || BOOKING_TIMEZONE;
   const customerName = cleanText(privateProps.customerName, 120);
   const customerEmail = cleanText(privateProps.customerEmail, 200);
-  const rawTour = cleanText(privateProps.tour, 80).toLowerCase();
-  const tourLabel = cleanText(
-    privateProps.tourLabel || privateProps.tourName || privateProps.tourDisplayName,
-    160
-  ) || TOUR_LABELS[rawTour] || cleanText(privateProps.tour, 80);
-  const dateLabel = formatDate(privateProps.date || event?.start?.dateTime || event?.start?.date);
+  const tourLabel =
+    cleanText(
+      privateProps.tourLabel || privateProps.tourName || privateProps.tourDisplayName,
+      160
+    ) ||
+    details.label ||
+    "Boat4Two booking";
+  const dateLabel = formatDate(privateProps.date || startIso || event?.start?.date);
   const timeLabel = formatTime(privateProps.time);
   const amountLabel = formatMoney(
     paymentData.amount || privateProps.paymentAmount,
@@ -268,34 +438,51 @@ function buildBookingEmailModel(env, event, paymentData = {}) {
     paymentData.paymentTransactionRef || privateProps.paymentTransactionRef,
     120
   );
+  const bookingReference = cleanText(privateProps.paymentOrderId || privateProps.holdId || event?.id, 160);
 
   return {
+    rawTour,
     customerName,
     customerEmail,
-    tourLabel: tourLabel || "Boat4Two booking",
+    tourLabel,
     dateLabel,
     timeLabel,
     amountLabel,
     paymentReference,
     transactionReference,
+    durationLabel: details.durationLabel,
+    durationMinutes: details.durationMinutes,
+    guestCount: 2,
     siteUrl: cleanText(env.BOOKING_CONFIRMATION_SITE_URL, 200) || DEFAULT_SITE_URL,
     supportEmail: cleanText(env.BOOKING_CONFIRMATION_SUPPORT_EMAIL, 200) || DEFAULT_SUPPORT_EMAIL,
     supportPhone: cleanText(env.BOOKING_CONFIRMATION_SUPPORT_PHONE, 40) || DEFAULT_SUPPORT_PHONE,
     replyToEmail: cleanText(env.BOOKING_CONFIRMATION_REPLY_TO_EMAIL, 200) || DEFAULT_REPLY_TO_EMAIL,
     fromEmail: cleanText(env.BOOKING_CONFIRMATION_FROM_EMAIL, 200) || DEFAULT_FROM_EMAIL,
-    bccEmail: cleanText(env.BOOKING_CONFIRMATION_BCC_EMAIL, 200)
+    bccEmail: cleanText(env.BOOKING_CONFIRMATION_BCC_EMAIL, 200),
+    startIso,
+    endIso,
+    timeZone,
+    bookingReference,
+    meetingPointName: MEETING_POINT_NAME,
+    meetingPointAddress: MEETING_POINT_ADDRESS,
+    meetingPointMapsUrl: MEETING_POINT_MAPS_URL,
+    includedItems: INCLUDED_ITEMS,
+    bringItems: BRING_ITEMS,
+    importantNotes: IMPORTANT_NOTES
   };
 }
 
-function buildEmailSubject(model) {
-  return `Boat4Two booking confirmed - ${model.tourLabel}`;
+function buildPaymentConfirmationSubject() {
+  return "Your Boat4Two booking is confirmed";
 }
 
-function buildPlainText(model) {
+function buildPaymentConfirmationText(model) {
   return [
     `Hello ${model.customerName || "there"},`,
     "",
-    "Your Boat4Two booking has been confirmed.",
+    "Your payment was received and your Boat4Two booking is now confirmed.",
+    "",
+    "Booking details",
     "",
     `Tour: ${model.tourLabel}`,
     model.dateLabel ? `Date: ${model.dateLabel}` : "",
@@ -304,79 +491,251 @@ function buildPlainText(model) {
     model.paymentReference ? `Payment reference: ${model.paymentReference}` : "",
     model.transactionReference ? `Transaction reference: ${model.transactionReference}` : "",
     "",
-    "What happens next:",
-    "- We will contact you with the final meeting details before your tour.",
-    "- If you need to request a cancellation or refund, email us with your booking name, tour date, and payment reference.",
+    "What happens next",
     "",
-    `Support email: ${model.supportEmail}`,
-    `Phone / WhatsApp: ${model.supportPhone}`,
-    `Website: ${model.siteUrl}`,
+    "You will also receive a second email shortly with all tour details, including the meeting point, what is included, what to bring, important safety information, and a calendar file you can add to your own calendar.",
     "",
-    "Cancellation policy:",
-    "Full refund for cancellations at least 48 hours before the activity.",
-    "50% refund for cancellations between 24 and 48 hours before the activity.",
-    "Less than 24 hours before the activity or no-show is non-refundable.",
+    "If you need to request a cancellation or refund, please email us with your booking name, tour date, and payment reference.",
     "",
-    "Thank you,",
+    "Kind regards,",
     "Boat4Two"
   ].filter(Boolean).join("\n");
 }
 
-function buildHtml(model) {
-  return `<!doctype html>
-<html lang="en">
-<body style="margin:0;padding:0;background:#f8f6f6;color:#211611;font-family:Arial,sans-serif;">
-  <div style="max-width:640px;margin:0 auto;padding:32px 16px;">
-    <div style="background:#ffffff;border:1px solid #eadfd9;border-radius:24px;padding:32px;">
-      <p style="margin:0 0 12px;font-size:12px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#e65e19;">Boat4Two</p>
-      <h1 style="margin:0 0 16px;font-size:28px;line-height:1.2;color:#211611;">Your booking is confirmed</h1>
-      <p style="margin:0 0 24px;font-size:16px;line-height:1.6;color:#4a3b34;">
-        Hello ${escapeHtml(model.customerName || "there")}, your payment was received and your Boat4Two booking is now confirmed.
-      </p>
-
-      <div style="border:1px solid #f1d9cc;background:#fff7f3;border-radius:20px;padding:20px 22px;margin:0 0 24px;">
-        <p style="margin:0 0 10px;font-size:13px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#e65e19;">Booking details</p>
+function buildPaymentConfirmationHtml(model) {
+  const sectionsHtml = [
+    buildCardSection(
+      "Booking details",
+      `
         <p style="margin:0 0 8px;font-size:16px;font-weight:700;color:#211611;">${escapeHtml(model.tourLabel)}</p>
         ${model.dateLabel ? `<p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Date:</strong> ${escapeHtml(model.dateLabel)}</p>` : ""}
         ${model.timeLabel ? `<p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Time:</strong> ${escapeHtml(model.timeLabel)}</p>` : ""}
         ${model.amountLabel ? `<p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Paid:</strong> ${escapeHtml(model.amountLabel)}</p>` : ""}
         ${model.paymentReference ? `<p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Payment reference:</strong> ${escapeHtml(model.paymentReference)}</p>` : ""}
         ${model.transactionReference ? `<p style="margin:0;font-size:14px;color:#4a3b34;"><strong>Transaction reference:</strong> ${escapeHtml(model.transactionReference)}</p>` : ""}
-      </div>
+      `
+    ),
+    buildCardSection(
+      "What happens next",
+      `
+        <p style="margin:0 0 10px;font-size:14px;line-height:1.7;color:#4a3b34;">
+          You will also receive a second email shortly with all tour details, including the meeting point, what is included, what to bring, important safety information, and a calendar file you can add to your own calendar.
+        </p>
+        <p style="margin:0;font-size:14px;line-height:1.7;color:#4a3b34;">
+          If you need to request a cancellation or refund, please email us with your booking name, tour date, and payment reference.
+        </p>
+      `,
+      "white"
+    )
+  ].join("");
 
-      <div style="margin:0 0 24px;">
-        <p style="margin:0 0 10px;font-size:16px;font-weight:700;color:#211611;">What happens next</p>
-        <ul style="margin:0;padding-left:20px;color:#4a3b34;font-size:14px;line-height:1.7;">
-          <li>We will contact you with the final meeting details before your tour.</li>
-          <li>Need to request a cancellation or refund? Email us with your booking name, tour date, and payment reference.</li>
-        </ul>
-      </div>
+  const footerHtml = [
+    `<p style="margin:0 0 8px;"><strong>Support email:</strong> <a href="mailto:${escapeHtml(model.supportEmail)}" style="color:#e65e19;text-decoration:none;">${escapeHtml(model.supportEmail)}</a></p>`,
+    `<p style="margin:0 0 8px;"><strong>Phone / WhatsApp:</strong> <a href="tel:${escapeHtml(model.supportPhone)}" style="color:#e65e19;text-decoration:none;">${escapeHtml(model.supportPhone)}</a></p>`,
+    `<p style="margin:0;"><strong>Website:</strong> <a href="${escapeHtml(model.siteUrl)}" style="color:#e65e19;text-decoration:none;">${escapeHtml(model.siteUrl)}</a></p>`
+  ].join("");
 
-      <div style="border-top:1px solid #eadfd9;padding-top:20px;color:#4a3b34;font-size:14px;line-height:1.7;">
-        <p style="margin:0 0 8px;"><strong>Support email:</strong> <a href="mailto:${escapeHtml(model.supportEmail)}" style="color:#e65e19;text-decoration:none;">${escapeHtml(model.supportEmail)}</a></p>
-        <p style="margin:0 0 8px;"><strong>Phone / WhatsApp:</strong> <a href="tel:${escapeHtml(model.supportPhone)}" style="color:#e65e19;text-decoration:none;">${escapeHtml(model.supportPhone)}</a></p>
-        <p style="margin:0;"><strong>Website:</strong> <a href="${escapeHtml(model.siteUrl)}" style="color:#e65e19;text-decoration:none;">${escapeHtml(model.siteUrl)}</a></p>
-      </div>
-    </div>
-  </div>
-</body>
-</html>`;
+  return buildEmailShell({
+    title: "Your booking is confirmed",
+    introHtml: `<p style="margin:0;">Hello ${escapeHtml(model.customerName || "there")}, your payment was received and your Boat4Two booking is now confirmed.</p>`,
+    sectionsHtml,
+    footerHtml
+  });
 }
 
-export async function maybeSendBookingConfirmationEmail(env, event, paymentData = {}) {
-  const privateProps = event?.extendedProperties?.private || {};
+function buildTourDetailsSubject() {
+  return "Your Boat4Two tour details";
+}
 
-  if (privateProps.bookingConfirmationEmailSentAt) {
-    return { status: "already_sent", shouldPatch: false };
-  }
+function buildTourDetailsText(model) {
+  return [
+    `Hello ${model.customerName || "there"},`,
+    "",
+    "Here are all the details for your Boat4Two experience.",
+    "",
+    "Booking details",
+    "",
+    `Tour: ${model.tourLabel}`,
+    model.dateLabel ? `Date: ${model.dateLabel}` : "",
+    model.timeLabel ? `Time: ${model.timeLabel}` : "",
+    model.durationLabel ? `Duration: ${model.durationLabel}` : "",
+    `Guests: ${model.guestCount} people`,
+    model.paymentReference ? `Payment reference: ${model.paymentReference}` : "",
+    "",
+    "Meeting point",
+    "",
+    `${model.meetingPointName}`,
+    `${model.meetingPointAddress}`,
+    "",
+    "Google Maps:",
+    `${model.meetingPointMapsUrl}`,
+    "",
+    "Please follow the Google Maps pin exactly.",
+    "",
+    "When you arrive at the meeting point, please go to the Ferry Boat Booth. They will already be expecting you. Just let them know you are there for your Boat4Two tour, and they will take you to our boat by ferry boat.",
+    "",
+    "Please arrive 10 to 15 minutes before your scheduled tour time, so there is enough time for the short transfer and we can start the tour on time.",
+    "",
+    "If you are coming by car, we recommend leaving a little extra time for parking, especially during busier months.",
+    "",
+    "What is included",
+    "",
+    ...model.includedItems.map((item) => `- ${item}`),
+    "",
+    "What to bring",
+    "",
+    ...model.bringItems.map((item) => `- ${item}`),
+    "",
+    "Important safety notes",
+    "",
+    ...model.importantNotes.map((item) => `- ${item}`),
+    "",
+    "Add to your calendar",
+    "",
+    "A calendar file (.ics) is attached to this email so you can add your tour to Apple Calendar, Google Calendar, Outlook, or another calendar app.",
+    "",
+    "If you need to request a cancellation or refund, please email us with your booking name, tour date, and payment reference.",
+    "",
+    "We look forward to welcoming you on board.",
+    "",
+    "Kind regards,",
+    "Boat4Two"
+  ].filter(Boolean).join("\n");
+}
 
-  const model = buildBookingEmailModel(env, event, paymentData);
+function buildTourDetailsHtml(model) {
+  const bookingDetailsBody = `
+    <p style="margin:0 0 8px;font-size:16px;font-weight:700;color:#211611;">${escapeHtml(model.tourLabel)}</p>
+    ${model.dateLabel ? `<p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Date:</strong> ${escapeHtml(model.dateLabel)}</p>` : ""}
+    ${model.timeLabel ? `<p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Time:</strong> ${escapeHtml(model.timeLabel)}</p>` : ""}
+    ${model.durationLabel ? `<p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Duration:</strong> ${escapeHtml(model.durationLabel)}</p>` : ""}
+    <p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Guests:</strong> ${model.guestCount} people</p>
+    ${model.paymentReference ? `<p style="margin:0;font-size:14px;color:#4a3b34;"><strong>Payment reference:</strong> ${escapeHtml(model.paymentReference)}</p>` : ""}
+  `;
 
-  if (!model.customerEmail) {
-    return { status: "missing_recipient", shouldPatch: false };
-  }
+  const meetingPointBody = `
+    <p style="margin:0 0 10px;font-size:15px;font-weight:700;color:#211611;">${escapeHtml(model.meetingPointName)}</p>
+    <p style="margin:0 0 12px;font-size:14px;line-height:1.7;color:#4a3b34;">${escapeHtml(model.meetingPointAddress)}</p>
+    <p style="margin:0 0 14px;font-size:14px;line-height:1.7;color:#4a3b34;">Please follow the Google Maps pin exactly.</p>
+    <p style="margin:0 0 14px;font-size:14px;line-height:1.7;color:#4a3b34;">When you arrive at the meeting point, please go to the Ferry Boat Booth. They will already be expecting you. Just let them know you are there for your Boat4Two tour, and they will take you to our boat by ferry boat.</p>
+    <p style="margin:0 0 14px;font-size:14px;line-height:1.7;color:#4a3b34;">Please arrive 10 to 15 minutes before your scheduled tour time, so there is enough time for the short transfer and we can start the tour on time.</p>
+    <p style="margin:0 0 18px;font-size:14px;line-height:1.7;color:#4a3b34;">If you are coming by car, we recommend leaving a little extra time for parking, especially during busier months.</p>
+    <a href="${escapeHtml(model.meetingPointMapsUrl)}" style="display:inline-block;padding:12px 18px;border-radius:999px;background:#e65e19;color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;">Open Google Maps</a>
+  `;
 
-  const sendPayload = {
+  const sectionsHtml = [
+    buildCardSection("Booking details", bookingDetailsBody),
+    buildCardSection("Meeting point", meetingPointBody, "white"),
+    buildCardSection(
+      "What is included",
+      `<ul style="margin:0;padding-left:20px;color:#4a3b34;font-size:14px;line-height:1.7;">${renderListItems(model.includedItems)}</ul>`
+    ),
+    buildCardSection(
+      "What to bring",
+      `<ul style="margin:0;padding-left:20px;color:#4a3b34;font-size:14px;line-height:1.7;">${renderListItems(model.bringItems)}</ul>`,
+      "white"
+    ),
+    buildCardSection(
+      "Important safety notes",
+      `<ul style="margin:0;padding-left:20px;color:#4a3b34;font-size:14px;line-height:1.7;">${renderListItems(model.importantNotes)}</ul>`
+    ),
+    buildCardSection(
+      "Add to your calendar",
+      `<p style="margin:0;font-size:14px;line-height:1.7;color:#4a3b34;">A calendar file (.ics) is attached to this email so you can add your tour to Apple Calendar, Google Calendar, Outlook, or another calendar app.</p>`,
+      "white"
+    )
+  ].join("");
+
+  const footerHtml = [
+    `<p style="margin:0 0 10px;">If you need to request a cancellation or refund, please email us with your booking name, tour date, and payment reference.</p>`,
+    `<p style="margin:0 0 10px;">We look forward to welcoming you on board.</p>`,
+    `<p style="margin:0 0 8px;"><strong>Support email:</strong> <a href="mailto:${escapeHtml(model.supportEmail)}" style="color:#e65e19;text-decoration:none;">${escapeHtml(model.supportEmail)}</a></p>`,
+    `<p style="margin:0;"><strong>Phone / WhatsApp:</strong> <a href="tel:${escapeHtml(model.supportPhone)}" style="color:#e65e19;text-decoration:none;">${escapeHtml(model.supportPhone)}</a></p>`
+  ].join("");
+
+  return buildEmailShell({
+    title: "Your tour details",
+    introHtml: `<p style="margin:0;">Hello ${escapeHtml(model.customerName || "there")}, here are all the details for your Boat4Two experience.</p>`,
+    sectionsHtml,
+    footerHtml
+  });
+}
+
+function buildCalendarFilename(model) {
+  const datePart = cleanText(model.startIso || model.dateLabel, 32)
+    .replace(/[^0-9]/g, "")
+    .slice(0, 8) || "tour";
+  const tourPart = cleanText(model.rawTour || "boat4two", 40).replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+  return `boat4two-${tourPart}-${datePart}.ics`;
+}
+
+function buildCalendarIcs(model) {
+  const uid = `${cleanText(model.bookingReference || "boat4two", 120)}@boat4two.com`;
+  const startValue = model.startIso ? formatIcsZoned(model.startIso, model.timeZone) : "";
+  const endValue = model.endIso ? formatIcsZoned(model.endIso, model.timeZone) : "";
+  const descriptionLines = [
+    `Booking: ${model.tourLabel}`,
+    model.dateLabel ? `Date: ${model.dateLabel}` : "",
+    model.timeLabel ? `Time: ${model.timeLabel}` : "",
+    model.durationLabel ? `Duration: ${model.durationLabel}` : "",
+    `Guests: ${model.guestCount} people`,
+    model.paymentReference ? `Payment reference: ${model.paymentReference}` : "",
+    "",
+    "Meeting point:",
+    model.meetingPointName,
+    model.meetingPointAddress,
+    model.meetingPointMapsUrl,
+    "",
+    "Please arrive 10 to 15 minutes early and go to the Ferry Boat Booth."
+  ].filter(Boolean).join("\n");
+
+  return [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Boat4Two//Tour Booking//EN",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    "BEGIN:VEVENT",
+    `UID:${escapeIcsText(uid)}`,
+    `DTSTAMP:${formatIcsUtc(new Date())}`,
+    startValue ? `DTSTART;TZID=${model.timeZone}:${startValue}` : "",
+    endValue ? `DTEND;TZID=${model.timeZone}:${endValue}` : "",
+    `SUMMARY:${escapeIcsText(model.tourLabel)}`,
+    `LOCATION:${escapeIcsText(`${model.meetingPointName}, ${model.meetingPointAddress}`)}`,
+    `DESCRIPTION:${escapeIcsText(descriptionLines)}`,
+    `URL:${escapeIcsText(model.meetingPointMapsUrl)}`,
+    "END:VEVENT",
+    "END:VCALENDAR",
+    ""
+  ].filter(Boolean).join("\r\n");
+}
+
+function buildPaymentConfirmationPayload(model) {
+  return {
+    subject: buildPaymentConfirmationSubject(),
+    html: buildPaymentConfirmationHtml(model),
+    text: buildPaymentConfirmationText(model)
+  };
+}
+
+function buildTourDetailsPayload(model) {
+  return {
+    subject: buildTourDetailsSubject(),
+    html: buildTourDetailsHtml(model),
+    text: buildTourDetailsText(model),
+    attachments: [
+      {
+        filename: buildCalendarFilename(model),
+        contentType: 'text/calendar; charset="UTF-8"; method=PUBLISH',
+        contentDisposition: "attachment",
+        contentBase64: utf8ToBase64(buildCalendarIcs(model))
+      }
+    ]
+  };
+}
+
+function buildSendPayload(model, content) {
+  const payload = {
     to: model.customerEmail,
     from: {
       email: model.fromEmail,
@@ -386,38 +745,108 @@ export async function maybeSendBookingConfirmationEmail(env, event, paymentData 
       email: model.replyToEmail,
       name: "Boat4Two Reservations"
     },
-    subject: buildEmailSubject(model),
-    html: buildHtml(model),
-    text: buildPlainText(model)
+    subject: content.subject,
+    html: content.html,
+    text: content.text
   };
 
   if (model.bccEmail) {
-    sendPayload.bcc = model.bccEmail;
+    payload.bcc = model.bccEmail;
   }
 
-  try {
-    const result = await sendBookingEmail(env, sendPayload);
-
-    return {
-      status: "sent",
-      shouldPatch: true,
-      patchPrivateProps: {
-        bookingConfirmationEmailStatus: "sent",
-        bookingConfirmationEmailSentAt: new Date().toISOString(),
-        bookingConfirmationEmailError: "",
-        bookingConfirmationEmailMessageId: cleanText(result?.messageId, 200)
-      }
-    };
-  } catch (error) {
-    return {
-      status: "failed",
-      shouldPatch: true,
-      patchPrivateProps: {
-        bookingConfirmationEmailStatus: "failed",
-        bookingConfirmationEmailError: cleanText(error?.message || "Unknown email error", 300)
-      }
-    };
+  if (Array.isArray(content.attachments) && content.attachments.length) {
+    payload.attachments = content.attachments;
   }
+
+  return payload;
+}
+
+function buildEmailPatchResult(status, patchPrivateProps, shouldPatch) {
+  return {
+    status,
+    shouldPatch,
+    patchPrivateProps
+  };
+}
+
+export async function maybeSendBookingConfirmationEmail(env, event, paymentData = {}) {
+  const privateProps = event?.extendedProperties?.private || {};
+  const paymentConfirmationAlreadySentAt =
+    cleanText(privateProps.paymentConfirmationEmailSentAt, 80) ||
+    cleanText(privateProps.bookingConfirmationEmailSentAt, 80);
+  const tourDetailsAlreadySentAt = cleanText(privateProps.tourDetailsEmailSentAt, 80);
+  const model = buildBookingEmailModel(env, event, paymentData);
+
+  if (!model.customerEmail) {
+    return buildEmailPatchResult("missing_recipient", null, false);
+  }
+
+  const patchPrivateProps = {};
+  let paymentConfirmationStatus = paymentConfirmationAlreadySentAt ? "already_sent" : "pending";
+  let tourDetailsStatus = tourDetailsAlreadySentAt ? "already_sent" : "pending";
+
+  if (!paymentConfirmationAlreadySentAt) {
+    try {
+      const confirmationResult = await sendBookingEmail(
+        env,
+        buildSendPayload(model, buildPaymentConfirmationPayload(model))
+      );
+      paymentConfirmationStatus = "sent";
+      patchPrivateProps.paymentConfirmationEmailStatus = "sent";
+      patchPrivateProps.paymentConfirmationEmailSentAt = new Date().toISOString();
+      patchPrivateProps.paymentConfirmationEmailError = "";
+      patchPrivateProps.paymentConfirmationEmailMessageId = cleanText(confirmationResult?.messageId, 200);
+      patchPrivateProps.bookingConfirmationEmailMessageId = cleanText(confirmationResult?.messageId, 200);
+    } catch (error) {
+      const errorMessage = cleanText(error?.message || "Unknown email error", 300);
+      patchPrivateProps.paymentConfirmationEmailStatus = "failed";
+      patchPrivateProps.paymentConfirmationEmailError = errorMessage;
+      patchPrivateProps.bookingConfirmationEmailStatus = "failed";
+      patchPrivateProps.bookingConfirmationEmailError = errorMessage;
+      return buildEmailPatchResult("failed", patchPrivateProps, true);
+    }
+  }
+
+  if (!tourDetailsAlreadySentAt) {
+    try {
+      const tourDetailsResult = await sendBookingEmail(
+        env,
+        buildSendPayload(model, buildTourDetailsPayload(model))
+      );
+      tourDetailsStatus = "sent";
+      patchPrivateProps.tourDetailsEmailStatus = "sent";
+      patchPrivateProps.tourDetailsEmailSentAt = new Date().toISOString();
+      patchPrivateProps.tourDetailsEmailError = "";
+      patchPrivateProps.tourDetailsEmailMessageId = cleanText(tourDetailsResult?.messageId, 200);
+    } catch (error) {
+      const errorMessage = cleanText(error?.message || "Unknown email error", 300);
+      tourDetailsStatus = "failed";
+      patchPrivateProps.tourDetailsEmailStatus = "failed";
+      patchPrivateProps.tourDetailsEmailError = errorMessage;
+    }
+  }
+
+  const paymentConfirmationReady =
+    paymentConfirmationStatus === "sent" || paymentConfirmationStatus === "already_sent";
+  const tourDetailsReady = tourDetailsStatus === "sent" || tourDetailsStatus === "already_sent";
+  const overallStatus = paymentConfirmationReady && tourDetailsReady
+    ? "sent"
+    : paymentConfirmationReady
+      ? "partial"
+      : "failed";
+
+  patchPrivateProps.bookingConfirmationEmailStatus = overallStatus;
+  patchPrivateProps.bookingConfirmationEmailError = tourDetailsStatus === "failed"
+    ? cleanText(patchPrivateProps.tourDetailsEmailError || "Could not send tour details email.", 300)
+    : "";
+
+  if (overallStatus === "sent") {
+    patchPrivateProps.bookingConfirmationEmailSentAt =
+      cleanText(privateProps.bookingConfirmationEmailSentAt, 80) || new Date().toISOString();
+  }
+
+  const shouldPatch = Object.keys(patchPrivateProps).length > 0;
+  return buildEmailPatchResult(overallStatus, shouldPatch ? patchPrivateProps : null, shouldPatch);
 }
 
 async function sendBookingEmail(env, sendPayload) {
@@ -438,29 +867,31 @@ async function sendBookingEmail(env, sendPayload) {
   const apiToken = cleanText(env.CLOUDFLARE_EMAIL_API_TOKEN, 400);
 
   if (!accountId || !apiToken) {
-    throw new Error("Missing BOOKING_EMAIL binding or Cloudflare Email API credentials.");
+    throw new Error("Missing Gmail API credentials or fallback email credentials.");
   }
 
   const restPayload = {
     to: sendPayload.to,
-    from: typeof sendPayload.from === "string"
-      ? sendPayload.from
-      : {
-          address: sendPayload.from?.email || sendPayload.from?.address || "",
-          name: sendPayload.from?.name || ""
-        },
+    from:
+      typeof sendPayload.from === "string"
+        ? sendPayload.from
+        : {
+            address: sendPayload.from?.email || sendPayload.from?.address || "",
+            name: sendPayload.from?.name || ""
+          },
     subject: sendPayload.subject,
     html: sendPayload.html,
     text: sendPayload.text
   };
 
   if (sendPayload.replyTo) {
-    restPayload.reply_to = typeof sendPayload.replyTo === "string"
-      ? sendPayload.replyTo
-      : {
-          address: sendPayload.replyTo?.email || sendPayload.replyTo?.address || "",
-          name: sendPayload.replyTo?.name || ""
-        };
+    restPayload.reply_to =
+      typeof sendPayload.replyTo === "string"
+        ? sendPayload.replyTo
+        : {
+            address: sendPayload.replyTo?.email || sendPayload.replyTo?.address || "",
+            name: sendPayload.replyTo?.name || ""
+          };
   }
 
   if (sendPayload.bcc) {
@@ -482,7 +913,10 @@ async function sendBookingEmail(env, sendPayload) {
   const data = await response.json().catch(() => null);
 
   if (!response.ok || !data?.success) {
-    const errorMessage = data?.errors?.[0]?.message || data?.messages?.[0]?.message || "Cloudflare Email API request failed.";
+    const errorMessage =
+      data?.errors?.[0]?.message ||
+      data?.messages?.[0]?.message ||
+      "Cloudflare Email API request failed.";
     throw new Error(errorMessage);
   }
 
