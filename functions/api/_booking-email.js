@@ -506,6 +506,8 @@ function buildPaymentConfirmationText(model) {
     "",
     "You will also receive a second email shortly with all tour details, including the meeting point, what is included, what to bring, important safety information, and a calendar file you can add to your own calendar.",
     "",
+    "If you would like an invoice, please reply to this email with the invoice name, tax or VAT number, and billing address, and we will send it within the next few hours.",
+    "",
     "If you need to request a cancellation or refund, please email us with your booking name, tour date, and payment reference.",
     "",
     "Kind regards,",
@@ -531,6 +533,9 @@ function buildPaymentConfirmationHtml(model) {
       `
         <p style="margin:0 0 10px;font-size:14px;line-height:1.7;color:#4a3b34;">
           You will also receive a second email shortly with all tour details, including the meeting point, what is included, what to bring, important safety information, and a calendar file you can add to your own calendar.
+        </p>
+        <p style="margin:0 0 10px;font-size:14px;line-height:1.7;color:#4a3b34;">
+          If you would like an invoice, please reply to this email with the invoice name, tax or VAT number, and billing address, and we will send it within the next few hours.
         </p>
         <p style="margin:0;font-size:14px;line-height:1.7;color:#4a3b34;">
           If you need to request a cancellation or refund, please email us with your booking name, tour date, and payment reference.

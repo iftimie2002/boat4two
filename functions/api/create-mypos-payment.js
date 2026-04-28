@@ -28,11 +28,11 @@ const BOOKING_RULES = {
   tours: {
     amor: {
       label: "Amor Tour",
-      totalAmount: 0.10
+      totalAmount: 170.00
     },
     sunset: {
       label: "Sunset Tour",
-      totalAmount: 0.10
+      totalAmount: 190.00
     },
     custom: {
       label: "Custom Tour",
