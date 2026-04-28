@@ -4,6 +4,7 @@ const DEFAULT_REPLY_TO_EMAIL = "reservas.boat4two@gmail.com";
 const DEFAULT_SUPPORT_EMAIL = "reservas.boat4two@gmail.com";
 const DEFAULT_SUPPORT_PHONE = "+351932015013";
 const DEFAULT_SITE_URL = "https://boat4two.com";
+const DEFAULT_BOOKING_NOTIFICATION_EMAIL = "info.boat4two@gmail.com";
 const CLOUDFLARE_EMAIL_API_BASE = "https://api.cloudflare.com/client/v4";
 const GMAIL_API_SEND_URL = "https://gmail.googleapis.com/gmail/v1/users/me/messages/send";
 const GOOGLE_OAUTH_TOKEN_URL = "https://oauth2.googleapis.com/token";
@@ -417,6 +418,10 @@ function buildBookingEmailModel(env, event, paymentData = {}) {
   const timeZone = cleanText(event?.start?.timeZone || event?.end?.timeZone, 80) || BOOKING_TIMEZONE;
   const customerName = cleanText(privateProps.customerName, 120);
   const customerEmail = cleanText(privateProps.customerEmail, 200);
+  const customerPhone = cleanText(privateProps.customerPhone, 80);
+  const customerCountry = cleanText(privateProps.customerCountry, 120);
+  const customerOccasion = cleanText(privateProps.customerOccasion, 200);
+  const customerMessage = cleanText(privateProps.customerMessage, 1000);
   const tourLabel =
     cleanText(
       privateProps.tourLabel || privateProps.tourName || privateProps.tourDisplayName,
@@ -444,6 +449,10 @@ function buildBookingEmailModel(env, event, paymentData = {}) {
     rawTour,
     customerName,
     customerEmail,
+    customerPhone,
+    customerCountry,
+    customerOccasion,
+    customerMessage,
     tourLabel,
     dateLabel,
     timeLabel,
@@ -459,6 +468,8 @@ function buildBookingEmailModel(env, event, paymentData = {}) {
     replyToEmail: cleanText(env.BOOKING_CONFIRMATION_REPLY_TO_EMAIL, 200) || DEFAULT_REPLY_TO_EMAIL,
     fromEmail: cleanText(env.BOOKING_CONFIRMATION_FROM_EMAIL, 200) || DEFAULT_FROM_EMAIL,
     bccEmail: cleanText(env.BOOKING_CONFIRMATION_BCC_EMAIL, 200),
+    bookingNotificationEmail:
+      cleanText(env.BOOKING_NOTIFICATION_EMAIL, 200) || DEFAULT_BOOKING_NOTIFICATION_EMAIL,
     startIso,
     endIso,
     timeZone,
@@ -734,9 +745,100 @@ function buildTourDetailsPayload(model) {
   };
 }
 
-function buildSendPayload(model, content) {
+function buildAdminNotificationSubject(model) {
+  return `New Boat4Two booking confirmed - ${model.tourLabel}`;
+}
+
+function buildAdminNotificationText(model) {
+  return [
+    "A new Boat4Two booking has just been confirmed.",
+    "",
+    "Booking details",
+    "",
+    `Tour: ${model.tourLabel}`,
+    model.dateLabel ? `Date: ${model.dateLabel}` : "",
+    model.timeLabel ? `Time: ${model.timeLabel}` : "",
+    model.durationLabel ? `Duration: ${model.durationLabel}` : "",
+    `Guests: ${model.guestCount} people`,
+    model.amountLabel ? `Paid: ${model.amountLabel}` : "",
+    model.paymentReference ? `Payment reference: ${model.paymentReference}` : "",
+    model.transactionReference ? `Transaction reference: ${model.transactionReference}` : "",
+    model.bookingReference ? `Booking reference: ${model.bookingReference}` : "",
+    "",
+    "Client details",
+    "",
+    model.customerName ? `Name: ${model.customerName}` : "",
+    model.customerEmail ? `Email: ${model.customerEmail}` : "",
+    model.customerPhone ? `Phone: ${model.customerPhone}` : "",
+    model.customerCountry ? `Country: ${model.customerCountry}` : "",
+    model.customerOccasion ? `Occasion: ${model.customerOccasion}` : "",
+    model.customerMessage ? `Notes: ${model.customerMessage}` : "",
+    "",
+    "Meeting point",
+    "",
+    `${model.meetingPointName}`,
+    `${model.meetingPointAddress}`,
+    `${model.meetingPointMapsUrl}`
+  ].filter(Boolean).join("\n");
+}
+
+function buildAdminNotificationHtml(model) {
+  const sectionsHtml = [
+    buildCardSection(
+      "Booking details",
+      `
+        <p style="margin:0 0 8px;font-size:16px;font-weight:700;color:#211611;">${escapeHtml(model.tourLabel)}</p>
+        ${model.dateLabel ? `<p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Date:</strong> ${escapeHtml(model.dateLabel)}</p>` : ""}
+        ${model.timeLabel ? `<p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Time:</strong> ${escapeHtml(model.timeLabel)}</p>` : ""}
+        ${model.durationLabel ? `<p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Duration:</strong> ${escapeHtml(model.durationLabel)}</p>` : ""}
+        <p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Guests:</strong> ${model.guestCount} people</p>
+        ${model.amountLabel ? `<p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Paid:</strong> ${escapeHtml(model.amountLabel)}</p>` : ""}
+        ${model.paymentReference ? `<p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Payment reference:</strong> ${escapeHtml(model.paymentReference)}</p>` : ""}
+        ${model.transactionReference ? `<p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Transaction reference:</strong> ${escapeHtml(model.transactionReference)}</p>` : ""}
+        ${model.bookingReference ? `<p style="margin:0;font-size:14px;color:#4a3b34;"><strong>Booking reference:</strong> ${escapeHtml(model.bookingReference)}</p>` : ""}
+      `
+    ),
+    buildCardSection(
+      "Client details",
+      `
+        ${model.customerName ? `<p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Name:</strong> ${escapeHtml(model.customerName)}</p>` : ""}
+        ${model.customerEmail ? `<p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Email:</strong> <a href="mailto:${escapeHtml(model.customerEmail)}" style="color:#e65e19;text-decoration:none;">${escapeHtml(model.customerEmail)}</a></p>` : ""}
+        ${model.customerPhone ? `<p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Phone:</strong> ${escapeHtml(model.customerPhone)}</p>` : ""}
+        ${model.customerCountry ? `<p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Country:</strong> ${escapeHtml(model.customerCountry)}</p>` : ""}
+        ${model.customerOccasion ? `<p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Occasion:</strong> ${escapeHtml(model.customerOccasion)}</p>` : ""}
+        ${model.customerMessage ? `<p style="margin:0;font-size:14px;color:#4a3b34;"><strong>Notes:</strong> ${escapeHtml(model.customerMessage)}</p>` : ""}
+      `,
+      "white"
+    ),
+    buildCardSection(
+      "Meeting point",
+      `
+        <p style="margin:0 0 8px;font-size:15px;font-weight:700;color:#211611;">${escapeHtml(model.meetingPointName)}</p>
+        <p style="margin:0 0 12px;font-size:14px;line-height:1.7;color:#4a3b34;">${escapeHtml(model.meetingPointAddress)}</p>
+        <a href="${escapeHtml(model.meetingPointMapsUrl)}" style="display:inline-block;padding:12px 18px;border-radius:999px;background:#e65e19;color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;">Open Google Maps</a>
+      `
+    )
+  ].join("");
+
+  return buildEmailShell({
+    title: "New booking confirmed",
+    introHtml: `<p style="margin:0;">A new Boat4Two booking has just been confirmed.</p>`,
+    sectionsHtml,
+    footerHtml: `<p style="margin:0;">This notification was sent automatically from the Boat4Two booking flow.</p>`
+  });
+}
+
+function buildAdminNotificationPayload(model) {
+  return {
+    subject: buildAdminNotificationSubject(model),
+    html: buildAdminNotificationHtml(model),
+    text: buildAdminNotificationText(model)
+  };
+}
+
+function buildSendPayload(model, content, overrides = {}) {
   const payload = {
-    to: model.customerEmail,
+    to: overrides.to || model.customerEmail,
     from: {
       email: model.fromEmail,
       name: "Boat4Two Reservations"
@@ -775,17 +877,21 @@ export async function maybeSendBookingConfirmationEmail(env, event, paymentData 
     cleanText(privateProps.paymentConfirmationEmailSentAt, 80) ||
     cleanText(privateProps.bookingConfirmationEmailSentAt, 80);
   const tourDetailsAlreadySentAt = cleanText(privateProps.tourDetailsEmailSentAt, 80);
+  const adminNotificationAlreadySentAt = cleanText(
+    privateProps.adminBookingNotificationEmailSentAt,
+    80
+  );
   const model = buildBookingEmailModel(env, event, paymentData);
-
-  if (!model.customerEmail) {
-    return buildEmailPatchResult("missing_recipient", null, false);
-  }
 
   const patchPrivateProps = {};
   let paymentConfirmationStatus = paymentConfirmationAlreadySentAt ? "already_sent" : "pending";
   let tourDetailsStatus = tourDetailsAlreadySentAt ? "already_sent" : "pending";
+  let adminNotificationStatus = adminNotificationAlreadySentAt ? "already_sent" : "pending";
 
-  if (!paymentConfirmationAlreadySentAt) {
+  if (!model.customerEmail) {
+    paymentConfirmationStatus = "missing_recipient";
+    tourDetailsStatus = "missing_recipient";
+  } else if (!paymentConfirmationAlreadySentAt) {
     try {
       const confirmationResult = await sendBookingEmail(
         env,
@@ -807,7 +913,7 @@ export async function maybeSendBookingConfirmationEmail(env, event, paymentData 
     }
   }
 
-  if (!tourDetailsAlreadySentAt) {
+  if (model.customerEmail && !tourDetailsAlreadySentAt) {
     try {
       const tourDetailsResult = await sendBookingEmail(
         env,
@@ -826,6 +932,29 @@ export async function maybeSendBookingConfirmationEmail(env, event, paymentData 
     }
   }
 
+  if (model.bookingNotificationEmail && !adminNotificationAlreadySentAt) {
+    try {
+      const adminResult = await sendBookingEmail(
+        env,
+        buildSendPayload(model, buildAdminNotificationPayload(model), {
+          to: model.bookingNotificationEmail
+        })
+      );
+      adminNotificationStatus = "sent";
+      patchPrivateProps.adminBookingNotificationEmailStatus = "sent";
+      patchPrivateProps.adminBookingNotificationEmailSentAt = new Date().toISOString();
+      patchPrivateProps.adminBookingNotificationEmailError = "";
+      patchPrivateProps.adminBookingNotificationEmailMessageId = cleanText(adminResult?.messageId, 200);
+    } catch (error) {
+      adminNotificationStatus = "failed";
+      patchPrivateProps.adminBookingNotificationEmailStatus = "failed";
+      patchPrivateProps.adminBookingNotificationEmailError = cleanText(
+        error?.message || "Unknown email error",
+        300
+      );
+    }
+  }
+
   const paymentConfirmationReady =
     paymentConfirmationStatus === "sent" || paymentConfirmationStatus === "already_sent";
   const tourDetailsReady = tourDetailsStatus === "sent" || tourDetailsStatus === "already_sent";
@@ -836,9 +965,11 @@ export async function maybeSendBookingConfirmationEmail(env, event, paymentData 
       : "failed";
 
   patchPrivateProps.bookingConfirmationEmailStatus = overallStatus;
-  patchPrivateProps.bookingConfirmationEmailError = tourDetailsStatus === "failed"
-    ? cleanText(patchPrivateProps.tourDetailsEmailError || "Could not send tour details email.", 300)
-    : "";
+  patchPrivateProps.bookingConfirmationEmailError = !model.customerEmail
+    ? "Customer email is missing from this booking."
+    : (tourDetailsStatus === "failed"
+      ? cleanText(patchPrivateProps.tourDetailsEmailError || "Could not send tour details email.", 300)
+      : "");
 
   if (overallStatus === "sent") {
     patchPrivateProps.bookingConfirmationEmailSentAt =
