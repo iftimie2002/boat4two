@@ -1,4 +1,9 @@
-import { getGoogleAccessToken, getGoogleCalendarErrorPayload } from "./_google.js";
+import {
+  getBusyGoogleCalendarIds,
+  getGoogleAccessToken,
+  getGoogleCalendarErrorPayload,
+  getPrimaryGoogleCalendarId
+} from "./_google.js";
 
 const BOOKING_RULES = {
   timezone: "Europe/Lisbon"
@@ -73,15 +78,16 @@ export async function onRequestGet(context) {
   const {
     GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET,
-    GOOGLE_REFRESH_TOKEN,
-    GOOGLE_CALENDAR_ID
+    GOOGLE_REFRESH_TOKEN
   } = context.env;
+  const primaryCalendarId = getPrimaryGoogleCalendarId(context.env);
+  const busyCalendarIds = getBusyGoogleCalendarIds(context.env);
 
   if (
     !GOOGLE_CLIENT_ID ||
     !GOOGLE_CLIENT_SECRET ||
     !GOOGLE_REFRESH_TOKEN ||
-    !GOOGLE_CALENDAR_ID
+    !primaryCalendarId
   ) {
     return Response.json(
       {
@@ -127,7 +133,7 @@ export async function onRequestGet(context) {
           timeMin: startOfDay.toISOString(),
           timeMax: endOfDay.toISOString(),
           timeZone: BOOKING_RULES.timezone,
-          items: [{ id: GOOGLE_CALENDAR_ID }]
+          items: busyCalendarIds.map((id) => ({ id }))
         })
       }
     );
@@ -148,10 +154,14 @@ export async function onRequestGet(context) {
     return Response.json({
       ok: true,
       message: "Google Calendar connection working",
-      calendarId: GOOGLE_CALENDAR_ID,
+      calendarId: primaryCalendarId,
+      busyCalendarIds,
       timezone: BOOKING_RULES.timezone,
       lisbonDate: dateStr,
-      busy: freeBusyData.calendars?.[GOOGLE_CALENDAR_ID]?.busy || []
+      busy: busyCalendarIds.flatMap((calendarId) => freeBusyData.calendars?.[calendarId]?.busy || []),
+      busyByCalendar: Object.fromEntries(
+        busyCalendarIds.map((calendarId) => [calendarId, freeBusyData.calendars?.[calendarId]?.busy || []])
+      )
     });
   } catch (error) {
     return Response.json(

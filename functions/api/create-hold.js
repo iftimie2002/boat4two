@@ -1,4 +1,9 @@
-import { getGoogleAccessToken, getGoogleCalendarErrorPayload } from "./_google.js";
+import {
+  getBusyGoogleCalendarIds,
+  getGoogleAccessToken,
+  getGoogleCalendarErrorPayload,
+  getPrimaryGoogleCalendarId
+} from "./_google.js";
 
 const BOOKING_RULES = {
   timezone: "Europe/Lisbon",
@@ -111,6 +116,7 @@ function cleanText(value, max = 500) {
 }
 
 async function getBusyRanges(env, accessToken, timeMin, timeMax) {
+  const busyCalendarIds = getBusyGoogleCalendarIds(env);
   const response = await fetch("https://www.googleapis.com/calendar/v3/freeBusy", {
     method: "POST",
     headers: {
@@ -121,7 +127,7 @@ async function getBusyRanges(env, accessToken, timeMin, timeMax) {
       timeMin,
       timeMax,
       timeZone: BOOKING_RULES.timezone,
-      items: [{ id: env.GOOGLE_CALENDAR_ID }]
+      items: busyCalendarIds.map((id) => ({ id }))
     })
   });
 
@@ -131,12 +137,13 @@ async function getBusyRanges(env, accessToken, timeMin, timeMax) {
     throw new Error("Failed to fetch Google Calendar busy ranges");
   }
 
-  return data.calendars?.[env.GOOGLE_CALENDAR_ID]?.busy || [];
+  return busyCalendarIds.flatMap((calendarId) => data.calendars?.[calendarId]?.busy || []);
 }
 
 async function createCalendarEvent(env, accessToken, eventBody) {
+  const primaryCalendarId = getPrimaryGoogleCalendarId(env);
   const response = await fetch(
-    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(env.GOOGLE_CALENDAR_ID)}/events`,
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(primaryCalendarId)}/events`,
     {
       method: "POST",
       headers: {
@@ -159,8 +166,9 @@ async function createCalendarEvent(env, accessToken, eventBody) {
 }
 
 async function getCalendarEventById(env, accessToken, eventId) {
+  const primaryCalendarId = getPrimaryGoogleCalendarId(env);
   const response = await fetch(
-    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(env.GOOGLE_CALENDAR_ID)}/events/${encodeURIComponent(eventId)}`,
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(primaryCalendarId)}/events/${encodeURIComponent(eventId)}`,
     {
       headers: {
         Authorization: `Bearer ${accessToken}`
@@ -184,6 +192,7 @@ async function getCalendarEventById(env, accessToken, eventId) {
 }
 
 async function updateCalendarEvent(env, accessToken, eventId, patchBody, etag = "") {
+  const primaryCalendarId = getPrimaryGoogleCalendarId(env);
   const headers = {
     Authorization: `Bearer ${accessToken}`,
     "Content-Type": "application/json"
@@ -194,7 +203,7 @@ async function updateCalendarEvent(env, accessToken, eventId, patchBody, etag = 
   }
 
   const response = await fetch(
-    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(env.GOOGLE_CALENDAR_ID)}/events/${encodeURIComponent(eventId)}`,
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(primaryCalendarId)}/events/${encodeURIComponent(eventId)}`,
     {
       method: "PATCH",
       headers,
@@ -214,6 +223,7 @@ async function updateCalendarEvent(env, accessToken, eventId, patchBody, etag = 
 }
 
 async function deleteCalendarEvent(env, accessToken, eventId, etag = "") {
+  const primaryCalendarId = getPrimaryGoogleCalendarId(env);
   const headers = {
     Authorization: `Bearer ${accessToken}`
   };
@@ -223,7 +233,7 @@ async function deleteCalendarEvent(env, accessToken, eventId, etag = "") {
   }
 
   const response = await fetch(
-    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(env.GOOGLE_CALENDAR_ID)}/events/${encodeURIComponent(eventId)}`,
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(primaryCalendarId)}/events/${encodeURIComponent(eventId)}`,
     {
       method: "DELETE",
       headers

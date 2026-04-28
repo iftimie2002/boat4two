@@ -5,6 +5,13 @@ function cleanText(value, max = 240) {
   return String(value || "").trim().slice(0, max);
 }
 
+function parseCalendarIds(value) {
+  return String(value || "")
+    .split(/[\n,;]+/)
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
 function createGoogleCalendarError(message, code, details) {
   const error = new Error(message);
   error.code = code;
@@ -57,6 +64,20 @@ export async function getGoogleAccessToken(env) {
   }
 
   return tokenData.access_token;
+}
+
+export function getPrimaryGoogleCalendarId(env) {
+  return cleanText(env.GOOGLE_CALENDAR_ID, 240);
+}
+
+export function getBusyGoogleCalendarIds(env) {
+  const configuredIds = [
+    ...parseCalendarIds(env.GOOGLE_BUSY_CALENDAR_IDS),
+    ...parseCalendarIds(env.GOOGLE_CALENDAR_IDS),
+    getPrimaryGoogleCalendarId(env)
+  ].filter(Boolean);
+
+  return Array.from(new Set(configuredIds));
 }
 
 export function getGoogleCalendarErrorPayload(error, fallbackMessage = "Unknown error") {

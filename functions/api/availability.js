@@ -1,4 +1,8 @@
-import { getGoogleAccessToken, getGoogleCalendarErrorPayload } from "./_google.js";
+import {
+  getBusyGoogleCalendarIds,
+  getGoogleAccessToken,
+  getGoogleCalendarErrorPayload
+} from "./_google.js";
 
 const BOOKING_RULES = {
   timezone: "Europe/Lisbon",
@@ -75,6 +79,7 @@ function makeDateInTimeZone(dateStr, timeStr, timeZone) {
 }
 
 async function getBusyRanges(env, accessToken, timeMin, timeMax) {
+  const busyCalendarIds = getBusyGoogleCalendarIds(env);
   const response = await fetch("https://www.googleapis.com/calendar/v3/freeBusy", {
     method: "POST",
     headers: {
@@ -85,7 +90,7 @@ async function getBusyRanges(env, accessToken, timeMin, timeMax) {
       timeMin,
       timeMax,
       timeZone: BOOKING_RULES.timezone,
-      items: [{ id: env.GOOGLE_CALENDAR_ID }]
+      items: busyCalendarIds.map((id) => ({ id }))
     })
   });
 
@@ -95,7 +100,7 @@ async function getBusyRanges(env, accessToken, timeMin, timeMax) {
     throw new Error("Failed to fetch Google Calendar busy ranges");
   }
 
-  return data.calendars?.[env.GOOGLE_CALENDAR_ID]?.busy || [];
+  return busyCalendarIds.flatMap((calendarId) => data.calendars?.[calendarId]?.busy || []);
 }
 
 export async function onRequestGet(context) {
