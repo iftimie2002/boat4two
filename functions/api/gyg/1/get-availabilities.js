@@ -77,7 +77,7 @@ export async function onRequestGet(context) {
     const availabilities = slots.map((slot) =>
       buildAvailabilityObject(
         slot,
-        slotHasAvailability(slot, busyRanges) ? 1 : 0
+        slotHasAvailability(slot, busyRanges) ? product.participantMax : 0
       )
     );
 

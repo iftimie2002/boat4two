@@ -8,6 +8,17 @@ export const GYG_RULES = {
   timezone: "Europe/Lisbon",
   minimumNoticeHours: 24,
   reservationHoldMinutes: 60,
+  supportedIndividualCategories: [
+    "ADULT",
+    "CHILD",
+    "YOUTH",
+    "INFANT",
+    "SENIOR",
+    "STUDENT",
+    "EU_CITIZEN",
+    "MILITARY",
+    "EU_CITIZEN_STUDENT"
+  ],
   products: {
     "b4t-private-group": {
       tour: "amor",
@@ -15,8 +26,7 @@ export const GYG_RULES = {
       durationMinutes: 210,
       startTimes: ["10:00", "14:00"],
       participantMin: 2,
-      participantMax: 2,
-      groupMax: 1
+      participantMax: 2
     },
     "b4t-sunset-group": {
       tour: "sunset",
@@ -24,8 +34,7 @@ export const GYG_RULES = {
       durationMinutes: 210,
       startTimes: ["18:00"],
       participantMin: 2,
-      participantMax: 2,
-      groupMax: 1
+      participantMax: 2
     }
   }
 };
@@ -252,14 +261,11 @@ export function getParticipantConstraints(product) {
     participantsConfiguration: {
       min: product.participantMin,
       max: product.participantMax
-    },
-    groupConfiguration: {
-      max: product.groupMax
     }
   };
 }
 
-export function validateGroupBookingItems(bookingItems, product) {
+export function validateIndividualBookingItems(bookingItems, product) {
   if (!Array.isArray(bookingItems) || bookingItems.length === 0) {
     return errorResponse(
       "VALIDATION_FAILURE",
@@ -267,18 +273,12 @@ export function validateGroupBookingItems(bookingItems, product) {
     );
   }
 
-  if (bookingItems.length > product.groupMax) {
-    return errorResponse(
-      "INVALID_PARTICIPANTS_CONFIGURATION",
-      `A maximum of ${product.groupMax} group booking is allowed per reservation.`,
-      getParticipantConstraints(product)
-    );
-  }
+  let totalParticipants = 0;
 
   for (const item of bookingItems) {
     const category = cleanText(item?.category, 40).toUpperCase();
 
-    if (category !== "GROUP") {
+    if (!GYG_RULES.supportedIndividualCategories.includes(category)) {
       return errorResponse(
         "INVALID_TICKET_CATEGORY",
         `The ticket category ${category || "UNKNOWN"} is not sellable.`,
@@ -287,23 +287,33 @@ export function validateGroupBookingItems(bookingItems, product) {
     }
 
     const count = Number(item?.count || 0);
-    const groupSize = Number(item?.groupSize || 0);
 
-    if (count !== 1) {
+    if (!Number.isInteger(count) || count < 1) {
       return errorResponse(
-        "INVALID_PARTICIPANTS_CONFIGURATION",
-        "Each GROUP bookingItem must have count equal to 1.",
-        getParticipantConstraints(product)
+        "VALIDATION_FAILURE",
+        "Each bookingItem count must be a positive integer."
       );
     }
 
-    if (groupSize < product.participantMin || groupSize > product.participantMax) {
+    if (item?.groupSize !== undefined && item?.groupSize !== null && item?.groupSize !== "") {
       return errorResponse(
-        "INVALID_PARTICIPANTS_CONFIGURATION",
-        `This product requires exactly ${product.participantMin} participants per booking.`,
-        getParticipantConstraints(product)
+        "VALIDATION_FAILURE",
+        "groupSize is not supported for this product."
       );
     }
+
+    totalParticipants += count;
+  }
+
+  if (
+    totalParticipants < product.participantMin ||
+    totalParticipants > product.participantMax
+  ) {
+    return errorResponse(
+      "INVALID_PARTICIPANTS_CONFIGURATION",
+      `This product requires exactly ${product.participantMin} participants per booking.`,
+      getParticipantConstraints(product)
+    );
   }
 
   return null;
@@ -706,23 +716,15 @@ export function buildReservationEventBody({
 }
 
 export function buildBookingResponse(bookingReference, bookingItems) {
-  const tickets = [];
-
-  for (const item of bookingItems) {
-    const count = Number(item?.count || 0);
-
-    for (let index = 0; index < count; index += 1) {
-      tickets.push({
-        category: "GROUP",
-        ticketCode: bookingReference,
-        ticketCodeType: "TEXT"
-      });
-    }
-  }
-
   return {
     bookingReference,
-    tickets
+    tickets: [
+      {
+        category: "COLLECTIVE",
+        ticketCode: bookingReference,
+        ticketCodeType: "TEXT"
+      }
+    ]
   };
 }
 

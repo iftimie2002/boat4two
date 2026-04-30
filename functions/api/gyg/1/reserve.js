@@ -13,7 +13,7 @@ import {
   resolveSlotFromDateTime,
   slotHasAvailability,
   successResponse,
-  validateGroupBookingItems,
+  validateIndividualBookingItems,
   createGyGReference
 } from "../_shared.js";
 
@@ -42,7 +42,7 @@ export async function onRequestPost(context) {
     }
 
     const { product, slot } = slotResult;
-    const itemValidationFailure = validateGroupBookingItems(data.bookingItems, product);
+    const itemValidationFailure = validateIndividualBookingItems(data.bookingItems, product);
 
     if (itemValidationFailure) {
       return itemValidationFailure;
