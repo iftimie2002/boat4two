@@ -5,10 +5,8 @@ import {
   cleanupExpiredGyGReservations,
   createCalendarEvent,
   errorResponse,
-  formatGyGDateTime,
   getAuthorizedGoogleTokenOrThrow,
   getBusyRanges,
-  listCalendarEvents,
   parseJsonBody,
   resolveSlotFromDateTime,
   slotHasAvailability,
@@ -56,40 +54,6 @@ export async function onRequestPost(context) {
       slot.start.toISOString(),
       slot.end.toISOString()
     );
-
-    const existingEvents = await listCalendarEvents(env, accessToken, {
-      timeMin: slot.start.toISOString(),
-      timeMax: slot.end.toISOString()
-    });
-
-    const matchingExistingReservation = existingEvents.find((event) => {
-      const privateProps = event?.extendedProperties?.private || {};
-      return (
-        privateProps.source === "getyourguide" &&
-        privateProps.gygBookingReference === String(data.gygBookingReference || "") &&
-        privateProps.gygProductId === String(data.productId || "")
-      );
-    });
-
-    if (matchingExistingReservation) {
-      const privateProps = matchingExistingReservation.extendedProperties?.private || {};
-
-      if (privateProps.bookingType === "gyg_booking") {
-      return successResponse({
-        reservationReference: privateProps.reservationReference || matchingExistingReservation.id,
-        reservationExpiration: privateProps.reservationExpiresAt
-          ? formatGyGDateTime(new Date(privateProps.reservationExpiresAt))
-          : ""
-      });
-    }
-
-    return successResponse({
-      reservationReference: privateProps.reservationReference || matchingExistingReservation.id,
-      reservationExpiration: privateProps.reservationExpiresAt
-        ? formatGyGDateTime(new Date(privateProps.reservationExpiresAt))
-        : ""
-    });
-    }
 
     const busyRanges = await getBusyRanges(
       env,
