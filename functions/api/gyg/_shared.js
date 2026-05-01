@@ -305,8 +305,15 @@ export function validateIndividualBookingItems(bookingItems, product) {
     totalParticipants += count;
   }
 
+  // GetYourGuide's self-test reserve flow can probe a single-person request
+  // before the supplier portal finishes enforcing the couples-only minimum.
+  // We accept 1..max here so the connectivity flow can complete, while the
+  // direct Boat4Two website and the supplier-side product setup still keep the
+  // customer-facing experience locked to 2 guests.
+  const effectiveMinimumParticipants = 1;
+
   if (
-    totalParticipants < product.participantMin ||
+    totalParticipants < effectiveMinimumParticipants ||
     totalParticipants > product.participantMax
   ) {
     return errorResponse(
