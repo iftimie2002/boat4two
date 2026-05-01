@@ -89,7 +89,7 @@ function getTimeZoneOffsetMinutes(timeZone, date) {
     Number(values.second)
   );
 
-  return (asUtcTimestamp - date.getTime()) / 60000;
+  return Math.round((asUtcTimestamp - date.getTime()) / 60000);
 }
 
 function makeDateInTimeZone(dateStr, timeStr, timeZone) {
