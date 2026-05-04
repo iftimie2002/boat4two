@@ -1,5 +1,6 @@
 import {
   authorizeGyGRequest,
+  buildGyGSlot,
   buildBookingResponse,
   buildReservationEventBody,
   errorResponse,
@@ -43,7 +44,7 @@ export async function onRequestPost(context) {
       return slotResult.error;
     }
 
-    const { product, slot } = slotResult;
+    const { product, slot, requestedTimeMatched } = slotResult;
     const itemValidationFailure = validateIndividualBookingItems(data.bookingItems, product);
 
     if (itemValidationFailure) {
@@ -92,9 +93,14 @@ export async function onRequestPost(context) {
       );
     }
 
+    const slotForBooking =
+      !requestedTimeMatched && privateProps.date && privateProps.time
+        ? buildGyGSlot(data.productId, privateProps.date, privateProps.time) || slot
+        : slot;
+
     const patchBody = buildReservationEventBody({
       product,
-      slot,
+      slot: slotForBooking,
       reservationReference: event.id,
       reservationExpiresAt: privateProps.reservationExpiresAt || "",
       gygBookingReference: data.gygBookingReference,

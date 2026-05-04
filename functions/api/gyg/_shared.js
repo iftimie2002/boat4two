@@ -326,6 +326,37 @@ export function validateIndividualBookingItems(bookingItems, product) {
   return null;
 }
 
+export function buildGyGSlot(productId, date, time) {
+  const product = getGyGProduct(productId);
+
+  if (!product || !product.startTimes.includes(time)) {
+    return null;
+  }
+
+  const start = makeDateInTimeZone(date, `${time}:00`, GYG_RULES.timezone);
+  const end = addMinutes(start, product.durationMinutes);
+
+  return {
+    productId,
+    date,
+    time,
+    start,
+    end
+  };
+}
+
+export function buildGyGDaySlots(productId, date) {
+  const product = getGyGProduct(productId);
+
+  if (!product) {
+    return [];
+  }
+
+  return product.startTimes
+    .map((time) => buildGyGSlot(productId, date, time))
+    .filter(Boolean);
+}
+
 export function resolveSlotFromDateTime(productId, dateTimeValue) {
   const product = getGyGProduct(productId);
 
@@ -351,23 +382,14 @@ export function resolveSlotFromDateTime(productId, dateTimeValue) {
 
   const date = formatDateInTimeZone(slotDate, GYG_RULES.timezone);
   const time = formatTimeInTimeZone(slotDate, GYG_RULES.timezone);
-  // GetYourGuide's self-test can probe a valid travel date using a generic
-  // time value instead of one of the configured start times. For Boat4Two we
-  // normalize that request onto the first valid departure for the day so the
-  // reserve/no-availability flow can still be evaluated consistently.
-  const normalizedTime = product.startTimes.includes(time) ? time : product.startTimes[0];
-  const start = makeDateInTimeZone(date, `${normalizedTime}:00`, GYG_RULES.timezone);
-  const end = addMinutes(start, product.durationMinutes);
+  const requestedTimeMatched = product.startTimes.includes(time);
+  const normalizedTime = requestedTimeMatched ? time : product.startTimes[0];
+  const slot = buildGyGSlot(productId, date, normalizedTime);
 
   return {
     product,
-    slot: {
-      productId,
-      date,
-      time: normalizedTime,
-      start,
-      end
-    }
+    requestedTimeMatched,
+    slot
   };
 }
 
