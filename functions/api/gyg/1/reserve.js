@@ -1,7 +1,6 @@
 import {
   GYG_RULES,
   authorizeGyGRequest,
-  buildGyGDaySlots,
   buildReservationEventBody,
   cleanupExpiredGyGReservations,
   createCalendarEvent,
@@ -40,7 +39,7 @@ export async function onRequestPost(context) {
       return slotResult.error;
     }
 
-    const { product, slot, requestedTimeMatched } = slotResult;
+    const { product, slot } = slotResult;
     const itemValidationFailure = validateIndividualBookingItems(data.bookingItems, product);
 
     if (itemValidationFailure) {
@@ -49,29 +48,21 @@ export async function onRequestPost(context) {
 
     const accessToken = await getAuthorizedGoogleTokenOrThrow(env);
 
-    const candidateSlots = requestedTimeMatched ? [slot] : buildGyGDaySlots(data.productId, slot.date);
-    const candidateRangeStart = candidateSlots[0]?.start || slot.start;
-    const candidateRangeEnd = candidateSlots[candidateSlots.length - 1]?.end || slot.end;
-
     await cleanupExpiredGyGReservations(
       env,
       accessToken,
-      candidateRangeStart.toISOString(),
-      candidateRangeEnd.toISOString()
+      slot.start.toISOString(),
+      slot.end.toISOString()
     );
 
     const busyRanges = await getBusyRanges(
       env,
       accessToken,
-      candidateRangeStart.toISOString(),
-      candidateRangeEnd.toISOString()
+      slot.start.toISOString(),
+      slot.end.toISOString()
     );
 
-    const slotToReserve = requestedTimeMatched
-      ? slot
-      : candidateSlots.find((candidateSlot) => slotHasAvailability(candidateSlot, busyRanges)) || null;
-
-    if (!slotToReserve || !slotHasAvailability(slotToReserve, busyRanges)) {
+    if (!slotHasAvailability(slot, busyRanges)) {
       return errorResponse(
         "NO_AVAILABILITY",
         "This activity is sold out for the requested start time."
@@ -88,7 +79,7 @@ export async function onRequestPost(context) {
       accessToken,
       buildReservationEventBody({
         product,
-        slot: slotToReserve,
+        slot,
         reservationReference,
         reservationExpiresAt: reservationExpiration.toISOString(),
         gygBookingReference: data.gygBookingReference,

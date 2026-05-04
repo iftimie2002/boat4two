@@ -326,37 +326,6 @@ export function validateIndividualBookingItems(bookingItems, product) {
   return null;
 }
 
-export function buildGyGSlot(productId, date, time) {
-  const product = getGyGProduct(productId);
-
-  if (!product || !product.startTimes.includes(time)) {
-    return null;
-  }
-
-  const start = makeDateInTimeZone(date, `${time}:00`, GYG_RULES.timezone);
-  const end = addMinutes(start, product.durationMinutes);
-
-  return {
-    productId,
-    date,
-    time,
-    start,
-    end
-  };
-}
-
-export function buildGyGDaySlots(productId, date) {
-  const product = getGyGProduct(productId);
-
-  if (!product) {
-    return [];
-  }
-
-  return product.startTimes
-    .map((time) => buildGyGSlot(productId, date, time))
-    .filter(Boolean);
-}
-
 export function resolveSlotFromDateTime(productId, dateTimeValue) {
   const product = getGyGProduct(productId);
 
@@ -382,14 +351,28 @@ export function resolveSlotFromDateTime(productId, dateTimeValue) {
 
   const date = formatDateInTimeZone(slotDate, GYG_RULES.timezone);
   const time = formatTimeInTimeZone(slotDate, GYG_RULES.timezone);
-  const requestedTimeMatched = product.startTimes.includes(time);
-  const normalizedTime = requestedTimeMatched ? time : product.startTimes[0];
-  const slot = buildGyGSlot(productId, date, normalizedTime);
+
+  if (!product.startTimes.includes(time)) {
+    return {
+      error: errorResponse(
+        "VALIDATION_FAILURE",
+        "The requested dateTime does not match a valid Boat4Two start time."
+      )
+    };
+  }
+
+  const start = makeDateInTimeZone(date, `${time}:00`, GYG_RULES.timezone);
+  const end = addMinutes(start, product.durationMinutes);
 
   return {
     product,
-    requestedTimeMatched,
-    slot
+    slot: {
+      productId,
+      date,
+      time,
+      start,
+      end
+    }
   };
 }
 
