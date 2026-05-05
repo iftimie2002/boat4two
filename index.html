@@ -1611,6 +1611,63 @@ let currentMyposEmbeddedPayment = null;
 let paymentCancellationInProgress = false;
         let holdReleaseSuppressed = false;
 let availableDatesSet = new Set();
+const ACTIVE_HOLD_STORAGE_KEY = 'boat4two-active-hold';
+const BOOKING_DATA_STORAGE_KEY = 'boat4two-booking-data';
+
+      function persistBookingFlowState() {
+        try {
+          if (activeHold && activeHold.holdId) {
+            sessionStorage.setItem(ACTIVE_HOLD_STORAGE_KEY, JSON.stringify(activeHold));
+          } else {
+            sessionStorage.removeItem(ACTIVE_HOLD_STORAGE_KEY);
+          }
+
+          if (bookingData && bookingData.holdId) {
+            sessionStorage.setItem(BOOKING_DATA_STORAGE_KEY, JSON.stringify(bookingData));
+          } else {
+            sessionStorage.removeItem(BOOKING_DATA_STORAGE_KEY);
+          }
+        } catch (error) {
+          // ignore storage issues
+        }
+      }
+
+      function restoreBookingFlowState() {
+        try {
+          const storedHold = sessionStorage.getItem(ACTIVE_HOLD_STORAGE_KEY);
+          const storedBookingData = sessionStorage.getItem(BOOKING_DATA_STORAGE_KEY);
+
+          if (storedHold) {
+            const parsedHold = JSON.parse(storedHold);
+            if (parsedHold && parsedHold.holdId) {
+              activeHold = parsedHold;
+            }
+          }
+
+          if (storedBookingData) {
+            const parsedBookingData = JSON.parse(storedBookingData);
+            if (parsedBookingData && parsedBookingData.holdId) {
+              bookingData = parsedBookingData;
+            }
+          }
+        } catch (error) {
+          // ignore storage issues
+        }
+      }
+
+      function clearBookingFlowState() {
+        activeHold = null;
+        bookingData = {};
+        currentMyposEmbeddedPayment = null;
+        holdReleaseSuppressed = false;
+        persistBookingFlowState();
+      }
+
+      function getCurrentHoldId() {
+        return (activeHold && activeHold.holdId) || (bookingData && bookingData.holdId) || '';
+      }
+
+      restoreBookingFlowState();
 
       function formatEuroPrice(value) {
         const amount = Number(value);
@@ -2257,6 +2314,7 @@ async function createHoldFromSelection(formValues) {
     eventId: data.eventId,
     expiresAt: data.expiresAt
   };
+  persistBookingFlowState();
 
   return {
     selection,
@@ -2316,6 +2374,7 @@ async function releaseActiveHold(options = {}) {
     activeHold = null;
     holdReleaseInProgress = false;
     holdReleaseSuppressed = false;
+    persistBookingFlowState();
     stopHoldCountdown();
   }
 }
@@ -2333,6 +2392,7 @@ async function releaseUnpaidPaymentReservation() {
     await releaseActiveHold();
 
     bookingData = {};
+    persistBookingFlowState();
     selectedCalendarDate = '';
 
     if (requestDateInput) {
@@ -2436,6 +2496,7 @@ async function releaseHoldIfLeavingBookingFlow(nextHash) {
   await releaseActiveHold();
 
   bookingData = {};
+  persistBookingFlowState();
   selectedCalendarDate = '';
 
   if (requestDateInput) {
@@ -2648,8 +2709,10 @@ async function releaseHoldIfLeavingBookingFlow(nextHash) {
         pricePerPerson: selection.pricePerPerson,
         priceTotal: selection.priceTotal,
         holdId: result.hold.holdId,
+        eventId: result.hold.eventId,
         holdExpiresAt: result.hold.expiresAt
       };
+      persistBookingFlowState();
 
       renderReviewDetails(bookingData);
 startHoldCountdown(result.hold.expiresAt);
@@ -2691,31 +2754,13 @@ window.location.hash = '#review-popup';
             '',
             formData.get('message') || ''
           ].filter(Boolean).join('\n');
-          window.location.href = `mailto:info.boat4two@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      window.location.href = `mailto:info.boat4two@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
           if (contactFormFeedback) {
             contactFormFeedback.textContent = 'Your email app should open with a pre-filled message.';
             contactFormFeedback.classList.remove('hidden');
           }
         });
       }
-
-      window.addEventListener('pagehide', function() {
-  if (shouldReleaseHoldOnLeave()) {
-    releaseActiveHold({ useBeacon: true });
-  }
-});
-
-window.addEventListener('beforeunload', function() {
-  if (shouldReleaseHoldOnLeave()) {
-    releaseActiveHold({ useBeacon: true });
-  }
-});
-
-document.addEventListener('visibilitychange', function() {
-  if (document.visibilityState === 'hidden' && shouldReleaseHoldOnLeave()) {
-    releaseActiveHold({ useBeacon: true });
-  }
-});
 
 window.addEventListener('hashchange', handleHashChange);
 handleHashChange();
@@ -3324,10 +3369,21 @@ async function launchMyposEmbeddedCheckout(checkoutData) {
 }
 
 async function startMyposPayment() {
-  if (!activeHold || !activeHold.holdId) {
+  const holdId = getCurrentHoldId();
+
+  if (!holdId) {
     alert('Your reservation hold was not found. Please choose your date and time again.');
     await expireActiveHoldFlow('Your reservation time expired. Please choose a date and time again.');
     return;
+  }
+
+  if (!activeHold) {
+    activeHold = {
+      holdId,
+      eventId: bookingData?.eventId || '',
+      expiresAt: bookingData?.holdExpiresAt || ''
+    };
+    persistBookingFlowState();
   }
 
   if (!bookingData || !bookingData.holdId) {
@@ -3341,7 +3397,7 @@ async function startMyposPayment() {
   }
 
   const payload = {
-    holdId: activeHold.holdId,
+    holdId,
     extras: [],
     responseMode: 'embedded'
   };
@@ -3391,8 +3447,10 @@ async function handlePaymentFrameResult(status, detailMessage) {
     await releaseUnpaidPaymentReservation();
   } else {
     activeHold = null;
+    bookingData = {};
     holdReleaseSuppressed = false;
     currentMyposEmbeddedPayment = null;
+    persistBookingFlowState();
   }
 
   if (paymentFrameLoading) {
