@@ -2,6 +2,7 @@ import {
   getBusyGoogleCalendarIds,
   getGoogleAccessToken,
   getGoogleCalendarErrorPayload,
+  hasGoogleCalendarCredentials,
   getPrimaryGoogleCalendarId
 } from "./_google.js";
 
@@ -380,12 +381,7 @@ export async function onRequestPost(context) {
     const occasion = cleanText(body.occasion, 200);
     const message = cleanText(body.message, 1000);
 
-    if (
-      !env.GOOGLE_CLIENT_ID ||
-      !env.GOOGLE_CLIENT_SECRET ||
-      !env.GOOGLE_REFRESH_TOKEN ||
-      !env.GOOGLE_CALENDAR_ID
-    ) {
+    if (!hasGoogleCalendarCredentials(env)) {
       return Response.json(
         { ok: false, error: "Missing required Google environment variables." },
         { status: 500 }

@@ -1,4 +1,4 @@
-import { getGoogleAccessToken } from "./_google.js";
+import { getGoogleAccessToken, hasGoogleCalendarCredentials } from "./_google.js";
 import { maybeSendBookingConfirmationEmail } from "./_booking-email.js";
 
 function textResponse(body, status = 200, extraHeaders = {}) {
@@ -470,10 +470,7 @@ export async function onRequestPost(context) {
   const { request, env } = context;
 
   if (
-    !env.GOOGLE_CLIENT_ID ||
-    !env.GOOGLE_CLIENT_SECRET ||
-    !env.GOOGLE_REFRESH_TOKEN ||
-    !env.GOOGLE_CALENDAR_ID ||
+    !hasGoogleCalendarCredentials(env) ||
     !env.MYPOS_PUBLIC_CERT ||
     !env.MYPOS_SID
   ) {

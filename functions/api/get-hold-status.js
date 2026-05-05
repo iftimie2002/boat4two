@@ -1,4 +1,8 @@
-import { getGoogleAccessToken, getGoogleCalendarErrorPayload } from "./_google.js";
+import {
+  getGoogleAccessToken,
+  getGoogleCalendarErrorPayload,
+  hasGoogleCalendarCredentials
+} from "./_google.js";
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -145,12 +149,7 @@ export async function onRequestGet(context) {
   const request = context.request;
   const env = context.env;
 
-  if (
-    !env.GOOGLE_CLIENT_ID ||
-    !env.GOOGLE_CLIENT_SECRET ||
-    !env.GOOGLE_REFRESH_TOKEN ||
-    !env.GOOGLE_CALENDAR_ID
-  ) {
+  if (!hasGoogleCalendarCredentials(env)) {
     return json(
       {
         ok: false,

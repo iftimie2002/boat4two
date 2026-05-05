@@ -1,3 +1,8 @@
+import {
+  getGoogleCalendarAuthMode,
+  getMissingGoogleCalendarConfigNames
+} from "./_google.js";
+
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -84,10 +89,9 @@ function getMyposEmbeddedCheckoutUrl(env) {
 
 export async function onRequestGet(context) {
   const { env } = context;
+  const googleAuthMode = getGoogleCalendarAuthMode(env);
+  const missingGoogleConfig = getMissingGoogleCalendarConfigNames(env);
   const required = [
-    "GOOGLE_CLIENT_ID",
-    "GOOGLE_CLIENT_SECRET",
-    "GOOGLE_REFRESH_TOKEN",
     "GOOGLE_CALENDAR_ID",
     "MYPOS_SID",
     "MYPOS_KEY_INDEX",
@@ -95,6 +99,13 @@ export async function onRequestGet(context) {
     "MYPOS_PUBLIC_CERT"
   ];
   const optional = [
+    "GOOGLE_CLIENT_ID",
+    "GOOGLE_CLIENT_SECRET",
+    "GOOGLE_REFRESH_TOKEN",
+    "GOOGLE_SERVICE_ACCOUNT_JSON",
+    "GOOGLE_SERVICE_ACCOUNT_EMAIL",
+    "GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY",
+    "GOOGLE_SERVICE_ACCOUNT_TOKEN_URI",
     "MYPOS_CHECKOUT_URL",
     "MYPOS_SUCCESS_URL",
     "MYPOS_CANCEL_URL",
@@ -119,7 +130,10 @@ export async function onRequestGet(context) {
     loaded[name] = Boolean(env[name]);
   }
 
-  const missing = required.filter((name) => !env[name]);
+  const missing = Array.from(new Set([
+    ...missingGoogleConfig,
+    ...required.filter((name) => !env[name])
+  ]));
   const hasWalletNumber = walletAliases.some((name) => Boolean(env[name]));
 
   if (!hasWalletNumber) {
@@ -143,6 +157,7 @@ export async function onRequestGet(context) {
     ok,
     loaded,
     missing,
+    googleAuthMode: googleAuthMode || null,
     checkoutUrl: env.MYPOS_CHECKOUT_URL || "https://mypos.com/vmp/checkout",
     configuredCheckoutUrl: env.MYPOS_CHECKOUT_URL || null,
     embeddedSdkUrl: getMyposEmbeddedCheckoutUrl(env),
@@ -153,7 +168,7 @@ export async function onRequestGet(context) {
     pemReady,
     pemDiagnostics,
     message: ok
-      ? "Google and myPOS environment variables are loaded."
+      ? "Google Calendar and myPOS environment variables are loaded."
       : (missing.length === 0
         ? "myPOS PEM values are present but not parseable."
         : `Missing environment variables: ${missing.join(", ")}.`)

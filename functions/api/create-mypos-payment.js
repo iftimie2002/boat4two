@@ -1,4 +1,8 @@
-import { getGoogleAccessToken, getGoogleCalendarErrorPayload } from "./_google.js";
+import {
+  getGoogleAccessToken,
+  getGoogleCalendarErrorPayload,
+  getMissingGoogleCalendarConfigNames
+} from "./_google.js";
 
 function htmlResponse(html, status = 200) {
   return new Response(html, {
@@ -53,22 +57,21 @@ function getMissingEnvNames(env, names) {
 }
 
 function getMissingPaymentEnvNames(env) {
-  const missing = getMissingEnvNames(env, [
-    "GOOGLE_CLIENT_ID",
-    "GOOGLE_CLIENT_SECRET",
-    "GOOGLE_REFRESH_TOKEN",
-    "GOOGLE_CALENDAR_ID",
-    "MYPOS_SID",
-    "MYPOS_KEY_INDEX",
-    "MYPOS_PRIVATE_KEY",
-    "MYPOS_PUBLIC_CERT"
-  ]);
+  const missing = [
+    ...getMissingGoogleCalendarConfigNames(env),
+    ...getMissingEnvNames(env, [
+      "MYPOS_SID",
+      "MYPOS_KEY_INDEX",
+      "MYPOS_PRIVATE_KEY",
+      "MYPOS_PUBLIC_CERT"
+    ])
+  ];
 
   if (!getWalletNumber(env)) {
     missing.push("MYPOS_WALLET_NUMBER");
   }
 
-  return missing;
+  return Array.from(new Set(missing));
 }
 
 function getWalletNumber(env) {

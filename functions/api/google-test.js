@@ -1,7 +1,9 @@
 import {
   getBusyGoogleCalendarIds,
+  getGoogleCalendarAuthMode,
   getGoogleAccessToken,
   getGoogleCalendarErrorPayload,
+  getMissingGoogleCalendarConfigNames,
   getPrimaryGoogleCalendarId
 } from "./_google.js";
 
@@ -75,24 +77,19 @@ function makeDateInTimeZone(date, timeZone) {
 }
 
 export async function onRequestGet(context) {
-  const {
-    GOOGLE_CLIENT_ID,
-    GOOGLE_CLIENT_SECRET,
-    GOOGLE_REFRESH_TOKEN
-  } = context.env;
-  const primaryCalendarId = getPrimaryGoogleCalendarId(context.env);
-  const busyCalendarIds = getBusyGoogleCalendarIds(context.env);
+  const { env } = context;
+  const primaryCalendarId = getPrimaryGoogleCalendarId(env);
+  const busyCalendarIds = getBusyGoogleCalendarIds(env);
+  const authMode = getGoogleCalendarAuthMode(env);
+  const missingGoogleConfig = getMissingGoogleCalendarConfigNames(env);
 
-  if (
-    !GOOGLE_CLIENT_ID ||
-    !GOOGLE_CLIENT_SECRET ||
-    !GOOGLE_REFRESH_TOKEN ||
-    !primaryCalendarId
-  ) {
+  if (missingGoogleConfig.length) {
     return Response.json(
       {
         ok: false,
-        error: "Missing required Google environment variables."
+        error: "Missing required Google environment variables.",
+        missing: missingGoogleConfig,
+        authMode: authMode || null
       },
       { status: 500 }
     );
@@ -102,17 +99,20 @@ export async function onRequestGet(context) {
     let accessToken = "";
 
     try {
-      accessToken = await getGoogleAccessToken(context.env);
+      accessToken = await getGoogleAccessToken(env);
     } catch (error) {
       return Response.json(
         {
           ok: false,
-          step: "refresh_token_exchange_failed",
+          step: "google_authentication_failed",
           ...getGoogleCalendarErrorPayload(error),
           details: error?.details || null,
+          authMode: authMode || null,
           adminHint: error?.code === "google_refresh_token_invalid"
-            ? "Reconnect GOOGLE_REFRESH_TOKEN in Cloudflare Workers & Pages."
-            : ""
+            ? "Reconnect GOOGLE_REFRESH_TOKEN in Cloudflare Workers & Pages, or finish switching to a Google service account."
+            : (authMode === "service_account"
+              ? "Check the Google service account email, private key, and calendar sharing permissions in Cloudflare."
+              : "")
         },
         { status: 500 }
       );
@@ -154,6 +154,7 @@ export async function onRequestGet(context) {
     return Response.json({
       ok: true,
       message: "Google Calendar connection working",
+      authMode: authMode || null,
       calendarId: primaryCalendarId,
       busyCalendarIds,
       timezone: BOOKING_RULES.timezone,

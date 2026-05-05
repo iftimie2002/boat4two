@@ -1,4 +1,8 @@
-import { getGoogleAccessToken, getGoogleCalendarErrorPayload } from "./_google.js";
+import {
+  getGoogleAccessToken,
+  getGoogleCalendarErrorPayload,
+  hasGoogleCalendarCredentials
+} from "./_google.js";
 import { maybeSendBookingConfirmationEmail } from "./_booking-email.js";
 
 function json(data, status = 200) {
@@ -513,10 +517,7 @@ export async function onRequestPost(context) {
   const { request, env } = context;
 
   if (
-    !env.GOOGLE_CLIENT_ID ||
-    !env.GOOGLE_CLIENT_SECRET ||
-    !env.GOOGLE_REFRESH_TOKEN ||
-    !env.GOOGLE_CALENDAR_ID ||
+    !hasGoogleCalendarCredentials(env) ||
     !env.MYPOS_SID ||
     !env.MYPOS_KEY_INDEX ||
     !env.MYPOS_PRIVATE_KEY ||
