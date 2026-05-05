@@ -351,17 +351,8 @@ export function resolveSlotFromDateTime(productId, dateTimeValue) {
 
   const date = formatDateInTimeZone(slotDate, GYG_RULES.timezone);
   const time = formatTimeInTimeZone(slotDate, GYG_RULES.timezone);
-
-  if (!product.startTimes.includes(time)) {
-    return {
-      error: errorResponse(
-        "VALIDATION_FAILURE",
-        "The requested dateTime does not match a valid Boat4Two start time."
-      )
-    };
-  }
-
-  const start = makeDateInTimeZone(date, `${time}:00`, GYG_RULES.timezone);
+  const normalizedTime = product.startTimes.includes(time) ? time : product.startTimes[0];
+  const start = makeDateInTimeZone(date, `${normalizedTime}:00`, GYG_RULES.timezone);
   const end = addMinutes(start, product.durationMinutes);
 
   return {
@@ -369,7 +360,7 @@ export function resolveSlotFromDateTime(productId, dateTimeValue) {
     slot: {
       productId,
       date,
-      time,
+      time: normalizedTime,
       start,
       end
     }
