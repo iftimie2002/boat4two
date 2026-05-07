@@ -3,6 +3,7 @@ import {
   getGoogleCalendarErrorPayload,
   hasGoogleCalendarCredentials
 } from "./_google.js";
+import { bestEffortCleanupStaleBookingArtifacts } from "./_stale-bookings.js";
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -174,6 +175,7 @@ export async function onRequestGet(context) {
     }
 
     const accessToken = await getGoogleAccessToken(env);
+    await bestEffortCleanupStaleBookingArtifacts(env, accessToken);
     const event = await findHoldEventById(env, accessToken, holdId);
 
     if (!event) {

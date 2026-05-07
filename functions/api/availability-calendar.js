@@ -3,6 +3,7 @@ import {
   getGoogleAccessToken,
   getGoogleCalendarErrorPayload
 } from "./_google.js";
+import { bestEffortCleanupStaleBookingArtifacts } from "./_stale-bookings.js";
 
 const BOOKING_RULES = {
   timezone: "Europe/Lisbon",
@@ -149,6 +150,7 @@ export async function onRequestGet(context) {
     );
 
     const accessToken = await getGoogleAccessToken(env);
+    await bestEffortCleanupStaleBookingArtifacts(env, accessToken);
 
     const firstDay = `${month}-01`;
     const lastDay = `${month}-${String(getDaysInMonth(year, monthIndex)).padStart(2, "0")}`;

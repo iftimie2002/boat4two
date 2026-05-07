@@ -6,6 +6,7 @@ import {
   getMissingGoogleCalendarConfigNames,
   getPrimaryGoogleCalendarId
 } from "./_google.js";
+import { bestEffortCleanupStaleBookingArtifacts } from "./_stale-bookings.js";
 
 const BOOKING_RULES = {
   timezone: "Europe/Lisbon"
@@ -118,6 +119,8 @@ export async function onRequestGet(context) {
       );
     }
 
+    const cleanupResult = await bestEffortCleanupStaleBookingArtifacts(env, accessToken);
+
     const now = new Date();
     const { dateStr, startOfDay, endOfDay } = makeDateInTimeZone(now, BOOKING_RULES.timezone);
 
@@ -159,6 +162,7 @@ export async function onRequestGet(context) {
       busyCalendarIds,
       timezone: BOOKING_RULES.timezone,
       lisbonDate: dateStr,
+      cleanup: cleanupResult,
       busy: busyCalendarIds.flatMap((calendarId) => freeBusyData.calendars?.[calendarId]?.busy || []),
       busyByCalendar: Object.fromEntries(
         busyCalendarIds.map((calendarId) => [calendarId, freeBusyData.calendars?.[calendarId]?.busy || []])

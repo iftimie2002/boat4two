@@ -15,6 +15,7 @@ import {
   validateIndividualBookingItems,
   createGyGReference
 } from "../_shared.js";
+import { bestEffortCleanupStaleBookingArtifacts } from "../../_stale-bookings.js";
 
 export async function onRequestPost(context) {
   const { request, env } = context;
@@ -48,6 +49,7 @@ export async function onRequestPost(context) {
     }
 
     const accessToken = await getAuthorizedGoogleTokenOrThrow(env);
+    await bestEffortCleanupStaleBookingArtifacts(env, accessToken);
 
     await cleanupExpiredGyGReservations(
       env,

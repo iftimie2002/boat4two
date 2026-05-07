@@ -10,6 +10,7 @@ import {
   slotHasAvailability,
   successResponse
 } from "../_shared.js";
+import { bestEffortCleanupStaleBookingArtifacts } from "../../_stale-bookings.js";
 
 export async function onRequestGet(context) {
   const { request, env } = context;
@@ -58,6 +59,7 @@ export async function onRequestGet(context) {
     }
 
     const accessToken = await getAuthorizedGoogleTokenOrThrow(env);
+    await bestEffortCleanupStaleBookingArtifacts(env, accessToken);
 
     await cleanupExpiredGyGReservations(
       env,

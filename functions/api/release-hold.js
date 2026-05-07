@@ -3,6 +3,7 @@ import {
   getGoogleCalendarErrorPayload,
   hasGoogleCalendarCredentials
 } from "./_google.js";
+import { notifyGyGAvailabilityForEvents } from "./gyg/_notify_outbound.js";
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -204,18 +205,35 @@ export async function onRequestPost(context) {
     }
 
     let deletedCount = 0;
+    const deletedEvents = [];
 
     for (const event of holdEvents) {
+      deletedEvents.push({
+        tour: event?.extendedProperties?.private?.tour || "",
+        date: event?.extendedProperties?.private?.date || "",
+        time: event?.extendedProperties?.private?.time || "",
+        holdId
+      });
       await deleteCalendarEvent(env, accessToken, event.id);
       deletedCount += 1;
     }
+
+    const notifyResult = await notifyGyGAvailabilityForEvents(env, {
+      accessToken,
+      deletedEvents
+    }).catch((error) => ({
+      ok: false,
+      error: error?.message || "Notify availability failed.",
+      deliveries: []
+    }));
 
     return json({
       ok: true,
       released: true,
       holdId,
       releasedCount: deletedCount,
-      deletedCount
+      deletedCount,
+      gygNotify: notifyResult
     });
   } catch (error) {
     return json(

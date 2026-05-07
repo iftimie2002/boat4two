@@ -4,6 +4,7 @@ import {
   hasGoogleCalendarCredentials
 } from "./_google.js";
 import { maybeSendBookingConfirmationEmail } from "./_booking-email.js";
+import { notifyGyGAvailabilityForEvents } from "./gyg/_notify_outbound.js";
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -615,7 +616,19 @@ export async function onRequestPost(context) {
     }
 
     if ((paymentStatus === 3 || paymentStatus === 4) && event && !isPaidEvent(event)) {
+      const deletedEvents = [{
+        tour: event?.extendedProperties?.private?.tour || "",
+        date: event?.extendedProperties?.private?.date || "",
+        time: event?.extendedProperties?.private?.time || "",
+        holdId: event?.extendedProperties?.private?.holdId || ""
+      }];
       await deleteCalendarEvent(env, accessToken, event.id);
+      notifyGyGAvailabilityForEvents(env, {
+        accessToken,
+        deletedEvents
+      }).catch((error) => {
+        console.warn("GYG availability notify after declined payment failed", error);
+      });
     }
 
     return json({

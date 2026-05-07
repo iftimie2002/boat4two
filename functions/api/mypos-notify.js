@@ -1,5 +1,6 @@
 import { getGoogleAccessToken, hasGoogleCalendarCredentials } from "./_google.js";
 import { maybeSendBookingConfirmationEmail } from "./_booking-email.js";
+import { notifyGyGAvailabilityForEvents } from "./gyg/_notify_outbound.js";
 
 function textResponse(body, status = 200, extraHeaders = {}) {
   return new Response(body, {
@@ -612,7 +613,19 @@ export async function onRequestPost(context) {
         return textResponse("Currency mismatch", 400);
       }
 
+      const deletedEvents = [{
+        tour: event?.extendedProperties?.private?.tour || "",
+        date: event?.extendedProperties?.private?.date || "",
+        time: event?.extendedProperties?.private?.time || "",
+        holdId: event?.extendedProperties?.private?.holdId || ""
+      }];
       await deleteCalendarEvent(env, accessToken, event.id);
+      notifyGyGAvailabilityForEvents(env, {
+        accessToken,
+        deletedEvents
+      }).catch((error) => {
+        console.warn("GYG availability notify after myPOS cancel failed", error);
+      });
 
       return textResponse("OK", 200, {
         "X-Boat4Two-Payment-State": "cancelled"
@@ -626,7 +639,19 @@ export async function onRequestPost(context) {
         });
       }
 
+      const deletedEvents = [{
+        tour: event?.extendedProperties?.private?.tour || "",
+        date: event?.extendedProperties?.private?.date || "",
+        time: event?.extendedProperties?.private?.time || "",
+        holdId: event?.extendedProperties?.private?.holdId || ""
+      }];
       await deleteCalendarEvent(env, accessToken, event.id);
+      notifyGyGAvailabilityForEvents(env, {
+        accessToken,
+        deletedEvents
+      }).catch((error) => {
+        console.warn("GYG availability notify after myPOS rollback failed", error);
+      });
 
       return textResponse("OK", 200, {
         "X-Boat4Two-Payment-State": "rolled_back"

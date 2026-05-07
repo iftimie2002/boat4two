@@ -5,6 +5,8 @@ import {
   hasGoogleCalendarCredentials,
   getPrimaryGoogleCalendarId
 } from "./_google.js";
+import { bestEffortCleanupStaleBookingArtifacts } from "./_stale-bookings.js";
+import { notifyGyGAvailabilityForTourDate } from "./gyg/_notify_outbound.js";
 
 const BOOKING_RULES = {
   timezone: "Europe/Lisbon",
@@ -433,6 +435,7 @@ export async function onRequestPost(context) {
     }
 
     const accessToken = await getGoogleAccessToken(env);
+    await bestEffortCleanupStaleBookingArtifacts(env, accessToken);
     let slotLock = null;
 
     try {
@@ -511,6 +514,14 @@ export async function onRequestPost(context) {
       };
 
       const createdEvent = await createCalendarEvent(env, accessToken, eventBody);
+
+      notifyGyGAvailabilityForTourDate(env, {
+        accessToken,
+        tour,
+        date
+      }).catch((error) => {
+        console.warn("GYG availability notify after hold creation failed", error);
+      });
 
       return Response.json({
         ok: true,

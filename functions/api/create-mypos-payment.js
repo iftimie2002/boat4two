@@ -3,6 +3,7 @@ import {
   getGoogleCalendarErrorPayload,
   getMissingGoogleCalendarConfigNames
 } from "./_google.js";
+import { bestEffortCleanupStaleBookingArtifacts } from "./_stale-bookings.js";
 
 function htmlResponse(html, status = 200) {
   return new Response(html, {
@@ -749,6 +750,7 @@ export async function onRequestPost(context) {
     }
 
     const accessToken = await getGoogleAccessToken(env);
+    await bestEffortCleanupStaleBookingArtifacts(env, accessToken);
     const holdEvent = await findHoldEventById(env, accessToken, holdId);
 
     if (!holdEvent) {

@@ -3,6 +3,7 @@ import {
   getGoogleAccessToken,
   getGoogleCalendarErrorPayload
 } from "./_google.js";
+import { bestEffortCleanupStaleBookingArtifacts } from "./_stale-bookings.js";
 
 const BOOKING_RULES = {
   timezone: "Europe/Lisbon",
@@ -144,6 +145,7 @@ export async function onRequestGet(context) {
     );
 
     const accessToken = await getGoogleAccessToken(env);
+    await bestEffortCleanupStaleBookingArtifacts(env, accessToken);
 
     const dayStart = makeDateInTimeZone(date, "00:00:00", BOOKING_RULES.timezone);
     const dayEnd = makeDateInTimeZone(date, "23:59:59", BOOKING_RULES.timezone);
