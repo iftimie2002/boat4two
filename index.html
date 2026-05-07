@@ -1485,8 +1485,13 @@ This slot is being held for you for <strong id="hold-countdown-timer">12:00</str
         private: {
           label: 'Private Sailing Tour for Couples',
           apiTour: 'amor',
-          totalPrice: 170.00,
-          perPersonPrice: 85.00
+          totalPrice: 0.05,
+          perPersonPrice: 0.05,
+          reviewPriceNote: 'Temporary live Apple Pay verification amount.',
+          reviewPayLabel: 'Pay 0,05€ test',
+          paymentAmountNote: 'Temporary live Apple Pay verification amount.',
+          pricePerPersonLabel: 'Temporary live test amount',
+          priceTotalLabel: '0,05€ total'
         },
         sunset: {
           label: 'Sunset Private Sailing Tour for Couples',
@@ -1693,13 +1698,13 @@ const BOOKING_DATA_STORAGE_KEY = 'boat4two-booking-data';
 
         if (reviewPriceNote) {
           reviewPriceNote.textContent = selectedTourConfig
-            ? `${formatEuroPrice(selectedTourConfig.perPersonPrice)} per person · charged together for 2 guests.`
+            ? (selectedTourConfig.reviewPriceNote || `${formatEuroPrice(selectedTourConfig.perPersonPrice)} per person · charged together for 2 guests.`)
             : 'Choose a tour to see the final amount for 2 guests.';
         }
 
         if (reviewPayButton) {
           reviewPayButton.textContent = selectedTourConfig
-            ? `Pay ${formatEuroPrice(selectedTourConfig.totalPrice)} total`
+            ? (selectedTourConfig.reviewPayLabel || `Pay ${formatEuroPrice(selectedTourConfig.totalPrice)} total`)
             : 'Pay Now';
         }
       }
@@ -2239,8 +2244,8 @@ const BOOKING_DATA_STORAGE_KEY = 'boat4two-booking-data';
           tour: selectedTour ? selectedTour.dataset.label : '',
           date: requestDateInput ? formatDate(requestDateInput.value) : '',
           time: selectedTime ? selectedTime.value : '',
-          pricePerPerson: selectedTourConfig ? `${formatEuroPrice(selectedTourConfig.perPersonPrice)} per person` : '',
-          priceTotal: selectedTourConfig ? `${formatEuroPrice(selectedTourConfig.totalPrice)} total` : ''
+          pricePerPerson: selectedTourConfig ? (selectedTourConfig.pricePerPersonLabel || `${formatEuroPrice(selectedTourConfig.perPersonPrice)} per person`) : '',
+          priceTotal: selectedTourConfig ? (selectedTourConfig.priceTotalLabel || `${formatEuroPrice(selectedTourConfig.totalPrice)} total`) : ''
         };
       }
 
@@ -3316,7 +3321,11 @@ async function launchMyposEmbeddedCheckout(checkoutData) {
   holdReleaseSuppressed = true;
   window.location.hash = '#payment-popup';
   setPaymentPopupState('loading');
-  setPaymentAmountSummary(checkoutData.paymentParams?.amount, 'Charged together for 2 guests.');
+  const selectedTourConfig = getSelectedTourConfig();
+  setPaymentAmountSummary(
+    checkoutData.paymentParams?.amount,
+    (selectedTourConfig && selectedTourConfig.paymentAmountNote) || 'Charged together for 2 guests.'
+  );
 
   if (!myposEmbeddedCheckout) {
     throw new Error('Payment container not found.');
@@ -3431,7 +3440,11 @@ async function startMyposPayment() {
     throw new Error(getPublicBookingApiMessage(checkoutData, 'Could not prepare embedded payment.'));
   }
 
-  setPaymentAmountSummary(checkoutData.paymentParams?.amount, 'Charged together for 2 guests.');
+  const selectedTourConfig = getSelectedTourConfig();
+  setPaymentAmountSummary(
+    checkoutData.paymentParams?.amount,
+    (selectedTourConfig && selectedTourConfig.paymentAmountNote) || 'Charged together for 2 guests.'
+  );
   await launchMyposEmbeddedCheckout(checkoutData);
 }
 
