@@ -373,6 +373,17 @@ function hasGmailCredentials(env) {
   return Boolean(credentials.clientId && credentials.clientSecret && credentials.refreshToken);
 }
 
+function hasCloudflareEmailApiCredentials(env) {
+  const accountId = cleanText(
+    env.CLOUDFLARE_EMAIL_ACCOUNT_ID ||
+    env.CLOUDFLARE_ACCOUNT_ID ||
+    env.CF_ACCOUNT_ID,
+    80
+  );
+  const apiToken = cleanText(env.CLOUDFLARE_EMAIL_API_TOKEN, 400);
+  return Boolean(accountId && apiToken);
+}
+
 async function getGmailAccessToken(env) {
   const credentials = getGmailCredentials(env);
 
@@ -407,6 +418,70 @@ async function getGmailAccessToken(env) {
     accessToken: data.access_token,
     fromEmail: credentials.fromEmail
   };
+}
+
+export function getBookingEmailDiagnostics(env) {
+  const gmailCredentials = getGmailCredentials(env);
+  const hasGmail = hasGmailCredentials(env);
+  const hasBinding = Boolean(env.BOOKING_EMAIL && typeof env.BOOKING_EMAIL.send === "function");
+  const hasCloudflareApi = hasCloudflareEmailApiCredentials(env);
+
+  return {
+    provider:
+      hasGmail ? "gmail" :
+      hasBinding ? "cloudflare_binding" :
+      hasCloudflareApi ? "cloudflare_api" :
+      "none",
+    loaded: {
+      GMAIL_CLIENT_ID: Boolean(gmailCredentials.clientId),
+      GMAIL_CLIENT_SECRET: Boolean(gmailCredentials.clientSecret),
+      GMAIL_REFRESH_TOKEN: Boolean(gmailCredentials.refreshToken),
+      GMAIL_FROM_EMAIL: Boolean(gmailCredentials.fromEmail),
+      BOOKING_EMAIL_BINDING: hasBinding,
+      CLOUDFLARE_EMAIL_API_TOKEN: Boolean(cleanText(env.CLOUDFLARE_EMAIL_API_TOKEN, 400)),
+      CLOUDFLARE_EMAIL_ACCOUNT_ID: Boolean(
+        cleanText(
+          env.CLOUDFLARE_EMAIL_ACCOUNT_ID ||
+          env.CLOUDFLARE_ACCOUNT_ID ||
+          env.CF_ACCOUNT_ID,
+          80
+        )
+      )
+    },
+    fromEmail: gmailCredentials.fromEmail || DEFAULT_FROM_EMAIL,
+    replyToEmail: cleanText(env.BOOKING_CONFIRMATION_REPLY_TO_EMAIL, 200) || DEFAULT_REPLY_TO_EMAIL,
+    bookingNotificationEmail:
+      cleanText(env.BOOKING_NOTIFICATION_EMAIL, 200) || DEFAULT_BOOKING_NOTIFICATION_EMAIL
+  };
+}
+
+export async function testBookingEmailConnection(env) {
+  const diagnostics = getBookingEmailDiagnostics(env);
+
+  if (diagnostics.provider === "gmail") {
+    const gmailAccess = await getGmailAccessToken(env);
+    return {
+      ok: true,
+      provider: "gmail",
+      fromEmail: gmailAccess.fromEmail
+    };
+  }
+
+  if (diagnostics.provider === "cloudflare_binding") {
+    return {
+      ok: true,
+      provider: "cloudflare_binding"
+    };
+  }
+
+  if (diagnostics.provider === "cloudflare_api") {
+    return {
+      ok: true,
+      provider: "cloudflare_api"
+    };
+  }
+
+  throw new Error("Missing Gmail API credentials or fallback email credentials.");
 }
 
 function buildBookingEmailModel(env, event, paymentData = {}) {
