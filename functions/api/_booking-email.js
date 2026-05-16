@@ -1136,6 +1136,10 @@ async function sendBookingEmail(env, sendPayload) {
   };
 }
 
+export async function sendSystemEmail(env, sendPayload) {
+  return sendBookingEmail(env, sendPayload);
+}
+
 async function sendBookingEmailWithGmail(env, sendPayload) {
   const { accessToken, fromEmail } = await getGmailAccessToken(env);
   const gmailPayload = {
