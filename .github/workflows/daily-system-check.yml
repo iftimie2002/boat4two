@@ -36,8 +36,19 @@ jobs:
 
       - name: Trigger daily system check
         if: steps.schedule_gate.outputs.run_now == 'true'
-        run: >
-          curl --fail --silent --show-error
-          --header "User-Agent: boat4two-daily-check-bot"
-          --header "Authorization: Bearer ${{ secrets.DAILY_SYSTEM_CHECK_KEY }}"
-          https://boat4two.com/api/daily-system-check
+        run: |
+          RESPONSE_FILE=$(mktemp)
+          STATUS_CODE=$(curl --silent --show-error \
+            --output "$RESPONSE_FILE" \
+            --write-out "%{http_code}" \
+            --header "User-Agent: boat4two-daily-check-bot" \
+            --header "Authorization: Bearer ${{ secrets.DAILY_SYSTEM_CHECK_KEY }}" \
+            https://boat4two.com/api/daily-system-check)
+
+          cat "$RESPONSE_FILE"
+
+          if [ "$STATUS_CODE" -lt 200 ] || [ "$STATUS_CODE" -ge 300 ]; then
+            echo ""
+            echo "Daily system check failed with HTTP $STATUS_CODE" >&2
+            exit 1
+          fi
