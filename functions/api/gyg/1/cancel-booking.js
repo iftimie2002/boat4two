@@ -20,10 +20,10 @@ export async function onRequestPost(context) {
     const body = await parseJsonBody(request);
     const data = body?.data || null;
 
-    if (!data?.bookingReference || !data?.gygBookingReference || !data?.productId) {
+    if (!data?.bookingReference) {
       return errorResponse(
         "VALIDATION_FAILURE",
-        "bookingReference, gygBookingReference, and productId are required."
+        "bookingReference is required."
       );
     }
 
@@ -41,13 +41,31 @@ export async function onRequestPost(context) {
 
     if (
       privateProps.source !== "getyourguide" ||
-      privateProps.bookingType !== "gyg_booking" ||
-      privateProps.gygProductId !== String(data.productId || "") ||
-      privateProps.gygBookingReference !== String(data.gygBookingReference || "")
+      privateProps.bookingType !== "gyg_booking"
     ) {
       return errorResponse(
         "INVALID_BOOKING",
         "The booking does not exist or is not in a cancellable state."
+      );
+    }
+
+    if (
+      data.productId &&
+      privateProps.gygProductId !== String(data.productId)
+    ) {
+      return errorResponse(
+        "INVALID_BOOKING",
+        "The booking does not match the provided product."
+      );
+    }
+
+    if (
+      data.gygBookingReference &&
+      privateProps.gygBookingReference !== String(data.gygBookingReference)
+    ) {
+      return errorResponse(
+        "INVALID_BOOKING",
+        "The booking does not match the provided booking reference."
       );
     }
 

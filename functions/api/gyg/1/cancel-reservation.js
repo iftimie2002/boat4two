@@ -20,10 +20,10 @@ export async function onRequestPost(context) {
     const body = await parseJsonBody(request);
     const data = body?.data || null;
 
-    if (!data?.reservationReference || !data?.gygBookingReference) {
+    if (!data?.reservationReference) {
       return errorResponse(
         "VALIDATION_FAILURE",
-        "reservationReference and gygBookingReference are required."
+        "reservationReference is required."
       );
     }
 
@@ -41,12 +41,21 @@ export async function onRequestPost(context) {
 
     if (
       privateProps.source !== "getyourguide" ||
-      privateProps.bookingType !== "gyg_reservation" ||
-      privateProps.gygBookingReference !== String(data.gygBookingReference || "")
+      privateProps.bookingType !== "gyg_reservation"
     ) {
       return errorResponse(
         "INVALID_RESERVATION",
         "The reservation does not exist or is not in a cancellable state."
+      );
+    }
+
+    if (
+      data.gygBookingReference &&
+      privateProps.gygBookingReference !== String(data.gygBookingReference)
+    ) {
+      return errorResponse(
+        "INVALID_RESERVATION",
+        "The reservation does not match the provided booking reference."
       );
     }
 
