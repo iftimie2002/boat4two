@@ -105,6 +105,9 @@
         .group:target .group-target\:pointer-events-auto {
           pointer-events: auto;
         }
+        #menu-container:target {
+          z-index: 40;
+        }
         #select-tour-popup:target,
         #calendar-popup:target,
         #review-popup:target,
@@ -239,68 +242,23 @@
         html.dark .dark\:border-zinc-800\/60 {
           border-color: var(--dark-ocean-border-muted) !important;
         }
-        .tour-carousel-viewport {
-          --tour-card-width: min(82vw, 34rem);
-          --tour-card-gap: 1rem;
-          cursor: grab;
-          overflow-x: auto;
-          overscroll-behavior-x: contain;
-          padding: 0.75rem 0 1rem;
+        html {
           scroll-behavior: smooth;
-          scroll-padding-inline: 0.75rem;
-          scroll-snap-type: x mandatory;
-          scrollbar-width: none;
-          -webkit-overflow-scrolling: touch;
-          touch-action: pan-x;
+          scroll-padding-top: 5rem;
         }
-        .tour-carousel-viewport::-webkit-scrollbar {
-          display: none;
+        .tour-options-list {
+          display: grid;
+          gap: 1.25rem;
         }
-        .tour-carousel-viewport:active {
-          cursor: grabbing;
-        }
-        .tour-carousel-viewport.is-dragging {
-          scroll-snap-type: none;
-          user-select: none;
-        }
-        .tour-carousel-viewport:active .tour-carousel-track {
-          animation-play-state: paused;
-        }
-        .tour-carousel-viewport.is-dragging .tour-carousel-track {
-          animation-play-state: paused;
-        }
-        .tour-carousel-track {
+        .tour-card {
           display: flex;
-          align-items: stretch;
-          gap: var(--tour-card-gap);
-          animation: tourCarousel 24s ease-in-out infinite;
-          will-change: transform;
-        }
-        .tour-carousel-viewport:hover .tour-carousel-track,
-        .tour-carousel-viewport:focus-within .tour-carousel-track {
-          animation-play-state: paused;
-        }
-        .tour-carousel-card {
-          display: flex;
-          flex: 0 0 var(--tour-card-width);
           flex-direction: column;
-          scroll-snap-align: center;
+          min-width: 0;
         }
-        @media (min-width: 768px) {
-          .tour-carousel-viewport {
-            --tour-card-width: min(56vw, 34rem);
-            --tour-card-gap: 1.25rem;
-          }
-        }
-        @keyframes tourCarousel {
-          0%, 27% { transform: translateX(0); }
-          33%, 60% { transform: translateX(calc(-1 * (var(--tour-card-width) + var(--tour-card-gap)))); }
-          66%, 94% { transform: translateX(calc(-2 * (var(--tour-card-width) + var(--tour-card-gap)))); }
-          100% { transform: translateX(0); }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .tour-carousel-track {
-            animation: none;
+        @media (min-width: 900px) {
+          .tour-options-list {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            align-items: stretch;
           }
         }
       </style>
@@ -313,6 +271,7 @@
 <nav class="hidden items-center gap-6 text-sm font-medium text-zinc-700 dark:text-zinc-300 lg:flex">
 <a class="transition-colors hover:text-primary" href="#home">Home</a>
 <a class="transition-colors hover:text-primary" href="#tours">Tours</a>
+<a class="transition-colors hover:text-primary" href="#included">Included</a>
 <a class="transition-colors hover:text-primary" href="#gallery">Gallery</a>
 <a class="transition-colors hover:text-primary" href="#faq">FAQ</a>
 <a class="transition-colors hover:text-primary" href="#contact-cta">Contact</a>
@@ -343,6 +302,7 @@
 <nav class="flex-grow space-y-5 p-5 text-base font-medium text-zinc-700 dark:text-zinc-300">
 <a class="block transition-colors hover:text-primary" href="#home">Home</a>
 <a class="block transition-colors hover:text-primary" href="#tours">Tours</a>
+<a class="block transition-colors hover:text-primary" href="#included">Included</a>
 <a class="block transition-colors hover:text-primary" href="#gallery">Gallery</a>
 <a class="block transition-colors hover:text-primary" href="#faq">FAQ</a>
 <a class="block transition-colors hover:text-primary" href="#contact-cta">Contact</a>
@@ -355,27 +315,58 @@
 </div>
 <main class="flex-grow">
 <section class="relative overflow-hidden" id="home">
-<div class="absolute inset-0 bg-cover bg-center bg-no-repeat" style='background-image: linear-gradient(135deg, rgba(15, 23, 42, 0.55), rgba(33, 22, 17, 0.35)), url("https://iftimie2002.github.io/boat4two/images-boat4two/barco vogue.webp");'></div>
-<div class="relative mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
-<div class="max-w-3xl rounded-[2rem] border border-white/15 bg-black/20 p-7 shadow-2xl backdrop-blur-sm sm:p-9">
-<h1 class="text-4xl font-black leading-tight text-white sm:text-6xl">Private Sailing Tours for Couples in the Algarve</h1>
-<p class="mt-4 max-w-2xl text-base leading-relaxed text-white/90 sm:text-xl">A romantic private boat experience made only for two people, with drinks, snacks, water activities, photos, and a Polaroid album included.</p>
-<p class="mt-4 text-sm font-black uppercase tracking-[0.18em] text-white">One couple per tour. Limited daily availability.</p>
-<p class="mt-3 text-sm font-semibold text-white/85 sm:text-base">3.5 hours · Ferragudo · Sunset and daytime tours available</p>
-<div class="mt-6 flex flex-col gap-3 sm:flex-row">
-<a class="inline-flex h-12 items-center justify-center rounded-full bg-primary px-7 text-base font-black text-white shadow-lg transition-transform hover:scale-105 sm:h-14 sm:px-8" href="#select-tour-popup">Check Available Dates</a>
-<a class="inline-flex h-12 items-center justify-center rounded-full border border-white/70 bg-white/10 px-7 text-base font-black text-white backdrop-blur transition-colors hover:bg-white hover:text-zinc-950 sm:h-14 sm:px-8" href="https://wa.me/351932015013?text=Hello%20Boat4Two%2C%20I%20would%20like%20to%20plan%20a%20private%20tour." target="_blank">Message Us on WhatsApp</a>
+<div class="absolute inset-0 bg-cover bg-center bg-no-repeat" style='background-image: linear-gradient(105deg, rgba(4, 10, 18, 0.78) 0%, rgba(4, 10, 18, 0.5) 42%, rgba(230, 94, 25, 0.1) 100%), url("https://iftimie2002.github.io/boat4two/images-boat4two/barco vogue.webp");'></div>
+<div class="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-background-light to-transparent dark:from-background-dark"></div>
+<div class="relative mx-auto grid min-h-[calc(100dvh-4rem)] max-w-6xl gap-10 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-[1.05fr_0.95fr] lg:items-end">
+<div class="max-w-3xl pb-8 pt-10">
+<p class="inline-flex rounded-full border border-white/25 bg-white/10 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] text-white backdrop-blur">Private sailing for two</p>
+<h1 class="mt-5 max-w-3xl text-5xl font-black leading-[0.95] tracking-[-0.05em] text-white sm:text-7xl">Just you two, the Algarve, and the sea.</h1>
+<div class="mt-7 flex flex-wrap gap-2 text-sm font-black text-white">
+<span class="rounded-full border border-white/25 bg-white/15 px-4 py-2 backdrop-blur">3.5 hours</span>
+<span class="rounded-full border border-white/25 bg-white/15 px-4 py-2 backdrop-blur">Ferragudo</span>
+<span class="rounded-full border border-white/25 bg-white/15 px-4 py-2 backdrop-blur">From 170,00€ for two</span>
+<span class="rounded-full border border-white/25 bg-white/15 px-4 py-2 backdrop-blur">Drinks, snacks and photos included</span>
 </div>
-<p class="mt-4 text-sm font-bold text-white/85">Private tour for 2 people from 170,00€</p>
+<div class="mt-8 flex flex-col gap-3 sm:flex-row">
+<a class="inline-flex min-h-14 items-center justify-center rounded-full bg-primary px-7 py-4 text-base font-black text-white shadow-2xl shadow-primary/30 transition-transform hover:scale-105 sm:px-8" href="#select-tour-popup">Check Available Dates</a>
+<a class="inline-flex min-h-14 items-center justify-center rounded-full border border-white/70 bg-white/10 px-7 py-4 text-base font-black text-white backdrop-blur transition-colors hover:bg-white hover:text-zinc-950 sm:px-8" href="https://wa.me/351932015013?text=Hello%20Boat4Two%2C%20I%20would%20like%20to%20plan%20a%20private%20tour." target="_blank">Message Us</a>
 </div>
+</div>
+<aside class="hidden rounded-[2rem] border border-white/20 bg-white/15 p-5 text-white shadow-2xl backdrop-blur-md sm:block sm:p-6 lg:mb-10">
+<p class="text-xs font-black uppercase tracking-[0.22em] text-white/70">The promise</p>
+<div class="mt-5 grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+<div class="rounded-3xl bg-white/15 p-4">
+<p class="text-3xl font-black">2</p>
+<p class="mt-1 text-sm font-bold text-white/85">Guests only</p>
+</div>
+<div class="rounded-3xl bg-white/15 p-4">
+<p class="text-3xl font-black">3</p>
+<p class="mt-1 text-sm font-bold text-white/85">Daily tour times</p>
+</div>
+<div class="rounded-3xl bg-white/15 p-4">
+<p class="text-3xl font-black">0</p>
+<p class="mt-1 text-sm font-bold text-white/85">Crowded groups</p>
+</div>
+</div>
+</aside>
 </div>
 </section>
 <section class="px-4 py-10 sm:px-6">
-<div class="mx-auto max-w-6xl">
-<article class="max-w-2xl rounded-[1.75rem] border border-zinc-200 bg-white p-6 shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
-<p class="text-sm font-semibold uppercase tracking-[0.22em] text-primary">Guest review</p>
-<blockquote class="mt-4 text-xl font-black leading-snug text-zinc-900 dark:text-zinc-100">"Amazing time, perfect trip for 2 out on the water."</blockquote>
-<p class="mt-4 text-sm font-semibold text-zinc-600 dark:text-zinc-300">Guest review · GetYourGuide</p>
+<div class="mx-auto grid max-w-6xl gap-4 md:grid-cols-3">
+<article class="rounded-[1.75rem] border border-zinc-200 bg-white p-6 shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
+<p class="text-sm font-black uppercase tracking-[0.2em] text-primary">1. Choose</p>
+<h2 class="mt-3 text-xl font-black text-zinc-900 dark:text-zinc-100">Daytime or sunset</h2>
+<p class="mt-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">Pick the fixed tour that fits the mood. Custom requests go straight to WhatsApp.</p>
+</article>
+<article class="rounded-[1.75rem] border border-zinc-200 bg-white p-6 shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
+<p class="text-sm font-black uppercase tracking-[0.2em] text-primary">2. Reserve</p>
+<h2 class="mt-3 text-xl font-black text-zinc-900 dark:text-zinc-100">See live dates</h2>
+<p class="mt-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">Each slot is private for one couple, so available dates stay simple and clear.</p>
+</article>
+<article class="rounded-[1.75rem] border border-zinc-200 bg-white p-6 shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
+<p class="text-sm font-black uppercase tracking-[0.2em] text-primary">3. Sail</p>
+<h2 class="mt-3 text-xl font-black text-zinc-900 dark:text-zinc-100">Arrive in Ferragudo</h2>
+<p class="mt-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">Drinks, snacks, water activities, photos, and the Polaroid album are handled.</p>
 </article>
 </div>
 </section>
@@ -386,11 +377,11 @@
 <h2 class="mt-4 text-3xl font-black text-zinc-900 dark:text-zinc-100 sm:text-4xl">Check Availability &amp; Reserve</h2>
 <p class="mt-4 text-base leading-relaxed text-zinc-700 dark:text-zinc-300">Not a crowded boat tour. Just the two of you.</p>
 </div>
-<div class="tour-carousel-viewport mt-10" aria-label="Boat4Two tour options">
-<div class="tour-carousel-track">
-<article class="tour-carousel-card overflow-hidden rounded-[2rem] border border-zinc-200 bg-white shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
+<div class="tour-options-grid mt-10" aria-label="Boat4Two tour options">
+<div class="tour-options-list">
+<article class="tour-card overflow-hidden rounded-[2rem] border border-zinc-200 bg-white shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
 <img alt="Sunset Private Sailing Tour for Couples" class="h-64 w-full object-cover" src="https://iftimie2002.github.io/boat4two/images-boat4two/por do sol barco.webp"/>
-<div class="p-7">
+<div class="flex flex-1 flex-col p-7">
 <p class="text-sm font-semibold uppercase tracking-[0.2em] text-primary">Most romantic · 3.5 hours</p>
 <h3 class="mt-3 text-2xl font-black text-zinc-900 dark:text-zinc-100">Sunset Private Sailing Tour</h3>
 <p class="mt-4 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">Perfect for proposals, anniversaries, birthdays, honeymoons, or a surprise romantic evening.</p>
@@ -411,9 +402,9 @@
 </div>
 </div>
 </article>
-<article class="tour-carousel-card overflow-hidden rounded-[2rem] border border-zinc-200 bg-white shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
+<article class="tour-card overflow-hidden rounded-[2rem] border border-zinc-200 bg-white shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
 <img alt="Private Daytime Sailing Tour" class="h-64 w-full object-cover" src="https://iftimie2002.github.io/boat4two/images-boat4two/ricky e sofia amor tour.webp"/>
-<div class="p-7">
+<div class="flex flex-1 flex-col p-7">
 <p class="text-sm font-semibold uppercase tracking-[0.2em] text-primary">3.5 hours · Ferragudo</p>
 <h3 class="mt-3 text-2xl font-black text-zinc-900 dark:text-zinc-100">Private Daytime Sailing Tour</h3>
 <p class="mt-4 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">A calm private sailing experience with time for swimming, kayaking, paddleboarding, snorkeling, and relaxing along the Algarve coast.</p>
@@ -434,7 +425,7 @@
 </div>
 </div>
 </article>
-<article class="tour-carousel-card rounded-[2rem] border border-dashed border-primary/30 bg-white p-7 shadow-lg dark:bg-zinc-900">
+<article class="tour-card rounded-[2rem] border border-dashed border-primary/30 bg-white p-7 shadow-lg dark:bg-zinc-900">
 <p class="text-sm font-semibold uppercase tracking-[0.2em] text-primary">Tailored experience · On request</p>
 <h3 class="mt-3 text-2xl font-black text-zinc-900 dark:text-zinc-100">Custom Private Tour</h3>
 <p class="mt-4 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">For couples looking for a longer or more tailored experience at sea. Lower priority than the fixed daytime and sunset tours, and arranged directly with us.</p>
@@ -463,11 +454,11 @@
 </div>
 </div>
 </section>
-<section class="px-4 py-20 sm:px-6">
+<section class="px-4 py-20 sm:px-6" id="included">
 <div class="mx-auto max-w-6xl">
 <div class="max-w-2xl">
 <p class="text-sm font-semibold uppercase tracking-[0.25em] text-primary">What’s included</p>
-<h2 class="mt-4 text-3xl font-black text-zinc-900 dark:text-zinc-100 sm:text-4xl">Included on every tour</h2>
+<h2 class="mt-4 text-3xl font-black text-zinc-900 dark:text-zinc-100 sm:text-4xl">Everything you need, already on board.</h2>
 </div>
 <div class="mt-12 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
 <div class="rounded-[1.5rem] border border-zinc-200 bg-white p-5 shadow-md dark:border-zinc-800 dark:bg-zinc-900">
@@ -677,6 +668,7 @@
 <div class="mt-4 space-y-3 text-sm text-zinc-600 dark:text-zinc-300">
 <a class="block transition-colors hover:text-primary" href="#home">Home</a>
 <a class="block transition-colors hover:text-primary" href="#tours">Tours</a>
+<a class="block transition-colors hover:text-primary" href="#included">Included</a>
 <a class="block transition-colors hover:text-primary" href="#gallery">Gallery</a>
 <a class="block transition-colors hover:text-primary" href="#faq">FAQ</a>
 <a class="block transition-colors hover:text-primary" href="#contact-popup">Contact</a>
@@ -698,8 +690,8 @@
 </footer>
 </div>
 <a class="fixed inset-x-4 bottom-4 z-30 flex items-center justify-between gap-3 rounded-full bg-zinc-950 p-2 pl-4 text-white shadow-2xl transition-transform hover:scale-[1.01] sm:hidden" href="#select-tour-popup">
-<span class="text-xs font-black uppercase tracking-[0.16em] text-white/75">One couple per tour</span>
-<span class="inline-flex h-12 items-center justify-center rounded-full bg-primary px-5 text-base font-black text-white">Check Availability</span>
+<span class="text-[11px] font-black uppercase tracking-[0.14em] text-white/75">Private for two</span>
+<span class="inline-flex h-12 shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-primary px-4 text-sm font-black text-white">Check Availability</span>
 </a>
 <div class="fixed inset-0 z-50 hidden items-end bg-black/50 backdrop-blur-sm" id="terms-popup">
 <a class="absolute inset-0" href="#"></a>
