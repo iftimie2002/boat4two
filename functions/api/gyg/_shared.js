@@ -472,6 +472,36 @@ export async function getCalendarEventById(env, accessToken, eventId) {
   return data;
 }
 
+export async function findGyGEventByPrivateProperty(
+  env,
+  accessToken,
+  propertyName,
+  propertyValue,
+  { bookingType = "" } = {}
+) {
+  const value = String(propertyValue || "").trim();
+
+  if (!propertyName || !value) {
+    return null;
+  }
+
+  const events = await listCalendarEvents(env, accessToken, {
+    timeMin: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString(),
+    timeMax: new Date(Date.now() + 730 * 24 * 60 * 60 * 1000).toISOString(),
+    privateExtendedProperties: [`${propertyName}=${value}`]
+  });
+
+  return events.find((event) => {
+    const privateProps = event?.extendedProperties?.private || {};
+
+    if (privateProps.source !== "getyourguide") {
+      return false;
+    }
+
+    return !bookingType || privateProps.bookingType === bookingType;
+  }) || null;
+}
+
 export async function createCalendarEvent(env, accessToken, eventBody) {
   const primaryCalendarId = getPrimaryGoogleCalendarId(env);
   const response = await fetch(

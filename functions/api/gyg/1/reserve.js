@@ -15,6 +15,7 @@ import {
   validateIndividualBookingItems,
   createGyGReference
 } from "../_shared.js";
+import { queueGyGAvailabilityNotify } from "../_post_change_notify.js";
 import { bestEffortCleanupStaleBookingArtifacts } from "../../_stale-bookings.js";
 
 export async function onRequestPost(context) {
@@ -91,6 +92,12 @@ export async function onRequestPost(context) {
         status: "RESERVE"
       })
     );
+
+    queueGyGAvailabilityNotify(context, env, accessToken, {
+      tour: product.tour,
+      date: slot.date,
+      reason: "GYG reserve"
+    });
 
     return successResponse({
       reservationReference,

@@ -11,6 +11,7 @@ import {
   updateCalendarEvent,
   validateIndividualBookingItems
 } from "../_shared.js";
+import { queueGyGAvailabilityNotify } from "../_post_change_notify.js";
 
 export async function onRequestPost(context) {
   const { request, env } = context;
@@ -112,6 +113,12 @@ export async function onRequestPost(context) {
       event.id,
       patchBody
     );
+
+    queueGyGAvailabilityNotify(context, env, accessToken, {
+      tour: product.tour,
+      date: slot.date,
+      reason: "GYG book"
+    });
 
     return successResponse(
       buildBookingResponse(event.id, data.bookingItems)

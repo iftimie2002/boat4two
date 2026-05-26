@@ -2,11 +2,13 @@ import {
   authorizeGyGRequest,
   deleteCalendarEvent,
   errorResponse,
+  findGyGEventByPrivateProperty,
   getAuthorizedGoogleTokenOrThrow,
   getCalendarEventById,
   parseJsonBody,
   successResponse
 } from "../_shared.js";
+import { queueGyGAvailabilityNotify } from "../_post_change_notify.js";
 
 export async function onRequestPost(context) {
   const { request, env } = context;
@@ -20,15 +22,27 @@ export async function onRequestPost(context) {
     const body = await parseJsonBody(request);
     const data = body?.data || null;
 
-    if (!data?.reservationReference) {
+    if (!data?.reservationReference && !data?.gygBookingReference) {
       return errorResponse(
         "VALIDATION_FAILURE",
-        "reservationReference is required."
+        "reservationReference or gygBookingReference is required."
       );
     }
 
     const accessToken = await getAuthorizedGoogleTokenOrThrow(env);
-    const event = await getCalendarEventById(env, accessToken, data.reservationReference);
+    let event = data.reservationReference
+      ? await getCalendarEventById(env, accessToken, data.reservationReference)
+      : null;
+
+    if (!event && data.gygBookingReference) {
+      event = await findGyGEventByPrivateProperty(
+        env,
+        accessToken,
+        "gygBookingReference",
+        data.gygBookingReference,
+        { bookingType: "gyg_reservation" }
+      );
+    }
 
     if (!event) {
       return errorResponse(
@@ -60,6 +74,12 @@ export async function onRequestPost(context) {
     }
 
     await deleteCalendarEvent(env, accessToken, event.id);
+
+    queueGyGAvailabilityNotify(context, env, accessToken, {
+      tour: privateProps.tour,
+      date: privateProps.date,
+      reason: "GYG cancel reservation"
+    });
 
     return successResponse({});
   } catch (error) {
