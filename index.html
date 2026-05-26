@@ -255,67 +255,71 @@
           flex-direction: column;
           min-width: 0;
         }
-        .tour-image-slider {
+        .tour-image-frame {
           height: 16rem;
           overflow: hidden;
           position: relative;
         }
-        .tour-image-slider::after {
+        .tour-image-frame.is-compact {
+          height: 12rem;
+        }
+        .tour-image-frame::after {
           background: linear-gradient(90deg, rgba(0, 0, 0, 0.2), transparent 18%, transparent 82%, rgba(0, 0, 0, 0.18));
           content: "";
           inset: 0;
           pointer-events: none;
           position: absolute;
         }
+        .tour-image-slider {
+          height: 100%;
+          overflow-x: auto;
+          overflow-y: hidden;
+          overscroll-behavior-x: contain;
+          scroll-behavior: smooth;
+          scroll-snap-type: x mandatory;
+          scrollbar-width: none;
+          -webkit-overflow-scrolling: touch;
+          touch-action: pan-x;
+        }
+        .tour-image-slider::-webkit-scrollbar {
+          display: none;
+        }
         .tour-image-track {
-          animation: tourImageGallery 64s cubic-bezier(0.65, 0, 0.35, 1) infinite;
           display: flex;
           height: 100%;
-          width: 100%;
-          will-change: transform;
-        }
-        .tour-image-track.is-slow {
-          animation-duration: 78s;
-        }
-        .tour-image-track.is-reverse {
-          animation-direction: reverse;
-        }
-        .tour-image-slider.is-compact {
-          height: 12rem;
         }
         .tour-image-track img {
           flex: 0 0 100%;
           height: 100%;
           object-fit: cover;
+          scroll-snap-align: center;
           width: 100%;
         }
-        @keyframes tourImageGallery {
-          0%, 12% {
-            transform: translateX(0);
-          }
-          17%, 29% {
-            transform: translateX(-100%);
-          }
-          34%, 46% {
-            transform: translateX(-200%);
-          }
-          51%, 63% {
-            transform: translateX(-300%);
-          }
-          68%, 80% {
-            transform: translateX(-400%);
-          }
-          85%, 97% {
-            transform: translateX(-500%);
-          }
-          100% {
-            transform: translateX(-600%);
-          }
+        .tour-image-control {
+          align-items: center;
+          background: rgba(4, 10, 18, 0.58);
+          border: 1px solid rgba(255, 255, 255, 0.45);
+          border-radius: 9999px;
+          color: white;
+          display: flex;
+          height: 2.5rem;
+          justify-content: center;
+          position: absolute;
+          top: 50%;
+          transform: translateY(-50%);
+          transition: background-color 180ms ease, transform 180ms ease;
+          width: 2.5rem;
+          z-index: 2;
         }
-        @media (prefers-reduced-motion: reduce) {
-          .tour-image-track {
-            animation: none;
-          }
+        .tour-image-control:hover {
+          background: rgba(230, 94, 25, 0.86);
+          transform: translateY(-50%) scale(1.04);
+        }
+        .tour-image-control.is-prev {
+          left: 0.75rem;
+        }
+        .tour-image-control.is-next {
+          right: 0.75rem;
         }
         @media (min-width: 900px) {
           .tour-options-list {
@@ -386,7 +390,7 @@
 <div class="mt-7 flex flex-wrap gap-2 text-sm font-black text-white">
 <span class="rounded-full border border-white/25 bg-white/15 px-4 py-2 backdrop-blur">3.5 hours</span>
 <span class="rounded-full border border-white/25 bg-white/15 px-4 py-2 backdrop-blur">Ferragudo</span>
-<span class="rounded-full border border-white/25 bg-white/15 px-4 py-2 backdrop-blur">Starting at 85€ p.p.</span>
+<span class="rounded-full border border-white/25 bg-white/15 px-4 py-2 backdrop-blur">Starting at 85€ per person</span>
 <span class="rounded-full border border-white/25 bg-white/15 px-4 py-2 backdrop-blur">Drinks, snacks and photos included</span>
 </div>
 <div class="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -442,6 +446,7 @@
 <div class="tour-options-grid mt-10" aria-label="Boat4Two tour options">
 <div class="tour-options-list">
 <article class="tour-card overflow-hidden rounded-[2rem] border border-zinc-200 bg-white shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
+<div class="tour-image-frame">
 <div class="tour-image-slider" aria-label="Boat4Two moments on board">
 <div class="tour-image-track">
 <img alt="Sofia feliz" src="https://iftimie2002.github.io/boat4two/images-boat4two/sofia feliz mastro.webp"/>
@@ -457,6 +462,13 @@
 <img alt="Barco no meio do nada" src="https://iftimie2002.github.io/boat4two/images-boat4two/barco no meio do nada com os tres.webp"/>
 <img alt="Sofia no mastro de lado" src="https://iftimie2002.github.io/boat4two/images-boat4two/sofia de lado.webp"/>
 </div>
+</div>
+<button aria-label="Previous photo" class="tour-image-control is-prev" data-tour-slide="prev" type="button">
+<span class="material-symbols-outlined text-[22px]">chevron_left</span>
+</button>
+<button aria-label="Next photo" class="tour-image-control is-next" data-tour-slide="next" type="button">
+<span class="material-symbols-outlined text-[22px]">chevron_right</span>
+</button>
 </div>
 <div class="flex flex-1 flex-col p-7">
 <p class="text-sm font-semibold uppercase tracking-[0.2em] text-primary">Most romantic · 3.5 hours</p>
@@ -480,6 +492,7 @@
 </div>
 </article>
 <article class="tour-card overflow-hidden rounded-[2rem] border border-zinc-200 bg-white shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
+<div class="tour-image-frame">
 <div class="tour-image-slider" aria-label="Boat4Two moments on board">
 <div class="tour-image-track is-reverse">
 <img alt="Sofia feliz" src="https://iftimie2002.github.io/boat4two/images-boat4two/sofia feliz mastro.webp"/>
@@ -495,6 +508,13 @@
 <img alt="Barco no meio do nada" src="https://iftimie2002.github.io/boat4two/images-boat4two/barco no meio do nada com os tres.webp"/>
 <img alt="Sofia no mastro de lado" src="https://iftimie2002.github.io/boat4two/images-boat4two/sofia de lado.webp"/>
 </div>
+</div>
+<button aria-label="Previous photo" class="tour-image-control is-prev" data-tour-slide="prev" type="button">
+<span class="material-symbols-outlined text-[22px]">chevron_left</span>
+</button>
+<button aria-label="Next photo" class="tour-image-control is-next" data-tour-slide="next" type="button">
+<span class="material-symbols-outlined text-[22px]">chevron_right</span>
+</button>
 </div>
 <div class="flex flex-1 flex-col p-7">
 <p class="text-sm font-semibold uppercase tracking-[0.2em] text-primary">3.5 hours · Ferragudo</p>
@@ -521,7 +541,8 @@
 <p class="text-sm font-semibold uppercase tracking-[0.2em] text-primary">Tailored experience · On request</p>
 <h3 class="mt-3 text-2xl font-black text-zinc-900 dark:text-zinc-100">Custom Private Tour</h3>
 <p class="mt-4 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">For couples looking for a longer or more tailored experience at sea. Lower priority than the fixed daytime and sunset tours, and arranged directly with us.</p>
-<div class="tour-image-slider is-compact mt-6 rounded-3xl" aria-label="Boat4Two moments on board">
+<div class="tour-image-frame is-compact mt-6 rounded-3xl">
+<div class="tour-image-slider" aria-label="Boat4Two moments on board">
 <div class="tour-image-track is-slow">
 <img alt="Sofia feliz" src="https://iftimie2002.github.io/boat4two/images-boat4two/sofia feliz mastro.webp"/>
 <img alt="Ricky e Sofia deitados" src="https://iftimie2002.github.io/boat4two/images-boat4two/os dois deitados.webp"/>
@@ -536,6 +557,13 @@
 <img alt="Barco no meio do nada" src="https://iftimie2002.github.io/boat4two/images-boat4two/barco no meio do nada com os tres.webp"/>
 <img alt="Sofia no mastro de lado" src="https://iftimie2002.github.io/boat4two/images-boat4two/sofia de lado.webp"/>
 </div>
+</div>
+<button aria-label="Previous photo" class="tour-image-control is-prev" data-tour-slide="prev" type="button">
+<span class="material-symbols-outlined text-[22px]">chevron_left</span>
+</button>
+<button aria-label="Next photo" class="tour-image-control is-next" data-tour-slide="next" type="button">
+<span class="material-symbols-outlined text-[22px]">chevron_right</span>
+</button>
 </div>
 <div class="mt-7 flex flex-col gap-3">
 <a class="inline-flex h-12 items-center justify-center rounded-full border border-zinc-300 px-5 text-base font-black text-zinc-900 transition-colors hover:border-primary hover:text-primary dark:border-zinc-700 dark:text-zinc-100" href="#tour-custom">View Tour</a>
@@ -1767,54 +1795,97 @@ This slot is being held for you for <strong id="hold-countdown-timer">12:00</str
       const myposEmbeddedCheckout = document.getElementById('mypos-embedded-checkout');
       const paymentWalletSection = document.getElementById('payment-wallet-section');
       const paymentApplePayButton = document.getElementById('payment-apple-pay-button');
-      const tourCarouselViewport = document.querySelector('.tour-carousel-viewport');
+      const tourImageFrames = Array.from(document.querySelectorAll('.tour-image-frame'));
 
-      if (tourCarouselViewport) {
-        let carouselPointerDown = false;
-        let carouselStartX = 0;
-        let carouselStartScrollLeft = 0;
-        let carouselDragged = false;
+      tourImageFrames.forEach(function(frame) {
+        const slider = frame.querySelector('.tour-image-slider');
+        const track = frame.querySelector('.tour-image-track');
+        if (!slider || !track) return;
 
-        const endCarouselDrag = function() {
-          carouselPointerDown = false;
-          tourCarouselViewport.classList.remove('is-dragging');
-          window.setTimeout(function() {
-            carouselDragged = false;
-          }, 0);
-        };
+        const photos = Array.from(track.querySelectorAll('img'));
+        const slideCount = Math.max(1, Math.floor(photos.length / 2) || photos.length);
+        const direction = track.classList.contains('is-reverse') ? -1 : 1;
+        const intervalMs = track.classList.contains('is-slow') ? 9800 : 8200;
+        const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        let autoAdvanceTimer = null;
+        let restartTimer = null;
 
-        tourCarouselViewport.addEventListener('pointerdown', function(event) {
-          if (event.button !== undefined && event.button !== 0) return;
-          carouselPointerDown = true;
-          carouselDragged = false;
-          carouselStartX = event.clientX;
-          carouselStartScrollLeft = tourCarouselViewport.scrollLeft;
-          tourCarouselViewport.classList.add('is-dragging');
-          if (tourCarouselViewport.setPointerCapture) {
-            tourCarouselViewport.setPointerCapture(event.pointerId);
+        function getSlideWidth() {
+          return slider.clientWidth || 1;
+        }
+
+        function getCurrentIndex() {
+          return Math.round(slider.scrollLeft / getSlideWidth()) % slideCount;
+        }
+
+        function scrollToIndex(index, behavior) {
+          slider.scrollTo({
+            left: index * getSlideWidth(),
+            behavior: behavior || 'smooth'
+          });
+        }
+
+        function goToAdjacentPhoto(offset) {
+          const currentIndex = getCurrentIndex();
+          const targetIndex = currentIndex + offset;
+
+          if (targetIndex >= slideCount) {
+            scrollToIndex(slideCount, 'smooth');
+            window.setTimeout(function() {
+              scrollToIndex(0, 'auto');
+            }, 900);
+            return;
           }
-        });
 
-        tourCarouselViewport.addEventListener('pointermove', function(event) {
-          if (!carouselPointerDown) return;
-          const deltaX = event.clientX - carouselStartX;
-          if (Math.abs(deltaX) > 5) {
-            carouselDragged = true;
+          if (targetIndex < 0) {
+            scrollToIndex(slideCount, 'auto');
+            window.requestAnimationFrame(function() {
+              scrollToIndex(slideCount - 1, 'smooth');
+            });
+            return;
+          }
+
+          scrollToIndex(targetIndex, 'smooth');
+        }
+
+        function stopAutoAdvance() {
+          if (autoAdvanceTimer) {
+            window.clearInterval(autoAdvanceTimer);
+            autoAdvanceTimer = null;
+          }
+        }
+
+        function startAutoAdvance() {
+          stopAutoAdvance();
+          if (prefersReducedMotion) return;
+          autoAdvanceTimer = window.setInterval(function() {
+            goToAdjacentPhoto(direction);
+          }, intervalMs);
+        }
+
+        function pauseAutoAdvance() {
+          stopAutoAdvance();
+          if (restartTimer) {
+            window.clearTimeout(restartTimer);
+          }
+          restartTimer = window.setTimeout(startAutoAdvance, 10000);
+        }
+
+        frame.querySelectorAll('[data-tour-slide]').forEach(function(button) {
+          button.addEventListener('click', function(event) {
             event.preventDefault();
-          }
-          tourCarouselViewport.scrollLeft = carouselStartScrollLeft - deltaX;
+            event.stopPropagation();
+            pauseAutoAdvance();
+            goToAdjacentPhoto(button.dataset.tourSlide === 'prev' ? -1 : 1);
+          });
         });
 
-        ['pointerup', 'pointercancel', 'pointerleave'].forEach(function(eventName) {
-          tourCarouselViewport.addEventListener(eventName, endCarouselDrag);
+        ['pointerdown', 'touchstart', 'wheel'].forEach(function(eventName) {
+          slider.addEventListener(eventName, pauseAutoAdvance, { passive: true });
         });
 
-        tourCarouselViewport.addEventListener('click', function(event) {
-          if (!carouselDragged) return;
-          event.preventDefault();
-          event.stopPropagation();
-        }, true);
-      }
+        startAutoAdvance();
+      });
       const paymentGooglePayButton = document.getElementById('payment-google-pay-button');
       const paymentWalletStatus = document.getElementById('payment-wallet-status');
       const paymentPolicySummary = document.getElementById('payment-policy-summary');
