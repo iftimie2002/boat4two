@@ -10,6 +10,8 @@ const DEFAULT_SYNC_DAYS = 365;
 const MAX_SYNC_DAYS = 730;
 const DEFAULT_BATCH_DAYS = 60;
 const MAX_BATCH_DAYS = 90;
+const DEFAULT_CHAIN_STEP_DAYS = 21;
+const MAX_CHAIN_STEP_DAYS = 45;
 const DEFAULT_TOURS = ["amor", "sunset"];
 
 function json(data, status = 200) {
@@ -142,6 +144,10 @@ function chunkDates(dates, batchSize) {
   return chunks;
 }
 
+function getSyncAuthToken(env) {
+  return cleanText(env.GYG_SYNC_KEY || env.DAILY_SYSTEM_CHECK_KEY, 600);
+}
+
 function summarizeDelivery(delivery) {
   const availabilities = delivery?.payload?.data?.availabilities || [];
 
@@ -163,7 +169,7 @@ function summarizeDelivery(delivery) {
 }
 
 function isAuthorized(request, env) {
-  const configuredKey = cleanText(env.GYG_SYNC_KEY || env.DAILY_SYSTEM_CHECK_KEY, 600);
+  const configuredKey = getSyncAuthToken(env);
 
   if (!configuredKey) {
     return {
@@ -189,10 +195,10 @@ function isAuthorized(request, env) {
   return { ok: true };
 }
 
-async function runSync(env, url) {
+async function runSync(env, url, dateOverride = null) {
   const accessToken = await getGoogleAccessToken(env);
   const sandbox = parseBooleanFlag(url.searchParams.get("sandbox"), false);
-  const dates = getSyncDates(url);
+  const dates = Array.isArray(dateOverride) ? dateOverride : getSyncDates(url);
   const tours = getSyncTours(url);
   const batchDays = parsePositiveInteger(
     url.searchParams.get("batchDays"),
@@ -236,6 +242,74 @@ async function runSync(env, url) {
   };
 }
 
+function getNextChainUrl(request, remainingDates, stepDays) {
+  const url = new URL(request.url);
+
+  url.searchParams.delete("date");
+  url.searchParams.delete("dates");
+  url.searchParams.set("start", remainingDates[0]);
+  url.searchParams.set("days", String(remainingDates.length));
+  url.searchParams.set("chain", "1");
+  url.searchParams.set("stepDays", String(stepDays));
+
+  return url;
+}
+
+async function triggerNextChainRequest(request, env, remainingDates, stepDays) {
+  const token = getSyncAuthToken(env);
+
+  if (!token || !remainingDates.length) {
+    return;
+  }
+
+  const nextUrl = getNextChainUrl(request, remainingDates, stepDays);
+  const response = await fetch(nextUrl.toString(), {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "User-Agent": "boat4two-gyg-sync-chain"
+    }
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(`Chained GYG availability sync failed with HTTP ${response.status} ${body}`);
+  }
+}
+
+async function runChainedSync(context, url) {
+  const { request, env } = context;
+  const allDates = getSyncDates(url);
+  const stepDays = parsePositiveInteger(
+    url.searchParams.get("stepDays"),
+    DEFAULT_CHAIN_STEP_DAYS,
+    MAX_CHAIN_STEP_DAYS
+  );
+  const currentDates = allDates.slice(0, stepDays);
+  const remainingDates = allDates.slice(stepDays);
+  const result = await runSync(env, url, currentDates);
+
+  if (result.ok && remainingDates.length) {
+    const nextPromise = triggerNextChainRequest(request, env, remainingDates, stepDays);
+
+    if (typeof context.waitUntil === "function") {
+      context.waitUntil(nextPromise);
+    } else {
+      await nextPromise;
+    }
+  }
+
+  return {
+    ...result,
+    chained: true,
+    chainStepDays: stepDays,
+    chainTotalDateCount: allDates.length,
+    processedDateCount: currentDates.length,
+    remainingDateCount: remainingDates.length,
+    queuedNext: result.ok && remainingDates.length > 0,
+    nextStartDate: result.ok && remainingDates.length ? remainingDates[0] : null
+  };
+}
+
 export async function onRequestGet(context) {
   const { request, env } = context;
   const auth = isAuthorized(request, env);
@@ -261,8 +335,13 @@ export async function onRequestGet(context) {
   }
 
   try {
-    const result = await runSync(env, new URL(request.url));
-    return json(result, result.ok ? 200 : 502);
+    const url = new URL(request.url);
+    const useChain = parseBooleanFlag(url.searchParams.get("chain"), false);
+    const result = useChain
+      ? await runChainedSync(context, url)
+      : await runSync(env, url);
+
+    return json(result, result.ok ? (useChain ? 202 : 200) : 502);
   } catch (error) {
     return json(
       {

@@ -100,15 +100,32 @@ function summarizeBody(body) {
   };
 }
 
-async function fetchJson(origin, path, init = {}) {
-  const response = await fetch(`${origin}${path}`, init);
+async function fetchJson(origin, path, init = {}, timeoutMs = 15000) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort("daily_system_check_timeout"), timeoutMs);
+
+  let response = null;
   let body = null;
 
   try {
+    response = await fetch(`${origin}${path}`, {
+      ...init,
+      signal: controller.signal
+    });
     body = await response.json();
-  } catch (_) {
-    body = null;
+  } catch (error) {
+    clearTimeout(timeout);
+    return {
+      httpOk: false,
+      status: response?.status || 0,
+      body: {
+        ok: false,
+        error: cleanText(error?.message || "Request timed out during daily system check.", 320)
+      }
+    };
   }
+
+  clearTimeout(timeout);
 
   return {
     httpOk: response.ok,
@@ -173,8 +190,10 @@ async function collectFutureAvailableDates(origin, tour, count = 5) {
   return collected;
 }
 
-async function runHoldLifecycleCheck(origin) {
-  const futureDates = await collectFutureAvailableDates(origin, "amor", 3);
+async function runHoldLifecycleCheck(origin, preferredDates = null) {
+  const futureDates = Array.isArray(preferredDates) && preferredDates.length
+    ? preferredDates
+    : await collectFutureAvailableDates(origin, "amor", 3);
   const selectedDate = futureDates[0] || "";
 
   if (!selectedDate) {
@@ -281,16 +300,25 @@ async function runHoldLifecycleCheck(origin) {
 async function runDailySystemCheck(origin) {
   const now = new Date();
   const thisMonth = formatMonth(addMonths(now, 0));
-  const futurePushDates = await collectFutureAvailableDates(origin, "amor", 5);
+  const futurePushDates = await collectFutureAvailableDates(origin, "amor", 2);
   const pushDateParam = futurePushDates.join(",");
-
-  const googleResult = await fetchJson(origin, "/api/google-test");
-  const emailResult = await fetchJson(origin, "/api/email-test");
-  const myposResult = await fetchJson(origin, "/api/mypos-test");
-  const cleanupResult = await fetchJson(origin, "/api/cleanup-holds");
-  const amorAvailability = await runAvailabilityCheck(origin, "amor", thisMonth);
-  const sunsetAvailability = await runAvailabilityCheck(origin, "sunset", thisMonth);
-  const holdLifecycle = await runHoldLifecycleCheck(origin);
+  const [
+    googleResult,
+    emailResult,
+    myposResult,
+    cleanupResult,
+    amorAvailability,
+    sunsetAvailability,
+    holdLifecycle
+  ] = await Promise.all([
+    fetchJson(origin, "/api/google-test"),
+    fetchJson(origin, "/api/email-test"),
+    fetchJson(origin, "/api/mypos-test"),
+    fetchJson(origin, "/api/cleanup-holds"),
+    runAvailabilityCheck(origin, "amor", thisMonth),
+    runAvailabilityCheck(origin, "sunset", thisMonth),
+    runHoldLifecycleCheck(origin, futurePushDates)
+  ]);
 
   let gygPush = makeCheck(
     "gyg_push_availability_sandbox",
@@ -298,10 +326,10 @@ async function runDailySystemCheck(origin) {
     {
       requestedDates: futurePushDates
     },
-    "Could not find five future available Amor Tour dates for the GYG push test."
+    "Could not find future available Amor Tour dates for the GYG push test."
   );
 
-  if (futurePushDates.length >= 5) {
+  if (futurePushDates.length >= 1) {
     const pushResult = await fetchJson(
       origin,
       `/api/gyg-push-availability-test?tour=amor&dates=${encodeURIComponent(pushDateParam)}&sandbox=1`

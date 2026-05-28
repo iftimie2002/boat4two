@@ -5,7 +5,7 @@ import {
   hasGoogleCalendarCredentials
 } from "./_google.js";
 
-const WATCH_RENEWAL_HOURS = 25;
+const WATCH_RENEWAL_HOURS = 24 * 6;
 
 function cleanText(value, max = 240) {
   return String(value || "").trim().slice(0, max);

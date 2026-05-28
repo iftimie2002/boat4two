@@ -56,7 +56,7 @@ jobs:
             --write-out "%{http_code}" \
             --header "User-Agent: boat4two-maintenance-bot" \
             --header "Authorization: Bearer ${{ secrets.DAILY_SYSTEM_CHECK_KEY }}" \
-            "https://boat4two.com/api/gyg-sync-availability?days=365&batchDays=60&sandbox=0")
+            "https://boat4two.com/api/gyg-sync-availability?days=365&batchDays=7&chain=1&stepDays=21&sandbox=0")
 
           cat "$RESPONSE_FILE"
 
