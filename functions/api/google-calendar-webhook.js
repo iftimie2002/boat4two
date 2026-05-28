@@ -27,7 +27,7 @@ function getSyncUrl(request) {
   url.searchParams.set("days", "365");
   url.searchParams.set("batchDays", "7");
   url.searchParams.set("chain", "1");
-  url.searchParams.set("stepDays", "21");
+  url.searchParams.set("stepDays", "7");
   url.searchParams.set("sandbox", "0");
 
   return url.toString();

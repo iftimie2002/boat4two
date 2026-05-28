@@ -10,7 +10,7 @@ const DEFAULT_SYNC_DAYS = 365;
 const MAX_SYNC_DAYS = 730;
 const DEFAULT_BATCH_DAYS = 60;
 const MAX_BATCH_DAYS = 90;
-const DEFAULT_CHAIN_STEP_DAYS = 21;
+const DEFAULT_CHAIN_STEP_DAYS = 7;
 const MAX_CHAIN_STEP_DAYS = 45;
 const DEFAULT_TOURS = ["amor", "sunset"];
 
