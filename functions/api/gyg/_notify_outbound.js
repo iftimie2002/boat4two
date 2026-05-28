@@ -3,7 +3,8 @@ import {
   enumerateSlots,
   formatGyGDateTime,
   getBusyRanges,
-  getGyGProduct
+  getGyGProduct,
+  slotHasAvailability
 } from "./_shared.js";
 
 const GYG_NOTIFY_PRODUCTION_URL = "https://supplier-api.getyourguide.com/1/notify-availability-update";
@@ -103,37 +104,51 @@ function getGyGProductIdsForTour(tour) {
     .map(([productId]) => productId);
 }
 
-function slotHasVacancy(slot, busyRanges) {
-  return !busyRanges.some((busy) => {
-    const busyStart = new Date(busy.start);
-    const busyEnd = new Date(busy.end);
-    return slot.start < busyEnd && slot.end > busyStart;
-  });
+function normalizeDateList(dates) {
+  return Array.from(
+    new Set(
+      (Array.isArray(dates) ? dates : [dates])
+        .map((entry) => cleanText(entry, 20))
+        .filter((entry) => /^\d{4}-\d{2}-\d{2}$/.test(entry))
+    )
+  ).sort();
 }
 
-async function buildNotifyAvailabilityPayload(env, accessToken, productId, date) {
+async function buildNotifyAvailabilityPayload(env, accessToken, productId, dates) {
   const product = getGyGProduct(productId);
 
   if (!product) {
     throw new Error(`Unknown GetYourGuide product ${productId}.`);
   }
 
-  const fromDate = makeDateInTimeZone(date, "00:00:00", GYG_RULES.timezone);
-  const toDate = makeDateInTimeZone(date, "23:59:59", GYG_RULES.timezone);
-  const slots = enumerateSlots(productId, fromDate, toDate);
+  const normalizedDates = normalizeDateList(dates);
+
+  if (!normalizedDates.length) {
+    throw new Error("At least one valid availability date is required.");
+  }
+
+  const firstDate = normalizedDates[0];
+  const lastDate = normalizedDates[normalizedDates.length - 1];
+  const fromDate = makeDateInTimeZone(firstDate, "00:00:00", GYG_RULES.timezone);
+  const toDate = makeDateInTimeZone(lastDate, "23:59:59", GYG_RULES.timezone);
   const busyRanges = await getBusyRanges(
     env,
     accessToken,
     fromDate.toISOString(),
     toDate.toISOString()
   );
+  const slots = normalizedDates.flatMap((date) => {
+    const dayStart = makeDateInTimeZone(date, "00:00:00", GYG_RULES.timezone);
+    const dayEnd = makeDateInTimeZone(date, "23:59:59", GYG_RULES.timezone);
+    return enumerateSlots(productId, dayStart, dayEnd);
+  });
 
   return {
     data: {
       productId,
       availabilities: slots.map((slot) => ({
         dateTime: formatGyGDateTime(slot.start),
-        vacancies: slotHasVacancy(slot, busyRanges) ? product.participantMax : 0
+        vacancies: slotHasAvailability(slot, busyRanges) ? product.participantMax : 0
       }))
     }
   };
@@ -184,14 +199,28 @@ export async function notifyGyGAvailabilityForTourDate(env, {
   date,
   sandbox = false
 }) {
-  const normalizedTour = cleanText(tour, 80).toLowerCase();
-  const normalizedDate = cleanText(date, 20);
+  return notifyGyGAvailabilityForTourDates(env, {
+    accessToken,
+    tour,
+    dates: [date],
+    sandbox
+  });
+}
 
-  if (!normalizedTour || !normalizedDate) {
+export async function notifyGyGAvailabilityForTourDates(env, {
+  accessToken,
+  tour,
+  dates,
+  sandbox = false
+}) {
+  const normalizedTour = cleanText(tour, 80).toLowerCase();
+  const normalizedDates = normalizeDateList(dates);
+
+  if (!normalizedTour || !normalizedDates.length) {
     return {
       ok: false,
       skipped: true,
-      reason: "missing_tour_or_date",
+      reason: "missing_tour_or_dates",
       deliveries: []
     };
   }
@@ -214,12 +243,13 @@ export async function notifyGyGAvailabilityForTourDate(env, {
       env,
       accessToken,
       productId,
-      normalizedDate
+      normalizedDates
     );
     const delivery = await postGyGNotifyAvailability(env, payload, sandbox);
     deliveries.push({
       productId,
-      date: normalizedDate,
+      date: normalizedDates.length === 1 ? normalizedDates[0] : undefined,
+      dates: normalizedDates,
       ...delivery
     });
   }
