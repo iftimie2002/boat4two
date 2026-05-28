@@ -8,11 +8,11 @@ import { notifyGyGAvailabilityForTourDates } from "./gyg/_notify_outbound.js";
 
 const DEFAULT_SYNC_DAYS = 365;
 const MAX_SYNC_DAYS = 730;
-const DEFAULT_BATCH_DAYS = 60;
+const DEFAULT_BATCH_DAYS = 1;
 const MAX_BATCH_DAYS = 90;
-const DEFAULT_CHAIN_STEP_DAYS = 7;
+const DEFAULT_CHAIN_STEP_DAYS = 3;
 const MAX_CHAIN_STEP_DAYS = 45;
-const DEFAULT_TOURS = ["amor", "sunset"];
+const DEFAULT_TOURS = ["amor"];
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data, null, 2), {
