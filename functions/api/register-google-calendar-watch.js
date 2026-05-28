@@ -1,7 +1,7 @@
 import {
+  getBusyGoogleCalendarIds,
   getGoogleAccessToken,
   getGoogleCalendarErrorPayload,
-  getPrimaryGoogleCalendarId,
   hasGoogleCalendarCredentials
 } from "./_google.js";
 
@@ -66,19 +66,7 @@ function getWebhookAddress(request, env) {
   return new URL("/api/google-calendar-webhook", new URL(request.url).origin).toString();
 }
 
-async function registerCalendarWatch(request, env) {
-  const accessToken = await getGoogleAccessToken(env);
-  const calendarId = getPrimaryGoogleCalendarId(env);
-  const token = getWebhookToken(env);
-
-  if (!calendarId) {
-    throw new Error("Missing GOOGLE_CALENDAR_ID.");
-  }
-
-  if (!token) {
-    throw new Error("Missing GOOGLE_CALENDAR_WEBHOOK_TOKEN, GYG_SYNC_KEY, or DAILY_SYSTEM_CHECK_KEY.");
-  }
-
+async function registerOneCalendarWatch(request, env, accessToken, calendarId, token, webhookAddress) {
   const channelId = `boat4two-calendar-${crypto.randomUUID()}`;
   const expirationMs = Date.now() + WATCH_RENEWAL_HOURS * 60 * 60 * 1000;
   const watchUrl = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/watch`;
@@ -91,7 +79,7 @@ async function registerCalendarWatch(request, env) {
     body: JSON.stringify({
       id: channelId,
       type: "web_hook",
-      address: getWebhookAddress(request, env),
+      address: webhookAddress,
       token,
       expiration: String(expirationMs)
     })
@@ -103,14 +91,55 @@ async function registerCalendarWatch(request, env) {
   }
 
   return {
-    ok: true,
     calendarId,
-    webhookAddress: getWebhookAddress(request, env),
+    webhookAddress,
     channelId: data?.id || channelId,
     resourceId: data?.resourceId || null,
     resourceUri: data?.resourceUri || null,
     expiration: data?.expiration || String(expirationMs),
     expirationIso: new Date(Number(data?.expiration || expirationMs)).toISOString()
+  };
+}
+
+async function registerCalendarWatch(request, env) {
+  const accessToken = await getGoogleAccessToken(env);
+  const calendarIds = getBusyGoogleCalendarIds(env);
+  const token = getWebhookToken(env);
+  const webhookAddress = getWebhookAddress(request, env);
+
+  if (!calendarIds.length) {
+    throw new Error("Missing GOOGLE_CALENDAR_ID, GOOGLE_CALENDAR_IDS, or GOOGLE_BUSY_CALENDAR_IDS.");
+  }
+
+  if (!token) {
+    throw new Error("Missing GOOGLE_CALENDAR_WEBHOOK_TOKEN, GYG_SYNC_KEY, or DAILY_SYSTEM_CHECK_KEY.");
+  }
+
+  const watches = [];
+  const failures = [];
+
+  for (const calendarId of calendarIds) {
+    try {
+      watches.push(
+        await registerOneCalendarWatch(request, env, accessToken, calendarId, token, webhookAddress)
+      );
+    } catch (error) {
+      failures.push({
+        calendarId,
+        error: cleanText(error?.message || "Failed to register Google Calendar watch.", 500)
+      });
+    }
+  }
+
+  return {
+    ok: failures.length === 0,
+    calendarIds,
+    watchedCalendarIds: watches.map((watch) => watch.calendarId),
+    watchCount: watches.length,
+    failureCount: failures.length,
+    webhookAddress,
+    watches,
+    failures
   };
 }
 
@@ -139,7 +168,9 @@ export async function onRequestGet(context) {
   }
 
   try {
-    return json(await registerCalendarWatch(request, env));
+    const result = await registerCalendarWatch(request, env);
+
+    return json(result, result.ok ? 200 : 502);
   } catch (error) {
     return json(
       {
