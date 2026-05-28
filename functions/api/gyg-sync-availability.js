@@ -6,8 +6,10 @@ import {
 import { GYG_RULES } from "./gyg/_shared.js";
 import { notifyGyGAvailabilityForTourDates } from "./gyg/_notify_outbound.js";
 
-const DEFAULT_SYNC_DAYS = 30;
-const MAX_SYNC_DAYS = 180;
+const DEFAULT_SYNC_DAYS = 365;
+const MAX_SYNC_DAYS = 730;
+const DEFAULT_BATCH_DAYS = 60;
+const MAX_BATCH_DAYS = 90;
 const DEFAULT_TOURS = ["amor", "sunset"];
 
 function json(data, status = 200) {
@@ -130,6 +132,16 @@ function getSyncTours(url) {
     .filter((entry) => DEFAULT_TOURS.includes(entry));
 }
 
+function chunkDates(dates, batchSize) {
+  const chunks = [];
+
+  for (let index = 0; index < dates.length; index += batchSize) {
+    chunks.push(dates.slice(index, index + batchSize));
+  }
+
+  return chunks;
+}
+
 function summarizeDelivery(delivery) {
   const availabilities = delivery?.payload?.data?.availabilities || [];
 
@@ -182,21 +194,32 @@ async function runSync(env, url) {
   const sandbox = parseBooleanFlag(url.searchParams.get("sandbox"), false);
   const dates = getSyncDates(url);
   const tours = getSyncTours(url);
+  const batchDays = parsePositiveInteger(
+    url.searchParams.get("batchDays"),
+    DEFAULT_BATCH_DAYS,
+    MAX_BATCH_DAYS
+  );
+  const dateChunks = chunkDates(dates, batchDays);
   const results = [];
 
   for (const tour of tours) {
-    const result = await notifyGyGAvailabilityForTourDates(env, {
-      accessToken,
-      tour,
-      dates,
-      sandbox
-    });
+    for (const dateChunk of dateChunks) {
+      const result = await notifyGyGAvailabilityForTourDates(env, {
+        accessToken,
+        tour,
+        dates: dateChunk,
+        sandbox
+      });
 
-    results.push({
-      tour,
-      ok: Boolean(result.ok),
-      deliveries: (result.deliveries || []).map(summarizeDelivery)
-    });
+      results.push({
+        tour,
+        dateCount: dateChunk.length,
+        firstDate: dateChunk[0] || null,
+        lastDate: dateChunk[dateChunk.length - 1] || null,
+        ok: Boolean(result.ok),
+        deliveries: (result.deliveries || []).map(summarizeDelivery)
+      });
+    }
   }
 
   return {
@@ -204,6 +227,8 @@ async function runSync(env, url) {
     sandbox,
     tours,
     dateCount: dates.length,
+    batchDays,
+    batchCount: dateChunks.length,
     firstDate: dates[0] || null,
     lastDate: dates[dates.length - 1] || null,
     checkedAt: new Date().toISOString(),
