@@ -41,16 +41,40 @@ async function triggerGyGCalendarSync(request, env) {
     throw new Error("Missing GYG_SYNC_KEY or DAILY_SYSTEM_CHECK_KEY.");
   }
 
-  const response = await fetch(getSyncUrl(request), {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "User-Agent": "boat4two-google-calendar-webhook"
-    }
-  });
+  try {
+    const response = await fetch(getSyncUrl(request), {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "User-Agent": "boat4two-google-calendar-webhook"
+      }
+    });
 
-  if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    throw new Error(`GYG sync failed after Google Calendar webhook: HTTP ${response.status} ${body}`);
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      console.error(
+        `GYG sync failed after Google Calendar webhook: HTTP ${response.status}`,
+        body
+      );
+      return {
+        ok: false,
+        status: response.status,
+        body
+      };
+    }
+
+    return {
+      ok: true,
+      status: response.status
+    };
+  } catch (error) {
+    console.error(
+      "GYG sync request failed after Google Calendar webhook",
+      error?.message || error
+    );
+    return {
+      ok: false,
+      error: error?.message || "GYG sync request failed after Google Calendar webhook."
+    };
   }
 }
 

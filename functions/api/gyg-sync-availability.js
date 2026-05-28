@@ -259,20 +259,48 @@ async function triggerNextChainRequest(request, env, remainingDates, stepDays) {
   const token = getSyncAuthToken(env);
 
   if (!token || !remainingDates.length) {
-    return;
+    return {
+      ok: false,
+      skipped: true,
+      reason: !token ? "missing_sync_token" : "no_remaining_dates"
+    };
   }
 
   const nextUrl = getNextChainUrl(request, remainingDates, stepDays);
-  const response = await fetch(nextUrl.toString(), {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "User-Agent": "boat4two-gyg-sync-chain"
-    }
-  });
+  try {
+    const response = await fetch(nextUrl.toString(), {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "User-Agent": "boat4two-gyg-sync-chain"
+      }
+    });
 
-  if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    throw new Error(`Chained GYG availability sync failed with HTTP ${response.status} ${body}`);
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      console.error(
+        `Chained GYG availability sync failed with HTTP ${response.status}`,
+        body
+      );
+      return {
+        ok: false,
+        status: response.status,
+        body
+      };
+    }
+
+    return {
+      ok: true,
+      status: response.status
+    };
+  } catch (error) {
+    console.error(
+      "Chained GYG availability sync request failed",
+      error?.message || error
+    );
+    return {
+      ok: false,
+      error: error?.message || "Chained GYG availability sync request failed."
+    };
   }
 }
 

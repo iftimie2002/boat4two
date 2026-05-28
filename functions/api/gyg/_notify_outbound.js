@@ -137,11 +137,12 @@ async function buildNotifyAvailabilityPayload(env, accessToken, productId, dates
     fromDate.toISOString(),
     toDate.toISOString()
   );
+  const now = new Date();
   const slots = normalizedDates.flatMap((date) => {
     const dayStart = makeDateInTimeZone(date, "00:00:00", GYG_RULES.timezone);
     const dayEnd = makeDateInTimeZone(date, "23:59:59", GYG_RULES.timezone);
     return enumerateSlots(productId, dayStart, dayEnd);
-  });
+  }).filter((slot) => slot.start > now);
 
   return {
     data: {
@@ -245,6 +246,19 @@ export async function notifyGyGAvailabilityForTourDates(env, {
       productId,
       normalizedDates
     );
+
+    if (!payload.data.availabilities.length) {
+      deliveries.push({
+        productId,
+        date: normalizedDates.length === 1 ? normalizedDates[0] : undefined,
+        dates: normalizedDates,
+        ok: true,
+        skipped: true,
+        reason: "no_future_slots"
+      });
+      continue;
+    }
+
     const delivery = await postGyGNotifyAvailability(env, payload, sandbox);
     deliveries.push({
       productId,
