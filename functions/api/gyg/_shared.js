@@ -697,6 +697,14 @@ export function buildReservationEventBody({
   travelers = []
 }) {
   const leadTraveler = travelers[0] || {};
+  const leadTravelerName = cleanText(
+    `${leadTraveler.firstName || ""} ${leadTraveler.lastName || ""}`,
+    120
+  );
+  const leadTravelerCountry = cleanText(
+    leadTraveler.country || leadTraveler.countryCode || leadTraveler.nationality,
+    120
+  );
 
   return {
     id: reservationReference,
@@ -733,11 +741,18 @@ export function buildReservationEventBody({
         reservationExpiresAt: reservationExpiresAt || "",
         date: slot.date,
         time: slot.time,
+        tourLabel: product.label,
+        tourName: product.label,
+        customerName: leadTravelerName,
+        customerEmail: cleanText(leadTraveler.email, 160),
+        customerPhone: cleanText(leadTraveler.phoneNumber, 80),
+        customerCountry: leadTravelerCountry,
         groupSize: String(Number(bookingItems?.[0]?.groupSize || 0) || ""),
         leadTravelerFirstName: cleanText(leadTraveler.firstName, 80),
         leadTravelerLastName: cleanText(leadTraveler.lastName, 80),
         leadTravelerEmail: cleanText(leadTraveler.email, 160),
-        leadTravelerPhone: cleanText(leadTraveler.phoneNumber, 80)
+        leadTravelerPhone: cleanText(leadTraveler.phoneNumber, 80),
+        leadTravelerCountry
       }
     }
   };

@@ -12,6 +12,39 @@ import {
   validateIndividualBookingItems
 } from "../_shared.js";
 import { queueGyGAvailabilityNotify } from "../_post_change_notify.js";
+import { maybeSendAdminBookingNotificationEmail } from "../../_booking-email.js";
+
+async function sendAndPatchAdminNotification(env, accessToken, event) {
+  const emailResult = await maybeSendAdminBookingNotificationEmail(env, event);
+
+  if (!emailResult.shouldPatch || !emailResult.patchPrivateProps) {
+    return emailResult;
+  }
+
+  const privateProps = event?.extendedProperties?.private || {};
+  await updateCalendarEvent(env, accessToken, event.id, {
+    extendedProperties: {
+      private: {
+        ...privateProps,
+        ...emailResult.patchPrivateProps
+      }
+    }
+  });
+
+  return emailResult;
+}
+
+function queueAdminNotification(context, env, accessToken, event) {
+  const promise = sendAndPatchAdminNotification(env, accessToken, event).catch((emailError) => {
+    console.error("GYG booking admin notification failed", emailError);
+  });
+
+  if (typeof context.waitUntil === "function") {
+    context.waitUntil(promise);
+  }
+
+  return promise;
+}
 
 export async function onRequestPost(context) {
   const { request, env } = context;
@@ -71,6 +104,8 @@ export async function onRequestPost(context) {
     }
 
     if (privateProps.bookingType === "gyg_booking") {
+      queueAdminNotification(context, env, accessToken, event);
+
       return successResponse(
         buildBookingResponse(event.id, data.bookingItems)
       );
@@ -107,7 +142,7 @@ export async function onRequestPost(context) {
 
     delete patchBody.id;
 
-    await updateCalendarEvent(
+    const bookedEvent = await updateCalendarEvent(
       env,
       accessToken,
       event.id,
@@ -119,6 +154,8 @@ export async function onRequestPost(context) {
       date: slot.date,
       reason: "GYG book"
     });
+
+    queueAdminNotification(context, env, accessToken, bookedEvent);
 
     return successResponse(
       buildBookingResponse(event.id, data.bookingItems)

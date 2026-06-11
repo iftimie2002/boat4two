@@ -491,10 +491,20 @@ function buildBookingEmailModel(env, event, paymentData = {}) {
   const startIso = cleanText(event?.start?.dateTime || "", 80);
   const endIso = cleanText(event?.end?.dateTime || "", 80);
   const timeZone = cleanText(event?.start?.timeZone || event?.end?.timeZone, 80) || BOOKING_TIMEZONE;
-  const customerName = cleanText(privateProps.customerName, 120);
-  const customerEmail = cleanText(privateProps.customerEmail, 200);
-  const customerPhone = cleanText(privateProps.customerPhone, 80);
-  const customerCountry = cleanText(privateProps.customerCountry, 120);
+  const leadTravelerName = cleanText(
+    `${privateProps.leadTravelerFirstName || ""} ${privateProps.leadTravelerLastName || ""}`,
+    120
+  );
+  const customerName = cleanText(privateProps.customerName, 120) || leadTravelerName;
+  const customerEmail =
+    cleanText(privateProps.customerEmail, 200) ||
+    cleanText(privateProps.leadTravelerEmail, 200);
+  const customerPhone =
+    cleanText(privateProps.customerPhone, 80) ||
+    cleanText(privateProps.leadTravelerPhone, 80);
+  const customerCountry =
+    cleanText(privateProps.customerCountry, 120) ||
+    cleanText(privateProps.leadTravelerCountry, 120);
   const customerOccasion = cleanText(privateProps.customerOccasion, 200);
   const customerMessage = cleanText(privateProps.customerMessage, 1000);
   const tourLabel =
@@ -518,9 +528,18 @@ function buildBookingEmailModel(env, event, paymentData = {}) {
     paymentData.paymentTransactionRef || privateProps.paymentTransactionRef,
     120
   );
-  const bookingReference = cleanText(privateProps.paymentOrderId || privateProps.holdId || event?.id, 160);
+  const bookingReference = cleanText(
+    privateProps.gygBookingReference ||
+    privateProps.paymentOrderId ||
+    privateProps.holdId ||
+    event?.id,
+    160
+  );
 
   return {
+    source: cleanText(privateProps.source, 80),
+    gygBookingReference: cleanText(privateProps.gygBookingReference, 120),
+    gygActivityReference: cleanText(privateProps.gygActivityReference, 120),
     rawTour,
     customerName,
     customerEmail,
@@ -826,15 +845,19 @@ function buildTourDetailsPayload(model) {
 }
 
 function buildAdminNotificationSubject(model) {
-  return `New Boat4Two booking confirmed - ${model.tourLabel}`;
+  const sourceLabel = model.source === "getyourguide" ? "GetYourGuide" : "Boat4Two";
+  return `New ${sourceLabel} booking confirmed - ${model.tourLabel}`;
 }
 
 function buildAdminNotificationText(model) {
+  const sourceLabel = model.source === "getyourguide" ? "GetYourGuide" : "Boat4Two";
+
   return [
-    "A new Boat4Two booking has just been confirmed.",
+    `A new ${sourceLabel} booking has just been confirmed.`,
     "",
     "Booking details",
     "",
+    `Source: ${sourceLabel}`,
     `Tour: ${model.tourLabel}`,
     model.dateLabel ? `Date: ${model.dateLabel}` : "",
     model.timeLabel ? `Time: ${model.timeLabel}` : "",
@@ -844,6 +867,9 @@ function buildAdminNotificationText(model) {
     model.paymentReference ? `Payment reference: ${model.paymentReference}` : "",
     model.transactionReference ? `Transaction reference: ${model.transactionReference}` : "",
     model.bookingReference ? `Booking reference: ${model.bookingReference}` : "",
+    model.source === "getyourguide" && model.gygActivityReference
+      ? `GYG activity reference: ${model.gygActivityReference}`
+      : "",
     "",
     "Client details",
     "",
@@ -863,11 +889,13 @@ function buildAdminNotificationText(model) {
 }
 
 function buildAdminNotificationHtml(model) {
+  const sourceLabel = model.source === "getyourguide" ? "GetYourGuide" : "Boat4Two";
   const sectionsHtml = [
     buildCardSection(
       "Booking details",
       `
         <p style="margin:0 0 8px;font-size:16px;font-weight:700;color:#211611;">${escapeHtml(model.tourLabel)}</p>
+        <p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Source:</strong> ${escapeHtml(sourceLabel)}</p>
         ${model.dateLabel ? `<p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Date:</strong> ${escapeHtml(model.dateLabel)}</p>` : ""}
         ${model.timeLabel ? `<p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Time:</strong> ${escapeHtml(model.timeLabel)}</p>` : ""}
         ${model.durationLabel ? `<p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Duration:</strong> ${escapeHtml(model.durationLabel)}</p>` : ""}
@@ -875,7 +903,8 @@ function buildAdminNotificationHtml(model) {
         ${model.amountLabel ? `<p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Paid:</strong> ${escapeHtml(model.amountLabel)}</p>` : ""}
         ${model.paymentReference ? `<p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Payment reference:</strong> ${escapeHtml(model.paymentReference)}</p>` : ""}
         ${model.transactionReference ? `<p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Transaction reference:</strong> ${escapeHtml(model.transactionReference)}</p>` : ""}
-        ${model.bookingReference ? `<p style="margin:0;font-size:14px;color:#4a3b34;"><strong>Booking reference:</strong> ${escapeHtml(model.bookingReference)}</p>` : ""}
+        ${model.bookingReference ? `<p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Booking reference:</strong> ${escapeHtml(model.bookingReference)}</p>` : ""}
+        ${model.source === "getyourguide" && model.gygActivityReference ? `<p style="margin:0;font-size:14px;color:#4a3b34;"><strong>GYG activity reference:</strong> ${escapeHtml(model.gygActivityReference)}</p>` : ""}
       `
     ),
     buildCardSection(
@@ -902,7 +931,7 @@ function buildAdminNotificationHtml(model) {
 
   return buildEmailShell({
     title: "New booking confirmed",
-    introHtml: `<p style="margin:0;">A new Boat4Two booking has just been confirmed.</p>`,
+    introHtml: `<p style="margin:0;">A new ${escapeHtml(sourceLabel)} booking has just been confirmed.</p>`,
     sectionsHtml,
     footerHtml: `<p style="margin:0;">This notification was sent automatically from the Boat4Two booking flow.</p>`
   });
@@ -1058,6 +1087,48 @@ export async function maybeSendBookingConfirmationEmail(env, event, paymentData 
 
   const shouldPatch = Object.keys(patchPrivateProps).length > 0;
   return buildEmailPatchResult(overallStatus, shouldPatch ? patchPrivateProps : null, shouldPatch);
+}
+
+export async function maybeSendAdminBookingNotificationEmail(env, event, paymentData = {}) {
+  const privateProps = event?.extendedProperties?.private || {};
+  const adminNotificationAlreadySentAt = cleanText(
+    privateProps.adminBookingNotificationEmailSentAt,
+    80
+  );
+  const model = buildBookingEmailModel(env, event, paymentData);
+  const patchPrivateProps = {};
+
+  if (!model.bookingNotificationEmail) {
+    return buildEmailPatchResult("missing_recipient", null, false);
+  }
+
+  if (adminNotificationAlreadySentAt) {
+    return buildEmailPatchResult("already_sent", null, false);
+  }
+
+  try {
+    const adminResult = await sendBookingEmail(
+      env,
+      buildSendPayload(model, buildAdminNotificationPayload(model), {
+        to: model.bookingNotificationEmail
+      })
+    );
+
+    patchPrivateProps.adminBookingNotificationEmailStatus = "sent";
+    patchPrivateProps.adminBookingNotificationEmailSentAt = new Date().toISOString();
+    patchPrivateProps.adminBookingNotificationEmailError = "";
+    patchPrivateProps.adminBookingNotificationEmailMessageId = cleanText(adminResult?.messageId, 200);
+
+    return buildEmailPatchResult("sent", patchPrivateProps, true);
+  } catch (error) {
+    patchPrivateProps.adminBookingNotificationEmailStatus = "failed";
+    patchPrivateProps.adminBookingNotificationEmailError = cleanText(
+      error?.message || "Unknown email error",
+      300
+    );
+
+    return buildEmailPatchResult("failed", patchPrivateProps, true);
+  }
 }
 
 async function sendBookingEmail(env, sendPayload) {
