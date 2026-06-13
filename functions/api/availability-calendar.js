@@ -40,6 +40,24 @@ function getDaysInMonth(year, monthIndex) {
   return new Date(year, monthIndex + 1, 0).getDate();
 }
 
+function parseBooleanFlag(value, fallback = false) {
+  const normalized = String(value || "").trim().toLowerCase();
+
+  if (!normalized) {
+    return fallback;
+  }
+
+  if (["1", "true", "yes", "y", "on"].includes(normalized)) {
+    return true;
+  }
+
+  if (["0", "false", "no", "n", "off"].includes(normalized)) {
+    return false;
+  }
+
+  return fallback;
+}
+
 function getTimeZoneOffsetMinutes(timeZone, date) {
   const formatter = new Intl.DateTimeFormat("en-GB", {
     timeZone,
@@ -114,6 +132,7 @@ export async function onRequestGet(context) {
 
   const tour = (url.searchParams.get("tour") || "").toLowerCase();
   const month = url.searchParams.get("month") || "";
+  const skipCleanup = parseBooleanFlag(url.searchParams.get("skipCleanup"), false);
 
   if (!BOOKING_RULES.tours[tour]) {
     return Response.json(
@@ -150,7 +169,9 @@ export async function onRequestGet(context) {
     );
 
     const accessToken = await getGoogleAccessToken(env);
-    await bestEffortCleanupStaleBookingArtifacts(env, accessToken);
+    if (!skipCleanup) {
+      await bestEffortCleanupStaleBookingArtifacts(env, accessToken);
+    }
 
     const firstDay = `${month}-01`;
     const lastDay = `${month}-${String(getDaysInMonth(year, monthIndex)).padStart(2, "0")}`;

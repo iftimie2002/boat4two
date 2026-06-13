@@ -3,7 +3,7 @@ import {
   getGoogleCalendarErrorPayload,
   hasGoogleCalendarCredentials
 } from "./_google.js";
-import { notifyGyGAvailabilityForTourDate } from "./gyg/_notify_outbound.js";
+import { notifyGyGAvailabilityForTourDates } from "./gyg/_notify_outbound.js";
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data, null, 2), {
@@ -71,25 +71,20 @@ async function runNotify(env, url) {
   const sandbox = parseBooleanFlag(url.searchParams.get("sandbox"), true);
   const tour = cleanText(url.searchParams.get("tour"), 80).toLowerCase() || "amor";
   const dates = parseDates(url);
-  const deliveries = [];
-
-  for (const date of dates) {
-    const result = await notifyGyGAvailabilityForTourDate(env, {
-      accessToken,
-      tour,
-      date,
-      sandbox
-    });
-    deliveries.push({
-      date,
-      tour,
-      sandbox,
-      ...result
-    });
-  }
+  const result = await notifyGyGAvailabilityForTourDates(env, {
+    accessToken,
+    tour,
+    dates,
+    sandbox
+  });
+  const deliveries = (result.deliveries || []).map((entry) => ({
+    tour,
+    sandbox,
+    ...entry
+  }));
 
   return {
-    ok: deliveries.every((entry) => entry.ok),
+    ok: Boolean(result.ok) && deliveries.every((entry) => entry.ok || entry.skipped),
     tour,
     sandbox,
     requestedDates: dates,

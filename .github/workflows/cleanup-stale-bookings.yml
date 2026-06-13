@@ -2,10 +2,14 @@ name: Cleanup stale booking slots
 
 on:
   schedule:
-    - cron: "*/5 * * * *"
-    - cron: "*/30 * * * *"
-    - cron: "17 */12 * * *"
+    - cron: "*/10 * * * *"
+    - cron: "7 */2 * * *"
+    - cron: "23 */12 * * *"
   workflow_dispatch:
+
+concurrency:
+  group: boat4two-maintenance
+  cancel-in-progress: false
 
 jobs:
   maintenance:
@@ -14,14 +18,14 @@ jobs:
 
     steps:
       - name: Trigger stale booking cleanup
-        if: github.event_name == 'workflow_dispatch' || github.event.schedule == '*/5 * * * *'
+        if: github.event_name == 'workflow_dispatch' || github.event.schedule == '*/10 * * * *'
         run: >
           curl --fail --silent --show-error
           --header "User-Agent: boat4two-cleanup-bot"
           https://boat4two.com/api/cleanup-holds
 
       - name: Ensure protected endpoint secret is configured
-        if: github.event_name == 'workflow_dispatch' || github.event.schedule == '*/30 * * * *' || github.event.schedule == '17 */12 * * *'
+        if: github.event_name == 'workflow_dispatch' || github.event.schedule == '7 */2 * * *' || github.event.schedule == '23 */12 * * *'
         run: |
           if [ -z "${{ secrets.DAILY_SYSTEM_CHECK_KEY }}" ]; then
             echo "Missing DAILY_SYSTEM_CHECK_KEY GitHub secret." >&2
@@ -29,7 +33,7 @@ jobs:
           fi
 
       - name: Register Google Calendar watch channels
-        if: github.event_name == 'workflow_dispatch' || github.event.schedule == '17 */12 * * *'
+        if: github.event_name == 'workflow_dispatch' || github.event.schedule == '23 */12 * * *'
         run: |
           RESPONSE_FILE=$(mktemp)
           STATUS_CODE=$(curl --silent --show-error \
@@ -48,9 +52,9 @@ jobs:
           fi
 
       - name: Trigger GetYourGuide availability sync
-        if: github.event_name == 'workflow_dispatch' || github.event.schedule == '*/30 * * * *' || github.event.schedule == '17 */12 * * *'
+        if: github.event_name == 'workflow_dispatch' || github.event.schedule == '7 */2 * * *' || github.event.schedule == '23 */12 * * *'
         run: |
-          SYNC_URL="https://boat4two.com/api/gyg-sync-availability?days=365&batchDays=1&chain=1&stepDays=3&tour=amor&sandbox=0"
+          SYNC_URL="https://boat4two.com/api/gyg-sync-availability?days=365&batchDays=7&chain=1&stepDays=14&tour=amor&sandbox=0"
 
           for ATTEMPT in 1 2 3; do
             RESPONSE_FILE=$(mktemp)

@@ -66,6 +66,16 @@ function addMonths(baseDate, monthsToAdd) {
   return copy;
 }
 
+function addDays(baseDate, daysToAdd) {
+  const copy = new Date(baseDate.getTime());
+  copy.setUTCDate(copy.getUTCDate() + daysToAdd);
+  return copy;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function summarizeBody(body) {
   if (!body || typeof body !== "object") {
     return body;
@@ -143,10 +153,16 @@ function makeCheck(name, passed, details, error = "") {
   };
 }
 
-async function runAvailabilityCheck(origin, tour, month) {
+async function runAvailabilityCheck(origin, tour, month, options = {}) {
+  const skipCleanup = options.skipCleanup === true;
+  const path = [
+    `/api/availability-calendar?tour=${encodeURIComponent(tour)}`,
+    `month=${encodeURIComponent(month)}`,
+    skipCleanup ? "skipCleanup=1" : ""
+  ].filter(Boolean).join("&");
   const result = await fetchJson(
     origin,
-    `/api/availability-calendar?tour=${encodeURIComponent(tour)}&month=${encodeURIComponent(month)}`
+    path
   );
   const availableDates = Array.isArray(result.body?.availableDates) ? result.body.availableDates : [];
   const passed = result.httpOk && result.body?.ok === true;
@@ -170,9 +186,9 @@ async function collectFutureAvailableDates(origin, tour, count = 5) {
   const now = new Date();
   const collected = [];
 
-  for (let offset = 2; offset <= 5 && collected.length < count; offset += 1) {
+  for (let offset = 0; offset <= 6 && collected.length < count; offset += 1) {
     const month = formatMonth(addMonths(now, offset));
-    const result = await runAvailabilityCheck(origin, tour, month);
+    const result = await runAvailabilityCheck(origin, tour, month, { skipCleanup: true });
 
     if (result.check.passed) {
       for (const date of result.availableDates) {
@@ -185,9 +201,21 @@ async function collectFutureAvailableDates(origin, tour, count = 5) {
         }
       }
     }
+
+    if (collected.length < count) {
+      await sleep(800);
+    }
   }
 
   return collected;
+}
+
+function getDeterministicFutureDates(count = 2, startOffsetDays = 90) {
+  const today = new Date();
+
+  return Array.from({ length: count }, (_, index) =>
+    addDays(today, startOffsetDays + index).toISOString().slice(0, 10)
+  );
 }
 
 async function runHoldLifecycleCheck(origin, preferredDates = null) {
@@ -300,25 +328,30 @@ async function runHoldLifecycleCheck(origin, preferredDates = null) {
 async function runDailySystemCheck(origin) {
   const now = new Date();
   const thisMonth = formatMonth(addMonths(now, 0));
-  const futurePushDates = await collectFutureAvailableDates(origin, "amor", 2);
+  const futurePushDates = getDeterministicFutureDates(2, 90);
   const pushDateParam = futurePushDates.join(",");
-  const [
-    googleResult,
-    emailResult,
-    myposResult,
-    cleanupResult,
-    amorAvailability,
-    sunsetAvailability,
-    holdLifecycle
-  ] = await Promise.all([
-    fetchJson(origin, "/api/google-test"),
+  const googleResult = await fetchJson(origin, "/api/google-test");
+  await sleep(1000);
+
+  const [emailResult, myposResult] = await Promise.all([
     fetchJson(origin, "/api/email-test"),
-    fetchJson(origin, "/api/mypos-test"),
-    fetchJson(origin, "/api/cleanup-holds"),
-    runAvailabilityCheck(origin, "amor", thisMonth),
-    runAvailabilityCheck(origin, "sunset", thisMonth),
-    runHoldLifecycleCheck(origin, futurePushDates)
+    fetchJson(origin, "/api/mypos-test")
   ]);
+
+  await sleep(1000);
+  const amorAvailability = await runAvailabilityCheck(origin, "amor", thisMonth, { skipCleanup: true });
+  await sleep(1000);
+  const sunsetAvailability = await runAvailabilityCheck(origin, "sunset", thisMonth, { skipCleanup: true });
+  await sleep(1000);
+
+  let holdTestDates = amorAvailability.availableDates.slice(0, 3);
+  if (!holdTestDates.length) {
+    holdTestDates = await collectFutureAvailableDates(origin, "amor", 3);
+  }
+
+  const holdLifecycle = await runHoldLifecycleCheck(origin, holdTestDates);
+  await sleep(1000);
+  const cleanupResult = await fetchJson(origin, "/api/cleanup-holds");
 
   let gygPush = makeCheck(
     "gyg_push_availability_sandbox",
