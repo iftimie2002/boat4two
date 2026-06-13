@@ -101,9 +101,12 @@ function summarizeBody(body) {
     deliveries: Array.isArray(body.deliveries)
       ? body.deliveries.map((entry) => ({
           date: entry.date,
+          dates: entry.dates,
           ok: entry.ok,
+          skipped: entry.skipped,
+          reason: entry.reason,
           status: entry.status,
-          endpoint: entry.endpoint,
+          endpoint: entry.endpoint || entry.endpointUrl,
           response: entry.response
         }))
       : undefined
@@ -218,6 +221,39 @@ function getDeterministicFutureDates(count = 2, startOffsetDays = 90) {
   );
 }
 
+async function runGyGPushAvailabilityCheck(origin, tour, dates) {
+  const checkName = `gyg_push_availability_${tour}_sandbox`;
+  const dateParam = dates.join(",");
+
+  if (!dates.length) {
+    return makeCheck(
+      checkName,
+      false,
+      {
+        requestedDates: dates
+      },
+      `Could not determine future dates for the ${tour} GYG push test.`
+    );
+  }
+
+  const pushResult = await fetchJson(
+    origin,
+    `/api/gyg-push-availability-test?tour=${encodeURIComponent(tour)}&dates=${encodeURIComponent(dateParam)}&sandbox=1`
+  );
+  const allDeliveriesOk = Array.isArray(pushResult.body?.deliveries)
+    && pushResult.body.deliveries.every((entry) => entry.ok === true || entry.skipped === true);
+  const passed = pushResult.httpOk && pushResult.body?.ok === true && allDeliveriesOk;
+
+  return makeCheck(
+    checkName,
+    passed,
+    summarizeBody(pushResult.body),
+    !passed
+      ? cleanText(pushResult.body?.error || `HTTP ${pushResult.status}`, 320)
+      : ""
+  );
+}
+
 async function runHoldLifecycleCheck(origin, preferredDates = null) {
   const futureDates = Array.isArray(preferredDates) && preferredDates.length
     ? preferredDates
@@ -329,7 +365,6 @@ async function runDailySystemCheck(origin) {
   const now = new Date();
   const thisMonth = formatMonth(addMonths(now, 0));
   const futurePushDates = getDeterministicFutureDates(2, 90);
-  const pushDateParam = futurePushDates.join(",");
   const googleResult = await fetchJson(origin, "/api/google-test");
   await sleep(1000);
 
@@ -352,33 +387,10 @@ async function runDailySystemCheck(origin) {
   const holdLifecycle = await runHoldLifecycleCheck(origin, holdTestDates);
   await sleep(1000);
   const cleanupResult = await fetchJson(origin, "/api/cleanup-holds");
-
-  let gygPush = makeCheck(
-    "gyg_push_availability_sandbox",
-    false,
-    {
-      requestedDates: futurePushDates
-    },
-    "Could not find future available Amor Tour dates for the GYG push test."
-  );
-
-  if (futurePushDates.length >= 1) {
-    const pushResult = await fetchJson(
-      origin,
-      `/api/gyg-push-availability-test?tour=amor&dates=${encodeURIComponent(pushDateParam)}&sandbox=1`
-    );
-    const allDeliveriesOk = Array.isArray(pushResult.body?.deliveries)
-      && pushResult.body.deliveries.every((entry) => entry.ok === true);
-
-    gygPush = makeCheck(
-      "gyg_push_availability_sandbox",
-      pushResult.httpOk && pushResult.body?.ok === true && allDeliveriesOk,
-      summarizeBody(pushResult.body),
-      !(pushResult.httpOk && pushResult.body?.ok === true && allDeliveriesOk)
-        ? cleanText(pushResult.body?.error || `HTTP ${pushResult.status}`, 320)
-        : ""
-    );
-  }
+  await sleep(1000);
+  const gygPushAmor = await runGyGPushAvailabilityCheck(origin, "amor", futurePushDates);
+  await sleep(1000);
+  const gygPushSunset = await runGyGPushAvailabilityCheck(origin, "sunset", futurePushDates);
 
   const checks = [
     makeCheck(
@@ -416,7 +428,8 @@ async function runDailySystemCheck(origin) {
         : ""
     ),
     holdLifecycle,
-    gygPush
+    gygPushAmor,
+    gygPushSunset
   ];
 
   const failedChecks = checks.filter((check) => !check.passed);

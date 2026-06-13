@@ -12,7 +12,7 @@ const DEFAULT_BATCH_DAYS = 1;
 const MAX_BATCH_DAYS = 90;
 const DEFAULT_CHAIN_STEP_DAYS = 3;
 const MAX_CHAIN_STEP_DAYS = 45;
-const DEFAULT_TOURS = ["amor"];
+const DEFAULT_TOURS = ["amor", "sunset"];
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data, null, 2), {

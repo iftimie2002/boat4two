@@ -54,7 +54,7 @@ jobs:
       - name: Trigger GetYourGuide availability sync
         if: github.event_name == 'workflow_dispatch' || github.event.schedule == '7 */2 * * *' || github.event.schedule == '23 */12 * * *'
         run: |
-          SYNC_URL="https://boat4two.com/api/gyg-sync-availability?days=365&batchDays=7&chain=1&stepDays=14&tour=amor&sandbox=0"
+          SYNC_URL="https://boat4two.com/api/gyg-sync-availability?days=365&batchDays=7&chain=1&stepDays=14&tour=all&sandbox=0"
 
           for ATTEMPT in 1 2 3; do
             RESPONSE_FILE=$(mktemp)
