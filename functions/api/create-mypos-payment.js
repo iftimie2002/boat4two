@@ -46,6 +46,8 @@ const BOOKING_RULES = {
   }
 };
 
+const TEST_PRICE_TOTAL_AMOUNT = 0.10;
+
 const MYPOS_EMBEDDED_PRODUCTION_URL = "https://mypos.com/vmp/checkout";
 const MYPOS_EMBEDDED_TEST_URL = "https://mypos.com/vmp/checkout-test";
 
@@ -91,6 +93,12 @@ function parseAmount(value) {
   const number = Number(value);
   if (!Number.isFinite(number)) return null;
   return Math.round(number * 100) / 100;
+}
+
+function parseBooleanFlag(value) {
+  if (value === true) return true;
+  const text = cleanText(value, 20).toLowerCase();
+  return text === "true" || text === "1" || text === "yes";
 }
 
 function escapeHtml(value) {
@@ -151,6 +159,16 @@ function getHoldExpiresAt(event) {
     getDescriptionValue(description, "Hold expires at") ||
     getDescriptionValue(description, "HOLD_EXPIRES_AT") ||
     ""
+  );
+}
+
+function isTestPriceHold(event) {
+  const privateProps = event?.extendedProperties?.private || {};
+  const description = event?.description || "";
+
+  return (
+    privateProps.testBookingMode === "true" ||
+    /^Test booking mode:\s*yes$/im.test(description)
   );
 }
 
@@ -744,6 +762,7 @@ export async function onRequestPost(context) {
     const holdId = cleanText(body?.holdId, 120);
     const extras = sanitizeExtras(body?.extras || []);
     const responseMode = cleanText(body?.responseMode, 40);
+    const requestedTestPriceMode = parseBooleanFlag(body?.testMode);
 
     if (!holdId) {
       return json({ ok: false, error: "Missing holdId." }, 400);
@@ -774,8 +793,10 @@ export async function onRequestPost(context) {
       return json({ ok: false, error: "This tour is not available for online payment yet." }, 400);
     }
 
-    const baseAmount = selectedTour.totalAmount;
-    const extrasTotal = extras.reduce((sum, item) => sum + item.amount, 0);
+    const testPriceMode = requestedTestPriceMode && isTestPriceHold(holdEvent);
+    const paymentExtras = testPriceMode ? [] : extras;
+    const baseAmount = testPriceMode ? TEST_PRICE_TOTAL_AMOUNT : selectedTour.totalAmount;
+    const extrasTotal = paymentExtras.reduce((sum, item) => sum + item.amount, 0);
     const totalAmount = Math.round((baseAmount + extrasTotal) * 100) / 100;
 
     const customerName = cleanText(privateProps.customerName, 120);
@@ -800,11 +821,15 @@ export async function onRequestPost(context) {
     const myposApiUrl = getMyposApiUrl(env);
     const walletNumber = getWalletNumber(env);
 
+    const paymentTourLabel = testPriceMode
+      ? `TEST BOOKING - ${selectedTour.label}`
+      : selectedTour.label;
+
     const cartItems = buildCartItems(
-      selectedTour.label,
+      paymentTourLabel,
       baseAmount,
       BOOKING_RULES.currency,
-      extras
+      paymentExtras
     );
 
     const postData = {
@@ -862,11 +887,13 @@ export async function onRequestPost(context) {
       `Apple Pay Order ID: ${walletOrderIds.applePay}`,
       `Google Pay Order ID: ${walletOrderIds.googlePay}`,
       `Payment Amount: ${formatMoney(totalAmount)} ${BOOKING_RULES.currency}`,
-      extras.length ? `Payment Extras: ${JSON.stringify(extras)}` : ""
+      testPriceMode ? `Test payment mode: yes` : "",
+      testPriceMode ? `Standard payment amount: ${formatMoney(selectedTour.totalAmount)} ${BOOKING_RULES.currency}` : "",
+      paymentExtras.length ? `Payment Extras: ${JSON.stringify(paymentExtras)}` : ""
     ].filter(Boolean);
 
     await updateCalendarEvent(env, accessToken, holdEvent.id, {
-      summary: `PAYMENT PENDING - ${selectedTour.label} - ${customerName}`,
+      summary: `${testPriceMode ? "PAYMENT PENDING TEST" : "PAYMENT PENDING"} - ${selectedTour.label} - ${customerName}`,
       description: descriptionLines.join("\n"),
       extendedProperties: {
         private: {
@@ -875,12 +902,14 @@ export async function onRequestPost(context) {
           isHold: "false",
           holdExpiresAt: "",
           paymentStatus: "pending",
+          testPaymentMode: testPriceMode ? "true" : "false",
+          standardPaymentAmount: testPriceMode ? formatMoney(selectedTour.totalAmount) : "",
           paymentOrderId: orderId,
           walletApplePayOrderId: walletOrderIds.applePay,
           walletGooglePayOrderId: walletOrderIds.googlePay,
           paymentAmount: formatMoney(totalAmount),
           paymentCurrency: BOOKING_RULES.currency,
-          paymentExtrasJson: JSON.stringify(extras),
+          paymentExtrasJson: JSON.stringify(paymentExtras),
           paymentStartedAt,
           paymentPendingExpiresAt
         }

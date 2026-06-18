@@ -1,3 +1,9 @@
 /.well-known/apple-developer-merchantid-domain-association
   Content-Type: text/plain; charset=utf-8
   Content-Disposition: inline
+
+/testprice
+  X-Robots-Tag: noindex, nofollow
+
+/testprice/*
+  X-Robots-Tag: noindex, nofollow

@@ -118,6 +118,12 @@ function cleanText(value, max = 500) {
   return String(value || "").trim().slice(0, max);
 }
 
+function parseBooleanFlag(value) {
+  if (value === true) return true;
+  const text = cleanText(value, 20).toLowerCase();
+  return text === "true" || text === "1" || text === "yes";
+}
+
 async function getBusyRanges(env, accessToken, timeMin, timeMax) {
   const busyCalendarIds = getBusyGoogleCalendarIds(env);
   const response = await fetch("https://www.googleapis.com/calendar/v3/freeBusy", {
@@ -382,6 +388,7 @@ export async function onRequestPost(context) {
     const country = cleanText(body.country, 120);
     const occasion = cleanText(body.occasion, 200);
     const message = cleanText(body.message, 1000);
+    const testMode = parseBooleanFlag(body.testMode);
 
     if (!hasGoogleCalendarCredentials(env)) {
       return Response.json(
@@ -478,6 +485,8 @@ export async function onRequestPost(context) {
           `Tour: ${selectedTour.label}`,
           `Date: ${date}`,
           `Time: ${time}`,
+          testMode ? `Test booking mode: yes` : "",
+          testMode ? `Test payment amount: 0.10 EUR` : "",
           ``,
           `Name: ${name}`,
           `Email: ${email}`,
@@ -508,7 +517,9 @@ export async function onRequestPost(context) {
             customerPhone: phone,
             customerCountry: country,
             customerOccasion: occasion,
-            customerMessage: message
+            customerMessage: message,
+            testBookingMode: testMode ? "true" : "false",
+            testPaymentAmount: testMode ? "0.10" : ""
           }
         }
       };
@@ -531,6 +542,7 @@ export async function onRequestPost(context) {
         tour,
         date,
         time,
+        testMode,
         customer: {
           name,
           email,

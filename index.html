@@ -1696,6 +1696,11 @@ This slot is being held for you for <strong id="hold-countdown-timer">12:00</str
         '#payment-popup'
       ]);
 
+      const isTestPriceMode = /^\/testprice\/?$/i.test(window.location.pathname)
+        || new URLSearchParams(window.location.search).get('testprice') === '1';
+      const TEST_PRICE_TOTAL_AMOUNT = 0.10;
+      const TEST_PRICE_PER_PERSON_AMOUNT = TEST_PRICE_TOTAL_AMOUNT / 2;
+
      
 
       const tourConfig = {
@@ -1712,6 +1717,23 @@ This slot is being held for you for <strong id="hold-countdown-timer">12:00</str
           perPersonPrice: 95.00
         }
       };
+
+      if (isTestPriceMode) {
+        Object.values(tourConfig).forEach(function(config) {
+          config.standardTotalPrice = config.totalPrice;
+          config.standardPerPersonPrice = config.perPersonPrice;
+          config.totalPrice = TEST_PRICE_TOTAL_AMOUNT;
+          config.perPersonPrice = TEST_PRICE_PER_PERSON_AMOUNT;
+          config.testPriceMode = true;
+        });
+
+        document.title = `Test Price Booking · ${document.title}`;
+
+        const robotsMeta = document.createElement('meta');
+        robotsMeta.name = 'robots';
+        robotsMeta.content = 'noindex,nofollow';
+        document.head.appendChild(robotsMeta);
+      }
 
       const reviewFeedConfig = {
         feedUrl: './reviews-feed.json',
@@ -1950,10 +1972,10 @@ let currentCalendarMonth = null;
 let selectedCalendarDate = '';
 let currentMyposEmbeddedPayment = null;
 let paymentCancellationInProgress = false;
-        let holdReleaseSuppressed = false;
+let holdReleaseSuppressed = false;
 let availableDatesSet = new Set();
-const ACTIVE_HOLD_STORAGE_KEY = 'boat4two-active-hold';
-const BOOKING_DATA_STORAGE_KEY = 'boat4two-booking-data';
+const ACTIVE_HOLD_STORAGE_KEY = isTestPriceMode ? 'boat4two-active-hold-testprice' : 'boat4two-active-hold';
+const BOOKING_DATA_STORAGE_KEY = isTestPriceMode ? 'boat4two-booking-data-testprice' : 'boat4two-booking-data';
 
       function persistBookingFlowState() {
         try {
@@ -2010,6 +2032,47 @@ const BOOKING_DATA_STORAGE_KEY = 'boat4two-booking-data';
 
       restoreBookingFlowState();
 
+      function installTestPriceModeUi() {
+        if (!isTestPriceMode) return;
+
+        const replacements = [
+          ['Starting at 85€ per person', 'Test payment: 0,10€ total'],
+          ['85,00€ per person', '0,05€ per person'],
+          ['95,00€ per person', '0,05€ per person'],
+          ['170,00€ total for 2 guests', '0,10€ total for 2 guests'],
+          ['190,00€ total for 2 guests', '0,10€ total for 2 guests'],
+          ['170,00€ total charged together for 2 guests', '0,10€ total charged together for 2 guests'],
+          ['190,00€ total charged together for 2 guests', '0,10€ total charged together for 2 guests'],
+          ['Pricing starts at 85,00€ per person, with checkout completed as one booking for 2 guests.', 'Test booking price is 0,10€ total, with checkout completed as one booking for 2 guests.'],
+          ['85,00€', '0,05€'],
+          ['95,00€', '0,05€']
+        ];
+
+        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        const textNodes = [];
+        while (walker.nextNode()) {
+          const parentTag = walker.currentNode.parentElement?.tagName?.toLowerCase() || '';
+          if (['script', 'style', 'noscript'].includes(parentTag)) continue;
+          textNodes.push(walker.currentNode);
+        }
+
+        textNodes.forEach(function(node) {
+          let value = node.nodeValue;
+          replacements.forEach(function(pair) {
+            value = value.split(pair[0]).join(pair[1]);
+          });
+          node.nodeValue = value;
+        });
+
+        const banner = document.createElement('div');
+        banner.className = 'fixed inset-x-0 top-0 z-[100] bg-amber-500 px-4 py-2 text-center text-xs font-black uppercase tracking-wide text-zinc-950 shadow-lg sm:text-sm';
+        banner.textContent = 'Test booking mode: real calendar checks and real myPOS payment, charged 0,10€ total.';
+        document.body.prepend(banner);
+        document.body.style.paddingTop = '44px';
+      }
+
+      installTestPriceModeUi();
+
       function formatEuroPrice(value) {
         const amount = Number(value);
         if (!Number.isFinite(amount)) {
@@ -2033,9 +2096,13 @@ const BOOKING_DATA_STORAGE_KEY = 'boat4two-booking-data';
         }
 
         if (reviewPriceNote) {
-          reviewPriceNote.textContent = selectedTourConfig
-            ? `${formatEuroPrice(selectedTourConfig.perPersonPrice)} per person · charged together for 2 guests.`
-            : 'Choose a tour to see the final amount for 2 guests.';
+          if (selectedTourConfig && selectedTourConfig.testPriceMode) {
+            reviewPriceNote.textContent = `${formatEuroPrice(selectedTourConfig.perPersonPrice)} per person · test booking price, charged together for 2 guests.`;
+          } else {
+            reviewPriceNote.textContent = selectedTourConfig
+              ? `${formatEuroPrice(selectedTourConfig.perPersonPrice)} per person · charged together for 2 guests.`
+              : 'Choose a tour to see the final amount for 2 guests.';
+          }
         }
 
         if (reviewPayButton) {
@@ -2633,7 +2700,8 @@ async function createHoldFromSelection(formValues) {
     phone: formValues.phone || '',
     country: formValues.country || '',
     occasion: formValues.occasion || '',
-    message: formValues.message || ''
+    message: formValues.message || '',
+    testMode: isTestPriceMode
   };
 
   const response = await fetch('/api/create-hold', {
@@ -3049,6 +3117,7 @@ async function releaseHoldIfLeavingBookingFlow(nextHash) {
         time: selection.time,
         pricePerPerson: selection.pricePerPerson,
         priceTotal: selection.priceTotal,
+        testMode: isTestPriceMode,
         holdId: result.hold.holdId,
         eventId: result.hold.eventId,
         holdExpiresAt: result.hold.expiresAt
@@ -3740,7 +3809,8 @@ async function startMyposPayment() {
   const payload = {
     holdId,
     extras: [],
-    responseMode: 'embedded'
+    responseMode: 'embedded',
+    testMode: isTestPriceMode
   };
 
   const response = await fetch('/api/create-mypos-payment', {
@@ -3772,7 +3842,10 @@ async function startMyposPayment() {
     throw new Error(getPublicBookingApiMessage(checkoutData, 'Could not prepare embedded payment.'));
   }
 
-  setPaymentAmountSummary(checkoutData.paymentParams?.amount, 'Charged together for 2 guests.');
+  setPaymentAmountSummary(
+    checkoutData.paymentParams?.amount,
+    isTestPriceMode ? 'Test booking price. Charged together for 2 guests.' : 'Charged together for 2 guests.'
+  );
   await launchMyposEmbeddedCheckout(checkoutData);
 }
 
