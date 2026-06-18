@@ -185,34 +185,6 @@ async function runAvailabilityCheck(origin, tour, month, options = {}) {
   };
 }
 
-async function collectFutureAvailableDates(origin, tour, count = 5) {
-  const now = new Date();
-  const collected = [];
-
-  for (let offset = 0; offset <= 6 && collected.length < count; offset += 1) {
-    const month = formatMonth(addMonths(now, offset));
-    const result = await runAvailabilityCheck(origin, tour, month, { skipCleanup: true });
-
-    if (result.check.passed) {
-      for (const date of result.availableDates) {
-        if (!collected.includes(date)) {
-          collected.push(date);
-        }
-
-        if (collected.length >= count) {
-          break;
-        }
-      }
-    }
-
-    if (collected.length < count) {
-      await sleep(800);
-    }
-  }
-
-  return collected;
-}
-
 function getDeterministicFutureDates(count = 2, startOffsetDays = 90) {
   const today = new Date();
 
@@ -257,10 +229,9 @@ async function runGyGPushAvailabilityCheck(origin, tour, dates) {
 async function runHoldLifecycleCheck(origin, preferredDates = null) {
   const futureDates = Array.isArray(preferredDates) && preferredDates.length
     ? preferredDates
-    : await collectFutureAvailableDates(origin, "amor", 3);
-  const selectedDate = futureDates[0] || "";
+    : getDeterministicFutureDates(7, 120);
 
-  if (!selectedDate) {
+  if (!futureDates.length) {
     return makeCheck(
       "hold_lifecycle",
       false,
@@ -274,33 +245,48 @@ async function runHoldLifecycleCheck(origin, preferredDates = null) {
   const attemptedTimes = ["10:00", "14:00"];
   let createResult = null;
   let selectedTime = "";
+  let selectedDate = "";
   let createError = "";
+  const attempts = [];
 
-  for (const time of attemptedTimes) {
-    createResult = await fetchJson(origin, "/api/create-hold", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        tour: "amor",
-        date: selectedDate,
+  for (const date of futureDates) {
+    for (const time of attemptedTimes) {
+      createResult = await fetchJson(origin, "/api/create-hold", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          tour: "amor",
+          date,
+          time,
+          name: HOLD_TEST_NAME,
+          email: HOLD_TEST_EMAIL,
+          phone: HOLD_TEST_PHONE,
+          country: HOLD_TEST_COUNTRY,
+          occasion: HOLD_TEST_OCCASION,
+          message: HOLD_TEST_MESSAGE
+        })
+      });
+
+      if (createResult.httpOk && createResult.body?.ok) {
+        selectedDate = date;
+        selectedTime = time;
+        break;
+      }
+
+      createError = cleanText(createResult.body?.error || `HTTP ${createResult.status}`, 240);
+      attempts.push({
+        date,
         time,
-        name: HOLD_TEST_NAME,
-        email: HOLD_TEST_EMAIL,
-        phone: HOLD_TEST_PHONE,
-        country: HOLD_TEST_COUNTRY,
-        occasion: HOLD_TEST_OCCASION,
-        message: HOLD_TEST_MESSAGE
-      })
-    });
-
-    if (createResult.httpOk && createResult.body?.ok) {
-      selectedTime = time;
-      break;
+        status: createResult.status,
+        error: createError
+      });
     }
 
-    createError = cleanText(createResult.body?.error || `HTTP ${createResult.status}`, 240);
+    if (selectedDate) {
+      break;
+    }
   }
 
   if (!createResult?.httpOk || !createResult.body?.ok || !createResult.body?.holdId) {
@@ -308,8 +294,9 @@ async function runHoldLifecycleCheck(origin, preferredDates = null) {
       "hold_lifecycle",
       false,
       {
-        selectedDate,
-        attemptedTimes
+        attemptedDates: futureDates,
+        attemptedTimes,
+        attempts: attempts.slice(0, 12)
       },
       createError || "Failed to create the daily hold smoke test."
     );
@@ -379,12 +366,10 @@ async function runDailySystemCheck(origin) {
   const sunsetAvailability = await runAvailabilityCheck(origin, "sunset", thisMonth, { skipCleanup: true });
   await sleep(1000);
 
-  let holdTestDates = amorAvailability.availableDates.slice(0, 3);
-  if (!holdTestDates.length) {
-    holdTestDates = await collectFutureAvailableDates(origin, "amor", 3);
-  }
-
-  const holdLifecycle = await runHoldLifecycleCheck(origin, holdTestDates);
+  const holdLifecycle = await runHoldLifecycleCheck(
+    origin,
+    getDeterministicFutureDates(7, 120)
+  );
   await sleep(1000);
   const cleanupResult = await fetchJson(origin, "/api/cleanup-holds");
   await sleep(1000);
