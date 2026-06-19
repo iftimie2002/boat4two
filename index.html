@@ -199,6 +199,39 @@
           max-width: 360px;
           justify-self: center;
         }
+        #payment-popup {
+          overscroll-behavior: contain;
+        }
+        #payment-popup .payment-dialog {
+          -webkit-overflow-scrolling: touch;
+          overscroll-behavior: contain;
+        }
+        #mypos-embedded-checkout {
+          -webkit-overflow-scrolling: touch;
+          overscroll-behavior: contain;
+        }
+        #mypos-embedded-checkout iframe {
+          min-height: 720px;
+          width: 100%;
+        }
+        @media (max-width: 640px) {
+          #payment-popup {
+            align-items: flex-start;
+            padding: max(0.75rem, env(safe-area-inset-top)) 0.75rem max(0.75rem, env(safe-area-inset-bottom));
+          }
+          #payment-popup .payment-dialog {
+            max-height: calc(100dvh - 1.5rem);
+            padding-bottom: max(1rem, env(safe-area-inset-bottom));
+          }
+          #mypos-embedded-checkout {
+            max-height: calc(100dvh - 190px);
+            min-height: min(680px, calc(100dvh - 190px));
+            overflow-y: auto;
+          }
+          #mypos-embedded-checkout iframe {
+            min-height: 780px;
+          }
+        }
     </style>
     <style>
         :root {
@@ -1620,9 +1653,9 @@ This slot is being held for you for <strong id="hold-countdown-timer">12:00</str
 </div>
 </div>
 <div class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/70 p-4 backdrop-blur-sm animate-fadeIn" id="payment-popup">
-<a aria-label="Back to booking review" class="absolute inset-0" href="#review-popup"></a>
-<div class="relative flex max-h-[calc(100dvh-2rem)] w-full max-w-2xl flex-col gap-4 overflow-y-auto rounded-[1.25rem] bg-background-light p-5 shadow-2xl dark:bg-background-dark sm:p-6">
-<a aria-label="Back to booking review" class="absolute right-4 top-4 inline-flex h-10 w-10 items-center justify-center rounded-full border border-zinc-300 text-zinc-700 transition-colors hover:border-primary hover:text-primary dark:border-zinc-700 dark:text-zinc-200" href="#review-popup" title="Back to booking review">
+<a aria-label="Back to booking review" class="absolute inset-0" data-payment-close-link href="#review-popup"></a>
+<div class="payment-dialog relative flex max-h-[calc(100dvh-2rem)] w-full max-w-2xl flex-col gap-4 overflow-y-auto rounded-[1.25rem] bg-background-light p-5 shadow-2xl dark:bg-background-dark sm:p-6">
+<a aria-label="Back to booking review" class="absolute right-4 top-4 inline-flex h-10 w-10 items-center justify-center rounded-full border border-zinc-300 text-zinc-700 transition-colors hover:border-primary hover:text-primary dark:border-zinc-700 dark:text-zinc-200" data-payment-close-link href="#review-popup" title="Back to booking review">
 <span class="material-symbols-outlined text-[20px]">close</span>
 </a>
 <div class="pr-12 text-center">
@@ -1638,6 +1671,15 @@ This slot is being held for you for <strong id="hold-countdown-timer">12:00</str
 <p class="text-2xl font-black text-zinc-900 dark:text-zinc-100" id="payment-amount-value">--</p>
 </div>
 <div class="rounded-2xl bg-zinc-100 p-4 text-center text-sm font-semibold text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300" id="payment-frame-loading">Loading secure checkout...</div>
+<div class="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm leading-relaxed text-amber-950 shadow-sm dark:border-amber-500/40 dark:bg-amber-950/40 dark:text-amber-100" id="payment-stay-open-warning">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined mt-0.5 text-amber-600 dark:text-amber-300">priority_high</span>
+<div>
+<p class="font-black text-amber-950 dark:text-amber-50">Important: keep this page open.</p>
+<p class="mt-1">After pressing Pay, do not close this page, refresh, or go back until you see <strong>Your booking is confirmed</strong>. Payment confirmation can take a few moments.</p>
+</div>
+</div>
+</div>
 <div class="hidden space-y-3 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950" id="payment-wallet-section">
 <div class="flex items-center justify-between gap-3">
 <p class="text-xs font-bold uppercase tracking-[0.18em] text-zinc-500 dark:text-zinc-400">Express checkout</p>
@@ -1649,7 +1691,7 @@ This slot is being held for you for <strong id="hold-countdown-timer">12:00</str
 </div>
 <p class="hidden text-center text-xs text-zinc-500 dark:text-zinc-400" id="payment-wallet-status"></p>
 </div>
-<div class="min-h-[620px] w-full overflow-hidden rounded-xl bg-white" id="mypos-embedded-checkout"></div>
+<div class="min-h-[620px] w-full overflow-y-auto rounded-xl bg-white" id="mypos-embedded-checkout"></div>
 <div class="space-y-3 rounded-2xl border border-zinc-200 bg-white p-4 text-sm leading-relaxed text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300" id="payment-policy-summary">
 <div class="flex items-start gap-3">
 <span class="material-symbols-outlined mt-0.5 text-primary">verified_user</span>
@@ -1946,6 +1988,8 @@ This slot is being held for you for <strong id="hold-countdown-timer">12:00</str
       const paymentAmountSummary = document.getElementById('payment-amount-summary');
       const paymentAmountValue = document.getElementById('payment-amount-value');
       const paymentAmountNote = document.getElementById('payment-amount-note');
+      const paymentStayOpenWarning = document.getElementById('payment-stay-open-warning');
+      const paymentCloseLinks = Array.from(document.querySelectorAll('[data-payment-close-link]'));
       const contactForm = document.getElementById('contact-form');
       const contactFormFeedback = document.getElementById('contact-form-feedback');
       const reviewsIntro = document.getElementById('reviews-intro');
@@ -1970,7 +2014,9 @@ let isScrollLocked = false;
 let currentCalendarMonth = null;
 let selectedCalendarDate = '';
 let currentMyposEmbeddedPayment = null;
+let paymentFlowActive = false;
 let paymentCancellationInProgress = false;
+let allowPaymentCheckoutExitOnce = false;
 let holdReleaseSuppressed = false;
 let availableDatesSet = new Set();
 const ACTIVE_HOLD_STORAGE_KEY = isTestPriceMode ? 'boat4two-active-hold-testprice' : 'boat4two-active-hold';
@@ -2793,6 +2839,7 @@ async function releaseUnpaidPaymentReservation() {
   }
 
   paymentCancellationInProgress = true;
+  paymentFlowActive = false;
   currentMyposEmbeddedPayment = null;
   holdReleaseSuppressed = false;
 
@@ -2868,6 +2915,22 @@ async function handleHoldExpired() {
 
 function shouldKeepHoldForHash(hash) {
   return hash === '#review-popup' || hash === '#payment-popup';
+}
+
+function hasActivePaymentCheckout() {
+  return Boolean(paymentFlowActive && !paymentCancellationInProgress);
+}
+
+function getPaymentLeaveWarningMessage() {
+  return 'Your payment may still be processing. Do not close this page or leave checkout until you see "Your booking is confirmed." Leaving now can cancel the payment and release your reserved slot.';
+}
+
+function confirmLeavingActivePayment() {
+  if (!hasActivePaymentCheckout()) {
+    return true;
+  }
+
+  return window.confirm(getPaymentLeaveWarningMessage());
 }
 
 async function releaseHoldIfLeavingBookingFlow(nextHash) {
@@ -2994,10 +3057,18 @@ async function releaseHoldIfLeavingBookingFlow(nextHash) {
     isScrollLocked = false;
   }
 
-  if (currentMyposEmbeddedPayment && nextHash !== '#payment-popup') {
+  if (hasActivePaymentCheckout() && nextHash !== '#payment-popup') {
+    if (!allowPaymentCheckoutExitOnce && !confirmLeavingActivePayment()) {
+      window.location.hash = '#payment-popup';
+      return;
+    }
+
+    allowPaymentCheckoutExitOnce = false;
     await cancelUnpaidPaymentFlow('Payment was not completed, so the slot was released. Please choose a date and time again.');
     return;
   }
+
+  allowPaymentCheckoutExitOnce = false;
 
   if (shouldReleaseHoldOnLeave() && !shouldKeepHoldForHash(nextHash)) {
     await releaseHoldIfLeavingBookingFlow(nextHash);
@@ -3172,7 +3243,27 @@ window.location.hash = '#review-popup';
       }
 
 window.addEventListener('hashchange', handleHashChange);
+window.addEventListener('beforeunload', function(event) {
+  if (!hasActivePaymentCheckout()) {
+    return;
+  }
+
+  event.preventDefault();
+  event.returnValue = getPaymentLeaveWarningMessage();
+});
 handleHashChange();
+
+      paymentCloseLinks.forEach(function(link) {
+        link.addEventListener('click', function(event) {
+          if (confirmLeavingActivePayment()) {
+            allowPaymentCheckoutExitOnce = true;
+            return;
+          }
+
+          event.preventDefault();
+          window.location.hash = '#payment-popup';
+        });
+      });
 
       const bottomSheets = document.querySelectorAll('#terms-popup, #contact-popup, #cookies-popup, #exemption-popup, #impressum-popup, #tour-private, #tour-sunset, #tour-custom');
       bottomSheets.forEach(function(sheet) {
@@ -3256,6 +3347,10 @@ function setPaymentPopupState(state, message) {
 
   if (paymentPolicySummary) {
     paymentPolicySummary.classList.remove('hidden');
+  }
+
+  if (paymentStayOpenWarning) {
+    paymentStayOpenWarning.classList.toggle('hidden', state === 'result');
   }
 
   if (state === 'loading') {
@@ -3722,6 +3817,7 @@ async function setupWalletButtons(sdk, checkoutData) {
 
 async function launchMyposEmbeddedCheckout(checkoutData) {
   currentMyposEmbeddedPayment = checkoutData;
+  paymentFlowActive = true;
   holdReleaseSuppressed = true;
   window.location.hash = '#payment-popup';
   setPaymentPopupState('loading');
@@ -3855,6 +3951,7 @@ async function handlePaymentFrameResult(status, detailMessage) {
   const confirmationEmailStatus = detailPayload?.confirmationEmailStatus || '';
 
   stopHoldCountdown();
+  paymentFlowActive = false;
 
   if (!paid) {
     await releaseUnpaidPaymentReservation();
@@ -3880,6 +3977,10 @@ async function handlePaymentFrameResult(status, detailMessage) {
 
   if (paymentPolicySummary) {
     paymentPolicySummary.classList.add('hidden');
+  }
+
+  if (paymentStayOpenWarning) {
+    paymentStayOpenWarning.classList.add('hidden');
   }
 
   if (paymentAmountSummary) {
@@ -3956,6 +4057,7 @@ async function handlePaymentFrameResult(status, detailMessage) {
       reviewPayButton.textContent = 'Opening...';
       reviewPayButton.classList.add('opacity-70', 'pointer-events-none');
 
+      paymentFlowActive = true;
       holdReleaseSuppressed = true;
       setPaymentPopupState('loading');
       window.location.hash = '#payment-popup';
@@ -3965,6 +4067,7 @@ async function handlePaymentFrameResult(status, detailMessage) {
       reviewPayButton.textContent = originalText;
       reviewPayButton.classList.remove('opacity-70', 'pointer-events-none');
     } catch (error) {
+      paymentFlowActive = false;
       holdReleaseSuppressed = false;
       reviewPayButton.disabled = false;
       reviewPayButton.textContent = originalText;
