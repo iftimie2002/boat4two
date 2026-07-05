@@ -383,14 +383,18 @@ async function applyConfirmationEmailPatch(env, accessToken, event, paymentData 
   }
 
   const privateProps = event?.extendedProperties?.private || {};
-  await updateCalendarEvent(env, accessToken, event.id, {
-    extendedProperties: {
-      private: {
-        ...privateProps,
-        ...emailResult.patchPrivateProps
+  try {
+    await updateCalendarEvent(env, accessToken, event.id, {
+      extendedProperties: {
+        private: {
+          ...privateProps,
+          ...emailResult.patchPrivateProps
+        }
       }
-    }
-  });
+    });
+  } catch (error) {
+    console.warn("Could not persist confirmation email metadata", error);
+  }
 
   return emailResult;
 }
