@@ -273,6 +273,13 @@ function formatIcsZoned(dateInput, timeZone) {
   return `${parts.year}${parts.month}${parts.day}T${parts.hour}${parts.minute}${parts.second}`;
 }
 
+function foldIcsLine(line, lineLength = 74) {
+  const value = String(line || "");
+  const chunks = value.match(new RegExp(`.{1,${lineLength}}`, "g")) || [""];
+
+  return chunks.map((chunk, index) => (index === 0 ? chunk : ` ${chunk}`)).join("\r\n");
+}
+
 function escapeIcsText(value) {
   return String(value || "")
     .replace(/\\/g, "\\\\")
@@ -703,6 +710,7 @@ function buildTourDetailsText(model) {
     "Add to your calendar",
     "",
     "A calendar file (.ics) is attached to this email so you can add your tour to Apple Calendar, Google Calendar, Outlook, or another calendar app.",
+    model.calendarAddUrl ? `Google Calendar link: ${model.calendarAddUrl}` : "",
     "",
     "If you need to request a cancellation or refund, please email us with your booking name, tour date, and payment reference.",
     "",
@@ -751,7 +759,8 @@ function buildTourDetailsHtml(model) {
     ),
     buildCardSection(
       "Add to your calendar",
-      `<p style="margin:0;font-size:14px;line-height:1.7;color:#4a3b34;">A calendar file (.ics) is attached to this email so you can add your tour to Apple Calendar, Google Calendar, Outlook, or another calendar app.</p>`,
+      `<p style="margin:0 0 14px;font-size:14px;line-height:1.7;color:#4a3b34;">A calendar file (.ics) is attached to this email so you can add your tour to Apple Calendar, Google Calendar, Outlook, or another calendar app.</p>
+      ${model.calendarAddUrl ? `<a href="${escapeHtml(model.calendarAddUrl)}" style="display:inline-block;padding:12px 18px;border-radius:999px;background:#e65e19;color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;">Add with Google Calendar</a>` : ""}`,
       "white"
     )
   ].join("");
@@ -805,6 +814,7 @@ function buildCalendarIcs(model) {
     "PRODID:-//Boat4Two//Tour Booking//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
+    `X-WR-TIMEZONE:${escapeIcsText(model.timeZone || BOOKING_TIMEZONE)}`,
     "BEGIN:VEVENT",
     `UID:${escapeIcsText(uid)}`,
     `DTSTAMP:${formatIcsUtc(new Date())}`,
@@ -817,7 +827,40 @@ function buildCalendarIcs(model) {
     "END:VEVENT",
     "END:VCALENDAR",
     ""
-  ].filter(Boolean).join("\r\n");
+  ].filter(Boolean).map((line) => foldIcsLine(line)).join("\r\n");
+}
+
+function buildCalendarAddUrl(model) {
+  if (!model.startIso || !model.endIso) {
+    return "";
+  }
+
+  const details = [
+    `Booking: ${model.tourLabel}`,
+    model.dateLabel ? `Date: ${model.dateLabel}` : "",
+    model.timeLabel ? `Time: ${model.timeLabel}` : "",
+    model.durationLabel ? `Duration: ${model.durationLabel}` : "",
+    `Guests: ${model.guestCount} people`,
+    model.paymentReference ? `Payment reference: ${model.paymentReference}` : "",
+    "",
+    "Meeting point:",
+    model.meetingPointName,
+    model.meetingPointAddress,
+    model.meetingPointMapsUrl,
+    "",
+    "Please arrive 10 to 15 minutes early and go to the Ferry Boat Booth."
+  ].filter(Boolean).join("\n");
+
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: model.tourLabel || "Boat4Two tour",
+    dates: `${formatIcsUtc(model.startIso)}/${formatIcsUtc(model.endIso)}`,
+    details,
+    location: `${model.meetingPointName}, ${model.meetingPointAddress}`,
+    ctz: model.timeZone || BOOKING_TIMEZONE
+  });
+
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
 function buildPaymentConfirmationPayload(model) {
@@ -829,10 +872,18 @@ function buildPaymentConfirmationPayload(model) {
 }
 
 function buildTourDetailsPayload(model) {
+  const calendarAddUrl = buildCalendarAddUrl(model);
+
   return {
     subject: buildTourDetailsSubject(),
-    html: buildTourDetailsHtml(model),
-    text: buildTourDetailsText(model),
+    html: buildTourDetailsHtml({
+      ...model,
+      calendarAddUrl
+    }),
+    text: buildTourDetailsText({
+      ...model,
+      calendarAddUrl
+    }),
     attachments: [
       {
         filename: buildCalendarFilename(model),

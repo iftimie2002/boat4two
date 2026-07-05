@@ -3997,12 +3997,18 @@ async function handlePaymentFrameResult(status, detailMessage) {
   }
 
   if (paymentResultMessage) {
+    let successMessage = 'Your payment was completed successfully. Your booking is confirmed and your confirmation emails are being sent now.';
+
+    if (confirmationEmailStatus === 'sent') {
+      successMessage = 'Your payment was completed successfully and your confirmation emails are on their way.';
+    } else if (confirmationEmailStatus === 'partial') {
+      successMessage = 'Your payment was completed successfully. Your booking is confirmed, and we are still preparing your tour details email.';
+    } else if (confirmationEmailStatus === 'failed' || confirmationEmailStatus === 'missing_event') {
+      successMessage = 'Your payment was completed successfully. Your booking is confirmed, but we could not send the confirmation email automatically. Please contact us on WhatsApp or email us so we can send it manually.';
+    }
+
     paymentResultMessage.textContent = paid
-      ? (confirmationEmailStatus === 'sent'
-        ? 'Your payment was completed successfully and your confirmation emails are on their way.'
-        : (confirmationEmailStatus === 'partial'
-          ? 'Your payment was completed successfully. Your booking is confirmed, and we are still preparing your tour details email.'
-          : 'Your payment was completed successfully. Your booking is confirmed, but we could not send the confirmation email automatically. Please contact us on WhatsApp or email us so we can send it manually.'))
+      ? successMessage
       : (safeDetailMessage
         ? `Your payment was not completed, so your booking was not confirmed. myPOS detail: ${safeDetailMessage}`
         : 'Your payment was not completed, so your booking was not confirmed.');
@@ -4028,7 +4034,7 @@ async function handlePaymentFrameResult(status, detailMessage) {
           const data = event.data || {};
 
           if (data.type === 'boat4two-payment-result') {
-            handlePaymentFrameResult(data.status);
+            handlePaymentFrameResult(data.status, data);
           }
         });
 
@@ -4041,7 +4047,7 @@ async function handlePaymentFrameResult(status, detailMessage) {
             const data = JSON.parse(event.newValue);
 
             if (data.type === 'boat4two-payment-result') {
-              handlePaymentFrameResult(data.status);
+              handlePaymentFrameResult(data.status, data);
             }
           } catch (error) {
             // ignore
