@@ -28,3 +28,22 @@ test("myPOS deferred form uses the external button without changing payment para
   assert.match(source, /frame\.setAttribute\('scrolling', 'no'\)/);
   assert.match(source, /checkoutData\.paymentParams/);
 });
+
+test("booking actions keep a full-height touch target inside scrollable dialogs", () => {
+  assert.match(
+    source,
+    /\.booking-action \{[\s\S]*?flex-shrink: 0;[\s\S]*?min-height: 56px !important;/
+  );
+  assert.match(
+    source,
+    /class="[^"]*booking-action[^"]*"[^>]*id="calendar-continue-button"/
+  );
+  assert.match(
+    source,
+    /class="[^"]*booking-action[^"]*"[^>]*id="review-pay-button"/
+  );
+  assert.match(
+    source,
+    /class="[^"]*booking-action[^"]*"[^>]*id="payment-card-submit"/
+  );
+});

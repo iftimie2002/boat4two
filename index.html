@@ -164,6 +164,12 @@
         .dark .text-medium-contrast {
             color: #a3a3a3;
         }
+        .booking-action {
+          flex-shrink: 0;
+          min-height: 56px !important;
+          padding-bottom: 0.875rem;
+          padding-top: 0.875rem;
+        }
         #payment-wallet-section {
           box-shadow: 0 14px 32px rgba(15, 23, 42, 0.06);
         }
@@ -1510,7 +1516,7 @@
 </div>
 </label>
 </div>
-<a aria-disabled="true" class="inline-flex h-14 w-full items-center justify-center rounded-full bg-primary px-6 text-base font-black text-white shadow-lg transition-transform hover:scale-105 opacity-50 pointer-events-none" href="#" id="select-tour-next-btn">Check Available Dates</a>
+<a aria-disabled="true" class="booking-action inline-flex h-14 w-full items-center justify-center rounded-full bg-primary px-6 text-base font-black text-white shadow-lg transition-transform hover:scale-105 opacity-50 pointer-events-none" href="#" id="select-tour-next-btn">Check Available Dates</a>
 </div>
 </div>
 <div class="fixed inset-0 z-50 hidden items-start justify-center overflow-y-auto bg-black/50 p-4 backdrop-blur-sm animate-fadeIn sm:items-center" id="calendar-popup">
@@ -1568,7 +1574,7 @@
 <div class="rounded-2xl bg-primary/10 p-4 text-sm text-zinc-700 dark:text-zinc-300">
 <p data-request-summary>Select a tour to begin.</p>
 </div>
-<a aria-disabled="true" class="inline-flex h-14 w-full items-center justify-center rounded-full bg-primary px-6 text-base font-black text-white shadow-lg transition-transform hover:scale-105 opacity-50 pointer-events-none" href="#" id="calendar-continue-button">Continue</a>
+<a aria-disabled="true" class="booking-action inline-flex h-14 w-full items-center justify-center rounded-full bg-primary px-6 text-base font-black text-white shadow-lg transition-transform hover:scale-105 opacity-50 pointer-events-none" href="#" id="calendar-continue-button">Continue</a>
 </div>
 </div>
 <div class="fixed inset-0 z-50 hidden items-start justify-center overflow-y-auto bg-black/50 p-4 backdrop-blur-sm animate-fadeIn sm:items-center" id="details-popup">
@@ -1612,7 +1618,7 @@
 <textarea class="mt-1 block w-full rounded-xl border border-zinc-300 bg-background-light p-3 shadow-sm focus:border-primary focus:ring-primary dark:border-zinc-700 dark:bg-background-dark" id="booking-message" name="message" rows="4"></textarea>
 </div>
 <p class="text-sm text-zinc-600 dark:text-zinc-300">Planning something special? Tell us and we&apos;ll help tailor the experience where possible.</p>
-<button class="inline-flex h-14 w-full items-center justify-center rounded-full bg-primary px-6 text-base font-black text-white shadow-lg transition-transform hover:scale-105" type="submit">Check Availability &amp; Reserve</button>
+<button class="booking-action inline-flex h-14 w-full items-center justify-center rounded-full bg-primary px-6 text-base font-black text-white shadow-lg transition-transform hover:scale-105" type="submit">Check Availability &amp; Reserve</button>
 </form>
 </div>
 </div>
@@ -1648,10 +1654,10 @@ This slot is being held for you for <strong id="hold-countdown-timer">12:00</str
 <p>Your reservation time expired. Please choose a date and time again.</p>
 </div>
 <div class="flex flex-col gap-3">
-  <a class="inline-flex h-14 items-center justify-center rounded-full border border-zinc-300 px-6 text-base font-black text-zinc-900 transition-colors hover:border-primary hover:text-primary dark:border-zinc-700 dark:text-zinc-100" href="#details-popup">Edit Details</a>
+  <a class="booking-action inline-flex h-14 items-center justify-center rounded-full border border-zinc-300 px-6 text-base font-black text-zinc-900 transition-colors hover:border-primary hover:text-primary dark:border-zinc-700 dark:text-zinc-100" href="#details-popup">Edit Details</a>
 
   <button
-    class="inline-flex h-14 items-center justify-center rounded-full bg-primary px-6 text-base font-black text-white shadow-lg transition-transform hover:scale-105"
+    class="booking-action inline-flex h-14 items-center justify-center rounded-full bg-primary px-6 text-base font-black text-white shadow-lg transition-transform hover:scale-105"
     id="review-pay-button"
     type="button"
   >
@@ -1723,7 +1729,7 @@ This slot is being held for you for <strong id="hold-countdown-timer">12:00</str
 </div>
 <div class="fixed inset-x-3 z-[80] hidden" id="payment-card-submit-bar">
 <div class="mx-auto flex w-full max-w-2xl items-center gap-3 rounded-2xl border border-zinc-200 bg-white/95 p-3 shadow-2xl backdrop-blur dark:border-zinc-700 dark:bg-zinc-950/95">
-<button class="inline-flex h-14 flex-1 items-center justify-center rounded-xl bg-primary px-6 text-base font-black text-white shadow-lg transition-colors hover:bg-[#c74f14] disabled:cursor-wait disabled:opacity-70" id="payment-card-submit" type="button">Pay securely</button>
+<button class="booking-action inline-flex h-14 flex-1 items-center justify-center rounded-xl bg-primary px-6 text-base font-black text-white shadow-lg transition-colors hover:bg-[#c74f14] disabled:cursor-wait disabled:opacity-70" id="payment-card-submit" type="button">Pay securely</button>
 </div>
 </div>
 </div>
