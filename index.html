@@ -202,17 +202,26 @@
         #payment-popup {
           overscroll-behavior: contain;
         }
+        #payment-popup.payment-card-submit-active .payment-dialog {
+          padding-bottom: 7rem;
+        }
         #payment-popup .payment-dialog {
           -webkit-overflow-scrolling: touch;
           overscroll-behavior: contain;
         }
         #mypos-embedded-checkout {
-          -webkit-overflow-scrolling: touch;
-          overscroll-behavior: contain;
+          min-height: 720px;
+          overflow: visible;
         }
         #mypos-embedded-checkout iframe {
+          display: block;
+          height: 720px !important;
           min-height: 720px;
+          overflow: hidden !important;
           width: 100%;
+        }
+        #payment-card-submit-bar {
+          bottom: max(0.75rem, env(safe-area-inset-bottom));
         }
         @media (max-width: 640px) {
           #payment-popup {
@@ -223,13 +232,16 @@
             max-height: calc(100dvh - 1.5rem);
             padding-bottom: max(1rem, env(safe-area-inset-bottom));
           }
+          #payment-popup.payment-card-submit-active .payment-dialog {
+            padding-bottom: calc(7rem + env(safe-area-inset-bottom));
+          }
           #mypos-embedded-checkout {
-            max-height: calc(100dvh - 190px);
-            min-height: min(680px, calc(100dvh - 190px));
-            overflow-y: auto;
+            min-height: 760px;
+            overflow: visible;
           }
           #mypos-embedded-checkout iframe {
-            min-height: 780px;
+            height: 760px !important;
+            min-height: 760px;
           }
         }
     </style>
@@ -1691,7 +1703,7 @@ This slot is being held for you for <strong id="hold-countdown-timer">12:00</str
 </div>
 <p class="hidden text-center text-xs text-zinc-500 dark:text-zinc-400" id="payment-wallet-status"></p>
 </div>
-<div class="min-h-[620px] w-full overflow-y-auto rounded-xl bg-white" id="mypos-embedded-checkout"></div>
+<div class="min-h-[620px] w-full overflow-visible rounded-xl bg-white" id="mypos-embedded-checkout"></div>
 <div class="space-y-3 rounded-2xl border border-zinc-200 bg-white p-4 text-sm leading-relaxed text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300" id="payment-policy-summary">
 <div class="flex items-start gap-3">
 <span class="material-symbols-outlined mt-0.5 text-primary">verified_user</span>
@@ -1707,6 +1719,11 @@ This slot is being held for you for <strong id="hold-countdown-timer">12:00</str
 <div class="flex flex-col gap-3 text-center sm:flex-row sm:justify-center">
 <a class="hidden h-12 items-center justify-center rounded-full bg-primary px-6 text-sm font-bold text-white shadow-lg transition-transform hover:scale-105" href="/" id="payment-result-primary">Back to Home</a>
 <a class="inline-flex h-12 items-center justify-center rounded-full border border-zinc-300 px-6 text-sm font-bold text-zinc-900 transition-colors hover:border-primary hover:text-primary dark:border-zinc-700 dark:text-zinc-100" href="https://wa.me/351932015013?text=Hello%20Boat4Two%2C%20I%20need%20help%20with%20my%20booking%20payment." rel="noopener noreferrer" target="_blank">WhatsApp</a>
+</div>
+</div>
+<div class="fixed inset-x-3 z-[80] hidden" id="payment-card-submit-bar">
+<div class="mx-auto flex w-full max-w-2xl items-center gap-3 rounded-2xl border border-zinc-200 bg-white/95 p-3 shadow-2xl backdrop-blur dark:border-zinc-700 dark:bg-zinc-950/95">
+<button class="inline-flex h-14 flex-1 items-center justify-center rounded-xl bg-primary px-6 text-base font-black text-white shadow-lg transition-colors hover:bg-[#c74f14] disabled:cursor-wait disabled:opacity-70" id="payment-card-submit" type="button">Pay securely</button>
 </div>
 </div>
 </div>
@@ -1897,7 +1914,10 @@ This slot is being held for you for <strong id="hold-countdown-timer">12:00</str
       const paymentResultTitle = document.getElementById('payment-result-title');
       const paymentResultMessage = document.getElementById('payment-result-message');
       const paymentResultPrimary = document.getElementById('payment-result-primary');
+      const paymentPopup = document.getElementById('payment-popup');
       const myposEmbeddedCheckout = document.getElementById('mypos-embedded-checkout');
+      const paymentCardSubmitBar = document.getElementById('payment-card-submit-bar');
+      const paymentCardSubmitButton = document.getElementById('payment-card-submit');
       const paymentWalletSection = document.getElementById('payment-wallet-section');
       const paymentApplePayButton = document.getElementById('payment-apple-pay-button');
       const tourImageFrames = Array.from(document.querySelectorAll('.tour-image-frame'));
@@ -2056,6 +2076,7 @@ let isScrollLocked = false;
 let currentCalendarMonth = null;
 let selectedCalendarDate = '';
 let currentMyposEmbeddedPayment = null;
+let currentMyposPaymentForm = null;
 let paymentFlowActive = false;
 let paymentCancellationInProgress = false;
 let allowPaymentCheckoutExitOnce = false;
@@ -2109,6 +2130,7 @@ const BOOKING_DATA_STORAGE_KEY = isTestPriceMode ? 'boat4two-booking-data-testpr
         activeHold = null;
         bookingData = {};
         currentMyposEmbeddedPayment = null;
+        currentMyposPaymentForm = null;
         holdReleaseSuppressed = false;
         persistBookingFlowState();
       }
@@ -2884,6 +2906,7 @@ async function releaseUnpaidPaymentReservation() {
   paymentCancellationInProgress = true;
   paymentFlowActive = false;
   currentMyposEmbeddedPayment = null;
+  currentMyposPaymentForm = null;
   holdReleaseSuppressed = false;
 
   try {
@@ -3358,6 +3381,20 @@ handleHashChange();
       }
 
 function setPaymentPopupState(state, message) {
+  const showCardSubmit = state === 'ready' && Boolean(currentMyposPaymentForm);
+
+  if (paymentPopup) {
+    paymentPopup.classList.toggle('payment-card-submit-active', showCardSubmit);
+  }
+
+  if (paymentCardSubmitBar) {
+    paymentCardSubmitBar.classList.toggle('hidden', !showCardSubmit);
+  }
+
+  if (paymentCardSubmitButton) {
+    paymentCardSubmitButton.disabled = false;
+  }
+
   if (paymentFrameLoading) {
     paymentFrameLoading.classList.toggle('hidden', state !== 'loading' && state !== 'error');
     paymentFrameLoading.textContent = message || (state === 'loading'
@@ -3860,6 +3897,7 @@ async function setupWalletButtons(sdk, checkoutData) {
 
 async function launchMyposEmbeddedCheckout(checkoutData) {
   currentMyposEmbeddedPayment = checkoutData;
+  currentMyposPaymentForm = null;
   paymentFlowActive = true;
   holdReleaseSuppressed = true;
   window.location.hash = '#payment-popup';
@@ -3886,6 +3924,11 @@ async function launchMyposEmbeddedCheckout(checkoutData) {
     },
     onMessageReceived: function(messages) {
       console.log('myPOS embedded checkout message', messages);
+      if (paymentCardSubmitButton && paymentFlowActive) {
+        paymentCardSubmitButton.disabled = false;
+        paymentCardSubmitButton.textContent =
+          paymentCardSubmitButton.dataset.readyLabel || 'Pay securely';
+      }
     }
   };
   const customization = {
@@ -3900,16 +3943,32 @@ async function launchMyposEmbeddedCheckout(checkoutData) {
     payButtonFontSize: '15px'
   };
 
-  await sdk.createPayment(
+  currentMyposPaymentForm = await sdk.createPaymentForm(
     'mypos-embedded-checkout',
     checkoutData.paymentParams,
     callbacks,
     customization
   );
 
+  myposEmbeddedCheckout.querySelectorAll('iframe').forEach(function(frame) {
+    frame.setAttribute('scrolling', 'no');
+    frame.setAttribute('title', 'Secure myPOS card payment form');
+  });
+
   if (paymentFrameLoading) {
     paymentFrameLoading.classList.add('hidden');
   }
+
+  if (paymentCardSubmitButton) {
+    const amount = Number(checkoutData.paymentParams?.amount);
+    const currency = String(checkoutData.paymentParams?.currency || 'EUR').toUpperCase();
+    paymentCardSubmitButton.textContent = Number.isFinite(amount) && amount > 0
+      ? `Pay ${amount.toFixed(2)} ${currency} securely`
+      : 'Pay securely';
+    paymentCardSubmitButton.dataset.readyLabel = paymentCardSubmitButton.textContent;
+  }
+
+  setPaymentPopupState('ready');
 
   setupWalletButtons(sdk, checkoutData).catch(function(error) {
     console.warn('myPOS wallet buttons could not load', error);
@@ -3995,6 +4054,7 @@ async function handlePaymentFrameResult(status, detailMessage) {
 
   stopHoldCountdown();
   paymentFlowActive = false;
+  currentMyposPaymentForm = null;
 
   if (!paid) {
     await releaseUnpaidPaymentReservation();
@@ -4008,6 +4068,14 @@ async function handlePaymentFrameResult(status, detailMessage) {
 
   if (paymentFrameLoading) {
     paymentFrameLoading.classList.add('hidden');
+  }
+
+  if (paymentPopup) {
+    paymentPopup.classList.remove('payment-card-submit-active');
+  }
+
+  if (paymentCardSubmitBar) {
+    paymentCardSubmitBar.classList.add('hidden');
   }
 
   if (paymentWalletSection) {
@@ -4125,6 +4193,32 @@ async function handlePaymentFrameResult(status, detailMessage) {
     }
   });
 }
+
+        if (paymentCardSubmitButton) {
+          paymentCardSubmitButton.addEventListener('click', async function() {
+            if (!currentMyposPaymentForm || typeof currentMyposPaymentForm.processPayment !== 'function') {
+              alert('The secure card form is not ready yet. Please wait a moment and try again.');
+              return;
+            }
+
+            const originalText = paymentCardSubmitButton.textContent;
+
+            try {
+              paymentCardSubmitButton.disabled = true;
+              paymentCardSubmitButton.textContent = 'Processing payment...';
+              await Promise.resolve(currentMyposPaymentForm.processPayment());
+              if (paymentFlowActive && currentMyposPaymentForm) {
+                paymentCardSubmitButton.disabled = false;
+                paymentCardSubmitButton.textContent = originalText;
+              }
+            } catch (error) {
+              console.error('myPOS card payment could not start', error);
+              paymentCardSubmitButton.disabled = false;
+              paymentCardSubmitButton.textContent = originalText;
+              alert('Please check your card details and try again.');
+            }
+          });
+        }
 
         
     });
