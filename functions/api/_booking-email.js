@@ -1,3 +1,5 @@
+import { getActivePartner } from "./_referrals.js";
+
 const BOOKING_TIMEZONE = "Europe/Lisbon";
 const DEFAULT_FROM_EMAIL = "reservas.boat4two@gmail.com";
 const DEFAULT_REPLY_TO_EMAIL = "reservas.boat4two@gmail.com";
@@ -527,6 +529,11 @@ function buildBookingEmailModel(env, event, paymentData = {}) {
     paymentData.amount || privateProps.paymentAmount,
     paymentData.currency || privateProps.paymentCurrency || "EUR"
   );
+  const paymentAmount = cleanText(paymentData.amount || privateProps.paymentAmount, 40);
+  const paymentCurrency = cleanText(
+    paymentData.currency || privateProps.paymentCurrency || "EUR",
+    10
+  ).toUpperCase();
   const paymentReference = cleanText(
     paymentData.paymentReference || privateProps.paymentReference,
     120
@@ -545,6 +552,12 @@ function buildBookingEmailModel(env, event, paymentData = {}) {
 
   return {
     source: cleanText(privateProps.source, 80),
+    salesChannel: cleanText(privateProps.salesChannel, 80),
+    referralPartnerId: cleanText(privateProps.referralPartnerId, 80),
+    referralPartnerName: cleanText(privateProps.referralPartnerName, 120),
+    referralPartnerType: cleanText(privateProps.referralPartnerType, 80),
+    referralCapturedAt: cleanText(privateProps.referralCapturedAt, 80),
+    referralAttributionModel: cleanText(privateProps.referralAttributionModel, 80),
     gygBookingReference: cleanText(privateProps.gygBookingReference, 120),
     gygActivityReference: cleanText(privateProps.gygActivityReference, 120),
     rawTour,
@@ -557,6 +570,8 @@ function buildBookingEmailModel(env, event, paymentData = {}) {
     tourLabel,
     dateLabel,
     timeLabel,
+    paymentAmount,
+    paymentCurrency,
     amountLabel,
     paymentReference,
     transactionReference,
@@ -895,8 +910,19 @@ function buildTourDetailsPayload(model) {
   };
 }
 
+function isPartnerReferralBooking(model) {
+  return (
+    model.source !== "getyourguide" &&
+    model.salesChannel === "partner_referral" &&
+    Boolean(model.referralPartnerId && model.referralPartnerName)
+  );
+}
+
 function buildAdminNotificationSubject(model) {
   const sourceLabel = model.source === "getyourguide" ? "GetYourGuide" : "Boat4Two";
+  if (isPartnerReferralBooking(model)) {
+    return `New ${model.referralPartnerName} referral booking confirmed - ${model.tourLabel}`;
+  }
   return `New ${sourceLabel} booking confirmed - ${model.tourLabel}`;
 }
 
@@ -909,6 +935,13 @@ function buildAdminNotificationText(model) {
     "Booking details",
     "",
     `Source: ${sourceLabel}`,
+    isPartnerReferralBooking(model) ? "Sales channel: Partner Referral" : "",
+    isPartnerReferralBooking(model)
+      ? `Referral partner: ${model.referralPartnerName}`
+      : "",
+    isPartnerReferralBooking(model)
+      ? `Referral ID: ${model.referralPartnerId}`
+      : "",
     `Tour: ${model.tourLabel}`,
     model.dateLabel ? `Date: ${model.dateLabel}` : "",
     model.timeLabel ? `Time: ${model.timeLabel}` : "",
@@ -947,6 +980,9 @@ function buildAdminNotificationHtml(model) {
       `
         <p style="margin:0 0 8px;font-size:16px;font-weight:700;color:#211611;">${escapeHtml(model.tourLabel)}</p>
         <p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Source:</strong> ${escapeHtml(sourceLabel)}</p>
+        ${isPartnerReferralBooking(model) ? `<p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Sales channel:</strong> Partner Referral</p>` : ""}
+        ${isPartnerReferralBooking(model) ? `<p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Referral partner:</strong> ${escapeHtml(model.referralPartnerName)}</p>` : ""}
+        ${isPartnerReferralBooking(model) ? `<p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Referral ID:</strong> ${escapeHtml(model.referralPartnerId)}</p>` : ""}
         ${model.dateLabel ? `<p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Date:</strong> ${escapeHtml(model.dateLabel)}</p>` : ""}
         ${model.timeLabel ? `<p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Time:</strong> ${escapeHtml(model.timeLabel)}</p>` : ""}
         ${model.durationLabel ? `<p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Duration:</strong> ${escapeHtml(model.durationLabel)}</p>` : ""}
@@ -996,6 +1032,97 @@ function buildAdminNotificationPayload(model) {
   };
 }
 
+function calculatePartnerCommission(amount, currency, commissionRateBasisPoints) {
+  const amountText = String(amount ?? "").trim();
+  const amountNumber = Number(amountText);
+  const rateNumber = Number(commissionRateBasisPoints);
+
+  if (
+    !/^\d+(?:\.\d{1,2})?$/.test(amountText) ||
+    !Number.isFinite(amountNumber) ||
+    amountNumber < 0 ||
+    !Number.isInteger(rateNumber) ||
+    rateNumber < 0 ||
+    rateNumber > 10000
+  ) {
+    return null;
+  }
+
+  const totalMinorUnits = Math.round(amountNumber * 100);
+  const commissionMinorUnits = Math.round(totalMinorUnits * rateNumber / 10000);
+
+  return {
+    amount: (commissionMinorUnits / 100).toFixed(2),
+    amountLabel: formatMoney(commissionMinorUnits / 100, currency || "EUR"),
+    ratePercent: rateNumber / 100
+  };
+}
+
+function buildPartnerReferralNotificationPayload(model, partnerOverride = null) {
+  if (!isPartnerReferralBooking(model)) return null;
+
+  const partner = partnerOverride || getActivePartner(model.referralPartnerId);
+  if (!partner || partner.id !== model.referralPartnerId) return null;
+
+  const recipient = cleanText(partner.notificationEmail, 200);
+  const commission = calculatePartnerCommission(
+    model.paymentAmount,
+    model.paymentCurrency,
+    partner.commissionRateBasisPoints
+  );
+  if (!recipient || !commission || !model.amountLabel) return null;
+
+  const rateLabel = `${commission.ratePercent.toLocaleString("en-GB", {
+    maximumFractionDigits: 2
+  })}%`;
+  const text = [
+    "Dear partner,",
+    "",
+    "We got another booking through your referral.",
+    "",
+    "Booking details",
+    "",
+    `Tour: ${model.tourLabel}`,
+    model.dateLabel ? `Date: ${model.dateLabel}` : "",
+    model.timeLabel ? `Time: ${model.timeLabel}` : "",
+    `Total booking: ${model.amountLabel}`,
+    `Your commission (${rateLabel}): ${commission.amountLabel}`,
+    model.bookingReference ? `Booking reference: ${model.bookingReference}` : "",
+    "",
+    "Thank you for working with Boat4Two.",
+    "",
+    "Kind regards,",
+    "Boat4Two"
+  ].filter(Boolean).join("\n");
+  const sectionsHtml = buildCardSection(
+    "Referral booking",
+    `
+      <p style="margin:0 0 8px;font-size:16px;font-weight:700;color:#211611;">${escapeHtml(model.tourLabel)}</p>
+      ${model.dateLabel ? `<p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Date:</strong> ${escapeHtml(model.dateLabel)}</p>` : ""}
+      ${model.timeLabel ? `<p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Time:</strong> ${escapeHtml(model.timeLabel)}</p>` : ""}
+      <p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Total booking:</strong> ${escapeHtml(model.amountLabel)}</p>
+      <p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Your commission (${escapeHtml(rateLabel)}):</strong> ${escapeHtml(commission.amountLabel)}</p>
+      ${model.bookingReference ? `<p style="margin:0;font-size:14px;color:#4a3b34;"><strong>Booking reference:</strong> ${escapeHtml(model.bookingReference)}</p>` : ""}
+    `
+  );
+
+  return {
+    to: recipient,
+    subject: `Another booking through your ${partner.displayName} referral`,
+    text,
+    html: buildEmailShell({
+      title: "Another referral booking",
+      introHtml: "<p style=\"margin:0 0 12px;\">Dear partner,</p><p style=\"margin:0;\">We got another booking through your referral.</p>",
+      sectionsHtml,
+      footerHtml: "<p style=\"margin:0;\">Thank you for working with Boat4Two.</p>"
+    }),
+    commissionAmount: commission.amount,
+    commissionAmountLabel: commission.amountLabel,
+    commissionCurrency: model.paymentCurrency || "EUR",
+    commissionRateBasisPoints: String(partner.commissionRateBasisPoints)
+  };
+}
+
 function buildSendPayload(model, content, overrides = {}) {
   const payload = {
     to: overrides.to || model.customerEmail,
@@ -1012,7 +1139,7 @@ function buildSendPayload(model, content, overrides = {}) {
     text: content.text
   };
 
-  if (model.bccEmail) {
+  if (model.bccEmail && overrides.includeBcc !== false) {
     payload.bcc = model.bccEmail;
   }
 
@@ -1033,6 +1160,14 @@ function buildEmailPatchResult(status, patchPrivateProps, shouldPatch) {
 
 export async function maybeSendBookingConfirmationEmail(env, event, paymentData = {}) {
   const privateProps = event?.extendedProperties?.private || {};
+  const isPaidBooking =
+    privateProps.bookingType === "paid" ||
+    privateProps.paymentStatus === "paid" ||
+    String(event?.summary || "").startsWith("PAID - ");
+  const partnerNotificationAlreadySentAt = cleanText(
+    privateProps.partnerReferralNotificationEmailSentAt,
+    80
+  );
   const paymentConfirmationAlreadySentAt =
     cleanText(privateProps.paymentConfirmationEmailSentAt, 80) ||
     cleanText(privateProps.bookingConfirmationEmailSentAt, 80);
@@ -1044,6 +1179,45 @@ export async function maybeSendBookingConfirmationEmail(env, event, paymentData 
   const model = buildBookingEmailModel(env, event, paymentData);
 
   const patchPrivateProps = {};
+
+  if (isPaidBooking && isPartnerReferralBooking(model) && !partnerNotificationAlreadySentAt) {
+    const partnerNotification = buildPartnerReferralNotificationPayload(model);
+
+    if (!partnerNotification) {
+      patchPrivateProps.partnerReferralNotificationEmailStatus = "failed";
+      patchPrivateProps.partnerReferralNotificationEmailError =
+        "The referral partner, recipient, commission rate, or paid amount is invalid.";
+    } else {
+      try {
+        const partnerResult = await sendBookingEmail(
+          env,
+          buildSendPayload(model, partnerNotification, {
+            to: partnerNotification.to,
+            includeBcc: false
+          })
+        );
+        patchPrivateProps.partnerReferralNotificationEmailStatus = "sent";
+        patchPrivateProps.partnerReferralNotificationEmailSentAt = new Date().toISOString();
+        patchPrivateProps.partnerReferralNotificationEmailError = "";
+        patchPrivateProps.partnerReferralNotificationEmailMessageId = cleanText(
+          partnerResult?.messageId,
+          200
+        );
+        patchPrivateProps.partnerReferralCommissionAmount = partnerNotification.commissionAmount;
+        patchPrivateProps.partnerReferralCommissionCurrency =
+          partnerNotification.commissionCurrency;
+        patchPrivateProps.partnerReferralCommissionRateBasisPoints =
+          partnerNotification.commissionRateBasisPoints;
+      } catch (error) {
+        patchPrivateProps.partnerReferralNotificationEmailStatus = "failed";
+        patchPrivateProps.partnerReferralNotificationEmailError = cleanText(
+          error?.message || "Unknown partner notification email error",
+          300
+        );
+      }
+    }
+  }
+
   let paymentConfirmationStatus = paymentConfirmationAlreadySentAt ? "already_sent" : "pending";
   let tourDetailsStatus = tourDetailsAlreadySentAt ? "already_sent" : "pending";
   let adminNotificationStatus = adminNotificationAlreadySentAt ? "already_sent" : "pending";
@@ -1296,3 +1470,13 @@ async function sendBookingEmailWithGmail(env, sendPayload) {
     messageId: cleanText(data.id, 200)
   };
 }
+
+// Pure builders are exported so referral visibility boundaries can be regression-tested.
+export {
+  buildAdminNotificationPayload,
+  buildBookingEmailModel,
+  buildPartnerReferralNotificationPayload,
+  buildPaymentConfirmationPayload,
+  buildTourDetailsPayload,
+  calculatePartnerCommission
+};

@@ -7,6 +7,11 @@ import {
 } from "./_google.js";
 import { bestEffortCleanupStaleBookingArtifacts } from "./_stale-bookings.js";
 import { notifyGyGAvailabilityForTourDate } from "./gyg/_notify_outbound.js";
+import {
+  buildReferralDescriptionLines,
+  buildReferralPrivateProperties,
+  getReferralFromRequest
+} from "./_referrals.js";
 
 const BOOKING_RULES = {
   timezone: "Europe/Lisbon",
@@ -390,6 +395,10 @@ export async function onRequestPost(context) {
     const message = cleanText(body.message, 1000);
     const testMode = parseBooleanFlag(body.testMode);
 
+    // The signed HttpOnly cookie, not booking form data, is authoritative.
+    // Any referral error fails open so it cannot block a valid booking.
+    const referral = await getReferralFromRequest(request, env);
+
     if (!hasGoogleCalendarCredentials(env)) {
       return Response.json(
         { ok: false, error: "Missing required Google environment variables." },
@@ -493,7 +502,8 @@ export async function onRequestPost(context) {
           `Phone: ${phone}`,
           `Country: ${country}`,
           occasion ? `Occasion: ${occasion}` : "",
-          message ? `Notes: ${message}` : ""
+          message ? `Notes: ${message}` : "",
+          ...buildReferralDescriptionLines(referral)
         ].filter(Boolean).join("\n"),
         start: {
           dateTime: slotStart.toISOString(),
@@ -519,12 +529,17 @@ export async function onRequestPost(context) {
             customerOccasion: occasion,
             customerMessage: message,
             testBookingMode: testMode ? "true" : "false",
-            testPaymentAmount: testMode ? "0.10" : ""
+            testPaymentAmount: testMode ? "0.10" : "",
+            ...buildReferralPrivateProperties(referral)
           }
         }
       };
 
       const createdEvent = await createCalendarEvent(env, accessToken, eventBody);
+
+      if (referral) {
+        console.info(`[booking] referral_attached partner=${referral.partner.id}`);
+      }
 
       notifyGyGAvailabilityForTourDate(env, {
         accessToken,

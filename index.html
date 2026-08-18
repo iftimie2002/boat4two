@@ -1739,6 +1739,48 @@ This slot is being held for you for <strong id="hold-countdown-timer">12:00</str
 
       const isTestPriceMode = /^\/testprice\/?$/i.test(window.location.pathname)
         || new URLSearchParams(window.location.search).get('testprice') === '1';
+      const reservedReferralPaths = new Set([
+        'api',
+        'testprice',
+        'index.html',
+        'payment-success.html',
+        'payment-cancel.html',
+        'favicon.ico',
+        'apple-touch-icon.png',
+        'apple-touch-icon-precomposed.png'
+      ]);
+
+      async function claimReferralFromLandingPath() {
+        const pathParts = window.location.pathname.split('/').filter(Boolean);
+        if (pathParts.length !== 1) return;
+
+        const slug = pathParts[0].toLowerCase();
+        if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(slug) || reservedReferralPaths.has(slug)) return;
+
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(function() {
+          controller.abort();
+        }, 2500);
+
+        try {
+          await fetch('/api/referral-claim', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            credentials: 'same-origin',
+            cache: 'no-store',
+            signal: controller.signal,
+            body: JSON.stringify({ slug: slug })
+          });
+        } catch (_) {
+          // Referral tracking is optional and must never interrupt the site or booking flow.
+        } finally {
+          window.clearTimeout(timeoutId);
+        }
+      }
+
+      const referralClaimPromise = claimReferralFromLandingPath();
       const TEST_PRICE_TOTAL_AMOUNT = 0.10;
       const TEST_PRICE_PER_PERSON_AMOUNT = TEST_PRICE_TOTAL_AMOUNT / 2;
 
@@ -2733,6 +2775,7 @@ const BOOKING_DATA_STORAGE_KEY = isTestPriceMode ? 'boat4two-booking-data-testpr
       }
 
 async function createHoldFromSelection(formValues) {
+  await referralClaimPromise;
   const selection = buildSelectionData();
   const selectedTimeSlot = getSelectedTimeSlot();
 
