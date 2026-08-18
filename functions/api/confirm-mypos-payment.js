@@ -5,6 +5,10 @@ import {
 } from "./_google.js";
 import { maybeSendBookingConfirmationEmail } from "./_booking-email.js";
 import { notifyGyGAvailabilityForEvents } from "./gyg/_notify_outbound.js";
+import {
+  getRequestAnalyticsContext,
+  queueAnalyticsEvent
+} from "./_analytics.js";
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -609,6 +613,17 @@ export async function onRequestPost(context) {
         paymentTransactionRef: trnref
       });
 
+      queueAnalyticsEvent(context, {
+        ...getRequestAnalyticsContext(request),
+        eventName: "payment_paid",
+        sessionId: privateProps.analyticsSessionId || "",
+        holdId: privateProps.holdId || holdId,
+        tour: privateProps.tour || "",
+        amountCents: Math.round(Number(amount || expectedAmount || 0) * 100),
+        currency,
+        isTest: privateProps.testPaymentMode === "true" || privateProps.testBookingMode === "true"
+      });
+
       return json({
         ok: true,
         paymentStatus: "paid",
@@ -620,6 +635,7 @@ export async function onRequestPost(context) {
     }
 
     if ((paymentStatus === 3 || paymentStatus === 4) && event && !isPaidEvent(event)) {
+      const privateProps = event.extendedProperties?.private || {};
       const deletedEvents = [{
         tour: event?.extendedProperties?.private?.tour || "",
         date: event?.extendedProperties?.private?.date || "",
@@ -632,6 +648,17 @@ export async function onRequestPost(context) {
         deletedEvents
       }).catch((error) => {
         console.warn("GYG availability notify after declined payment failed", error);
+      });
+
+      queueAnalyticsEvent(context, {
+        ...getRequestAnalyticsContext(request),
+        eventName: "payment_declined",
+        sessionId: privateProps.analyticsSessionId || "",
+        holdId: privateProps.holdId || holdId,
+        tour: privateProps.tour || "",
+        amountCents: Math.round(Number(privateProps.paymentAmount || 0) * 100),
+        currency: privateProps.paymentCurrency || BOOKING_RULES.currency,
+        isTest: privateProps.testPaymentMode === "true" || privateProps.testBookingMode === "true"
       });
     }
 

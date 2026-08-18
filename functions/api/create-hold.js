@@ -12,6 +12,11 @@ import {
   buildReferralPrivateProperties,
   getReferralFromRequest
 } from "./_referrals.js";
+import {
+  getAnalyticsSessionId,
+  getRequestAnalyticsContext,
+  queueAnalyticsEvent
+} from "./_analytics.js";
 
 const BOOKING_RULES = {
   timezone: "Europe/Lisbon",
@@ -394,6 +399,7 @@ export async function onRequestPost(context) {
     const occasion = cleanText(body.occasion, 200);
     const message = cleanText(body.message, 1000);
     const testMode = parseBooleanFlag(body.testMode);
+    const analyticsSessionId = getAnalyticsSessionId(body.analyticsSessionId);
 
     // The signed HttpOnly cookie, not booking form data, is authoritative.
     // Any referral error fails open so it cannot block a valid booking.
@@ -530,6 +536,7 @@ export async function onRequestPost(context) {
             customerMessage: message,
             testBookingMode: testMode ? "true" : "false",
             testPaymentAmount: testMode ? "0.10" : "",
+            analyticsSessionId,
             ...buildReferralPrivateProperties(referral)
           }
         }
@@ -540,6 +547,16 @@ export async function onRequestPost(context) {
       if (referral) {
         console.info(`[booking] referral_attached partner=${referral.partner.id}`);
       }
+
+      queueAnalyticsEvent(context, {
+        ...getRequestAnalyticsContext(request),
+        eventName: "hold_created",
+        sessionId: analyticsSessionId,
+        holdId,
+        tour,
+        partnerId: referral?.partner?.id || "",
+        isTest: testMode || occasion.toLowerCase() === "automation"
+      });
 
       notifyGyGAvailabilityForTourDate(env, {
         accessToken,

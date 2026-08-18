@@ -4,6 +4,10 @@ import {
   getMissingGoogleCalendarConfigNames
 } from "./_google.js";
 import { bestEffortCleanupStaleBookingArtifacts } from "./_stale-bookings.js";
+import {
+  getRequestAnalyticsContext,
+  queueAnalyticsEvent
+} from "./_analytics.js";
 
 function htmlResponse(html, status = 200) {
   return new Response(html, {
@@ -914,6 +918,17 @@ export async function onRequestPost(context) {
           paymentPendingExpiresAt
         }
       }
+    });
+
+    queueAnalyticsEvent(context, {
+      ...getRequestAnalyticsContext(request),
+      eventName: "checkout_started",
+      sessionId: privateProps.analyticsSessionId || "",
+      holdId,
+      tour,
+      amountCents: Math.round(totalAmount * 100),
+      currency: BOOKING_RULES.currency,
+      isTest: testPriceMode
     });
 
     if (responseMode === "embedded") {

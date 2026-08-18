@@ -1,6 +1,10 @@
 import { getGoogleAccessToken, hasGoogleCalendarCredentials } from "./_google.js";
 import { maybeSendBookingConfirmationEmail } from "./_booking-email.js";
 import { notifyGyGAvailabilityForEvents } from "./gyg/_notify_outbound.js";
+import {
+  getRequestAnalyticsContext,
+  queueAnalyticsEvent
+} from "./_analytics.js";
 
 function textResponse(body, status = 200, extraHeaders = {}) {
   return new Response(body, {
@@ -594,6 +598,17 @@ export async function onRequestPost(context) {
         paymentTransactionRef: trnref
       });
 
+      queueAnalyticsEvent(context, {
+        ...getRequestAnalyticsContext(request),
+        eventName: "payment_paid",
+        sessionId: privateProps.analyticsSessionId || "",
+        holdId: privateProps.holdId || holdId,
+        tour: privateProps.tour || "",
+        amountCents: Math.round(Number(amount || privateProps.paymentAmount || 0) * 100),
+        currency,
+        isTest: privateProps.testPaymentMode === "true" || privateProps.testBookingMode === "true"
+      });
+
       return textResponse("OK", 200, {
         "X-Boat4Two-Payment-State": "paid"
       });
@@ -624,6 +639,16 @@ export async function onRequestPost(context) {
         holdId: event?.extendedProperties?.private?.holdId || ""
       }];
       await deleteCalendarEvent(env, accessToken, event.id);
+      queueAnalyticsEvent(context, {
+        ...getRequestAnalyticsContext(request),
+        eventName: "payment_cancelled",
+        sessionId: privateProps.analyticsSessionId || "",
+        holdId: privateProps.holdId || holdId,
+        tour: privateProps.tour || "",
+        amountCents: Math.round(Number(privateProps.paymentAmount || 0) * 100),
+        currency: privateProps.paymentCurrency || BOOKING_RULES.currency,
+        isTest: privateProps.testPaymentMode === "true" || privateProps.testBookingMode === "true"
+      });
       notifyGyGAvailabilityForEvents(env, {
         accessToken,
         deletedEvents
@@ -650,6 +675,16 @@ export async function onRequestPost(context) {
         holdId: event?.extendedProperties?.private?.holdId || ""
       }];
       await deleteCalendarEvent(env, accessToken, event.id);
+      queueAnalyticsEvent(context, {
+        ...getRequestAnalyticsContext(request),
+        eventName: "payment_rolled_back",
+        sessionId: privateProps.analyticsSessionId || "",
+        holdId: privateProps.holdId || holdId,
+        tour: privateProps.tour || "",
+        amountCents: Math.round(Number(privateProps.paymentAmount || 0) * 100),
+        currency: privateProps.paymentCurrency || BOOKING_RULES.currency,
+        isTest: privateProps.testPaymentMode === "true" || privateProps.testBookingMode === "true"
+      });
       notifyGyGAvailabilityForEvents(env, {
         accessToken,
         deletedEvents

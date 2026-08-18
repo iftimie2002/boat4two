@@ -1798,6 +1798,82 @@ This slot is being held for you for <strong id="hold-countdown-timer">12:00</str
       }
 
       const referralClaimPromise = claimReferralFromLandingPath();
+      const ANALYTICS_SESSION_KEY = 'boat4two-analytics-session-v1';
+      const ANALYTICS_SOURCE_KEY = 'boat4two-analytics-source-v1';
+      const analyticsStagesSeen = new Set();
+
+      function getAnalyticsSessionId() {
+        try {
+          let sessionId = sessionStorage.getItem(ANALYTICS_SESSION_KEY) || '';
+          if (!/^[0-9a-f-]{36}$/i.test(sessionId) && window.crypto?.randomUUID) {
+            sessionId = window.crypto.randomUUID();
+            sessionStorage.setItem(ANALYTICS_SESSION_KEY, sessionId);
+          }
+          return sessionId;
+        } catch (_) {
+          return '';
+        }
+      }
+
+      function getAnalyticsSource() {
+        try {
+          const stored = sessionStorage.getItem(ANALYTICS_SOURCE_KEY);
+          if (stored) return JSON.parse(stored);
+
+          const query = new URLSearchParams(window.location.search);
+          const source = {
+            referrer: document.referrer || '',
+            utmSource: query.get('utm_source') || '',
+            utmMedium: query.get('utm_medium') || '',
+            utmCampaign: query.get('utm_campaign') || ''
+          };
+          sessionStorage.setItem(ANALYTICS_SOURCE_KEY, JSON.stringify(source));
+          return source;
+        } catch (_) {
+          return { referrer: '', utmSource: '', utmMedium: '', utmCampaign: '' };
+        }
+      }
+
+      const analyticsSessionId = getAnalyticsSessionId();
+      const analyticsSource = getAnalyticsSource();
+
+      function trackAnalytics(eventName, details = {}) {
+        if (!analyticsSessionId) return;
+
+        const payload = {
+          eventName,
+          sessionId: analyticsSessionId,
+          pagePath: window.location.pathname,
+          referrer: analyticsSource.referrer,
+          utmSource: analyticsSource.utmSource,
+          utmMedium: analyticsSource.utmMedium,
+          utmCampaign: analyticsSource.utmCampaign,
+          isTest: isTestPriceMode,
+          ...details
+        };
+
+        fetch('/api/analytics-event', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          cache: 'no-store',
+          keepalive: true,
+          body: JSON.stringify(payload)
+        }).catch(function() {
+          // Analytics is deliberately isolated from booking and payment behavior.
+        });
+      }
+
+      function trackAnalyticsOnce(eventName, details = {}) {
+        if (analyticsStagesSeen.has(eventName)) return;
+        analyticsStagesSeen.add(eventName);
+        trackAnalytics(eventName, details);
+      }
+
+      referralClaimPromise.finally(function() {
+        trackAnalyticsOnce('session_started');
+        trackAnalytics('page_viewed');
+      });
       const TEST_PRICE_TOTAL_AMOUNT = 0.10;
       const TEST_PRICE_PER_PERSON_AMOUNT = TEST_PRICE_TOTAL_AMOUNT / 2;
 
@@ -2811,7 +2887,8 @@ async function createHoldFromSelection(formValues) {
     country: formValues.country || '',
     occasion: formValues.occasion || '',
     message: formValues.message || '',
-    testMode: isTestPriceMode
+    testMode: isTestPriceMode,
+    analyticsSessionId
   };
 
   const response = await fetch('/api/create-hold', {
@@ -3107,6 +3184,19 @@ async function releaseHoldIfLeavingBookingFlow(nextHash) {
   const nextHash = location.hash;
   const shouldLock = overlayHashes.has(nextHash);
 
+  if (nextHash === '#select-tour-popup') {
+    trackAnalyticsOnce('booking_opened');
+  } else if (nextHash === '#calendar-popup') {
+    trackAnalyticsOnce('availability_viewed', { tour: tourConfig[getSelectedTour()?.value]?.apiTour || '' });
+  } else if (nextHash === '#details-popup') {
+    trackAnalyticsOnce('details_started', { tour: tourConfig[getSelectedTour()?.value]?.apiTour || '' });
+  } else if (nextHash === '#review-popup') {
+    trackAnalyticsOnce('review_viewed', {
+      tour: tourConfig[getSelectedTour()?.value]?.apiTour || '',
+      holdId: getCurrentHoldId()
+    });
+  }
+
   if (shouldLock && !isScrollLocked) {
     scrollPosition = window.pageYOffset;
     document.body.style.position = 'fixed';
@@ -3156,6 +3246,7 @@ async function releaseHoldIfLeavingBookingFlow(nextHash) {
           updateSelectTourState();
           updateSelectionSummary();
           updateCalendarState();
+          trackAnalytics('tour_selected', { tour: tourConfig[option.value]?.apiTour || '' });
           if (location.hash === '#calendar-popup') {
             loadCalendarAvailability();
           }
@@ -3169,6 +3260,7 @@ async function releaseHoldIfLeavingBookingFlow(nextHash) {
 
           selectedCalendarDate = button.dataset.date;
           requestDateInput.value = selectedCalendarDate;
+          trackAnalytics('date_selected', { tour: tourConfig[getSelectedTour()?.value]?.apiTour || '' });
           renderCalendarMonth();
           updateSelectionSummary();
           loadAvailability();
@@ -3196,6 +3288,7 @@ async function releaseHoldIfLeavingBookingFlow(nextHash) {
           if (event.target && event.target.matches('input[name="time-slot"]')) {
             updateSelectionSummary();
             updateCalendarState();
+            trackAnalytics('time_selected', { tour: tourConfig[getSelectedTour()?.value]?.apiTour || '' });
           }
         });
       }
@@ -3810,11 +3903,35 @@ async function setupWalletButtons(sdk, checkoutData) {
   if (paymentApplePayButton) {
     paymentApplePayButton.innerHTML = '';
     paymentApplePayButton.classList.remove('hidden', 'wallet-single');
+    if (!paymentApplePayButton.dataset.analyticsBound) {
+      paymentApplePayButton.dataset.analyticsBound = 'true';
+      paymentApplePayButton.addEventListener('click', function() {
+        trackAnalytics('payment_submitted', {
+          tour: tourConfig[getSelectedTour()?.value]?.apiTour || '',
+          holdId: getCurrentHoldId(),
+          amountCents: Math.round(Number(currentMyposEmbeddedPayment?.paymentParams?.amount || 0) * 100),
+          currency: currentMyposEmbeddedPayment?.paymentParams?.currency || 'EUR',
+          detail: 'apple_pay'
+        });
+      });
+    }
   }
 
   if (paymentGooglePayButton) {
     paymentGooglePayButton.innerHTML = '';
     paymentGooglePayButton.classList.remove('hidden', 'wallet-single');
+    if (!paymentGooglePayButton.dataset.analyticsBound) {
+      paymentGooglePayButton.dataset.analyticsBound = 'true';
+      paymentGooglePayButton.addEventListener('click', function() {
+        trackAnalytics('payment_submitted', {
+          tour: tourConfig[getSelectedTour()?.value]?.apiTour || '',
+          holdId: getCurrentHoldId(),
+          amountCents: Math.round(Number(currentMyposEmbeddedPayment?.paymentParams?.amount || 0) * 100),
+          currency: currentMyposEmbeddedPayment?.paymentParams?.currency || 'EUR',
+          detail: 'google_pay'
+        });
+      });
+    }
   }
 
   if (paymentWalletStatus) {
@@ -3969,6 +4086,12 @@ async function launchMyposEmbeddedCheckout(checkoutData) {
   }
 
   setPaymentPopupState('ready');
+  trackAnalyticsOnce('checkout_loaded', {
+    tour: tourConfig[getSelectedTour()?.value]?.apiTour || '',
+    holdId: getCurrentHoldId(),
+    amountCents: Math.round(Number(checkoutData.paymentParams?.amount || 0) * 100),
+    currency: checkoutData.paymentParams?.currency || 'EUR'
+  });
 
   setupWalletButtons(sdk, checkoutData).catch(function(error) {
     console.warn('myPOS wallet buttons could not load', error);
@@ -4057,6 +4180,10 @@ async function handlePaymentFrameResult(status, detailMessage) {
   currentMyposPaymentForm = null;
 
   if (!paid) {
+    trackAnalytics('payment_cancelled', {
+      tour: tourConfig[getSelectedTour()?.value]?.apiTour || '',
+      holdId: getCurrentHoldId()
+    });
     await releaseUnpaidPaymentReservation();
   } else {
     activeHold = null;
@@ -4206,6 +4333,13 @@ async function handlePaymentFrameResult(status, detailMessage) {
             try {
               paymentCardSubmitButton.disabled = true;
               paymentCardSubmitButton.textContent = 'Processing payment...';
+              trackAnalytics('payment_submitted', {
+                tour: tourConfig[getSelectedTour()?.value]?.apiTour || '',
+                holdId: getCurrentHoldId(),
+                amountCents: Math.round(Number(currentMyposEmbeddedPayment?.paymentParams?.amount || 0) * 100),
+                currency: currentMyposEmbeddedPayment?.paymentParams?.currency || 'EUR',
+                detail: 'card'
+              });
               await Promise.resolve(currentMyposPaymentForm.processPayment());
               if (paymentFlowActive && currentMyposPaymentForm) {
                 paymentCardSubmitButton.disabled = false;
