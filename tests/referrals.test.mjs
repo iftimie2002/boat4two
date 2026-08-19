@@ -429,7 +429,7 @@ test("referral details appear only in the internal admin email", () => {
   assert.doesNotMatch(gygAdmin.text, /Sales channel: Partner Referral/);
 });
 
-test("partner email uses central recipient and 15% commission without customer details", () => {
+test("partner email includes customer name and 15% commission without contact details", () => {
   const event = {
     id: "partner-email-event",
     start: { dateTime: "2026-08-25T17:00:00.000Z", timeZone: "Europe/Lisbon" },
@@ -470,11 +470,13 @@ test("partner email uses central recipient and 15% commission without customer d
   assert.equal(payload.commissionAmount, "32.70");
   assert.match(payload.text, /^Dear partner,/);
   assert.match(payload.text, /We got another booking through your referral\./);
+  assert.match(payload.text, /Customer name: Private Customer Name/);
   assert.match(payload.text, /Total booking: 218,00€/);
   assert.match(payload.text, /Your commission \(15%\): 32,70€/);
+  assert.match(payload.html, /<strong>Customer name:<\/strong> Private Customer Name/);
   assert.doesNotMatch(
     output,
-    /Private Customer Name|private-customer@example\.com|351900000000|Private customer note/
+    /private-customer@example\.com|351900000000|Private customer note/
   );
 
   const directModel = buildBookingEmailModel({}, {
