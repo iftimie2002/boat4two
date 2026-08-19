@@ -353,6 +353,8 @@ test("booking referral resolution uses a signed proof when the cookie is not yet
     new Date()
   );
   const requestWithoutCookie = new Request("https://boat4two.com/api/create-hold");
+  const [proofPayload, proofSignature] = token.split(".");
+  const tamperedToken = `${proofPayload}.${proofSignature[0] === "A" ? "B" : "A"}${proofSignature.slice(1)}`;
 
   assert.equal(
     (await resolveReferralForBooking(
@@ -365,7 +367,7 @@ test("booking referral resolution uses a signed proof when the cookie is not yet
   assert.equal(
     await resolveReferralForBooking(
       requestWithoutCookie,
-      `${token.slice(0, -1)}x`,
+      tamperedToken,
       { REFERRAL_SIGNING_SECRET: SECRET }
     ),
     null
@@ -427,7 +429,7 @@ test("referral details appear only in the internal admin email", () => {
   assert.doesNotMatch(gygAdmin.text, /Sales channel: Partner Referral/);
 });
 
-test("partner email uses central recipient and 20% commission without customer details", () => {
+test("partner email uses central recipient and 15% commission without customer details", () => {
   const event = {
     id: "partner-email-event",
     start: { dateTime: "2026-08-25T17:00:00.000Z", timeZone: "Europe/Lisbon" },
@@ -455,7 +457,7 @@ test("partner email uses central recipient and 20% commission without customer d
   const payload = buildPartnerReferralNotificationPayload(model);
   const output = JSON.stringify(payload);
 
-  assert.equal(PARTNER_REGISTRY.kalkbrenner.commissionRateBasisPoints, 2000);
+  assert.equal(PARTNER_REGISTRY.kalkbrenner.commissionRateBasisPoints, 1500);
   assert.equal(PARTNER_REGISTRY.kalkbrenner.notificationEmail, model.bookingNotificationEmail);
   assert.deepEqual(calculatePartnerCommission("0.10", "EUR", 2000), {
     amount: "0.02",
@@ -465,11 +467,11 @@ test("partner email uses central recipient and 20% commission without customer d
   assert.equal(calculatePartnerCommission("", "EUR", 2000), null);
   assert.equal(calculatePartnerCommission("invalid", "EUR", 2000), null);
   assert.equal(payload.to, "info.boat4two@gmail.com");
-  assert.equal(payload.commissionAmount, "43.60");
+  assert.equal(payload.commissionAmount, "32.70");
   assert.match(payload.text, /^Dear partner,/);
   assert.match(payload.text, /We got another booking through your referral\./);
   assert.match(payload.text, /Total booking: 218,00€/);
-  assert.match(payload.text, /Your commission \(20%\): 43,60€/);
+  assert.match(payload.text, /Your commission \(15%\): 32,70€/);
   assert.doesNotMatch(
     output,
     /Private Customer Name|private-customer@example\.com|351900000000|Private customer note/
@@ -532,7 +534,7 @@ test("paid referral notification sends once and email failure never blocks booki
   assert.equal(firstResult.patchPrivateProps.partnerReferralNotificationEmailStatus, "sent");
   assert.equal(firstResult.patchPrivateProps.partnerReferralCommissionAmount, "0.02");
   assert.equal(firstResult.patchPrivateProps.partnerReferralCommissionCurrency, "EUR");
-  assert.equal(firstResult.patchPrivateProps.partnerReferralCommissionRateBasisPoints, "2000");
+  assert.equal(firstResult.patchPrivateProps.partnerReferralCommissionRateBasisPoints, "1500");
 
   const persistedEvent = {
     ...baseEvent,

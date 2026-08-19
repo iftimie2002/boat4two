@@ -11,7 +11,7 @@ export const PARTNER_REGISTRY = Object.freeze({
     // During testing this is the same inbox used for new-booking notifications.
     // Change this address when the partner is ready to receive notifications.
     notificationEmail: "info.boat4two@gmail.com",
-    commissionRateBasisPoints: 2000
+    commissionRateBasisPoints: 1500
   })
 });
 
