@@ -13,6 +13,16 @@ export const PARTNER_REGISTRY = Object.freeze({
       "info@kalkbrenner.ws"
     ]),
     commissionRateBasisPoints: 1500
+  }),
+  mssd9: Object.freeze({
+    id: "mssd9",
+    displayName: "Madalena Duque",
+    type: "reseller",
+    active: true,
+    notificationEmails: Object.freeze([
+      "madalenaduque9@gmail.com"
+    ]),
+    commissionRateBasisPoints: 1500
   })
 });
 

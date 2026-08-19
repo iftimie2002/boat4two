@@ -62,9 +62,60 @@ test("normalizes registered partner slugs and rejects unexpected paths", () => {
     assert.equal(getActivePartner(value)?.id, "kalkbrenner");
   }
 
+  for (const value of ["mssd9", "/mssd9", "/mssd9/", "/MSSD9"]) {
+    assert.equal(normalizePartnerSlug(value), "mssd9");
+    assert.equal(getActivePartner(value)?.id, "mssd9");
+  }
+
+  assert.equal(PARTNER_REGISTRY.mssd9.displayName, "Madalena Duque");
+  assert.deepEqual(PARTNER_REGISTRY.mssd9.notificationEmails, [
+    "madalenaduque9@gmail.com"
+  ]);
+  assert.equal(PARTNER_REGISTRY.mssd9.commissionRateBasisPoints, 1500);
+
   for (const value of ["", "/api/create-hold", "index.html", "../kalkbrenner", "a".repeat(65)]) {
     assert.equal(getActivePartner(value), null);
   }
+});
+
+test("Madalena Duque receives signed attribution and her own partner email", async () => {
+  const partner = PARTNER_REGISTRY.mssd9;
+  const { token } = await createReferralToken(partner, "/mssd9", SECRET, CAPTURED_AT);
+  const verified = await verifyReferralToken(token, SECRET, {
+    now: new Date("2026-08-20T00:00:00.000Z")
+  });
+  assert.equal(verified?.partner?.id, "mssd9");
+  assert.equal(verified?.landingPath, "/mssd9");
+
+  const event = {
+    id: "madalena-partner-email-event",
+    start: { dateTime: "2026-08-25T17:00:00.000Z", timeZone: "Europe/Lisbon" },
+    end: { dateTime: "2026-08-25T20:30:00.000Z", timeZone: "Europe/Lisbon" },
+    extendedProperties: {
+      private: {
+        tour: "sunset",
+        date: "2026-08-25",
+        time: "18:00",
+        customerName: "Test Customer",
+        paymentAmount: "218.00",
+        paymentCurrency: "EUR",
+        paymentOrderId: "B4T-MADALENA-TEST",
+        salesChannel: "partner_referral",
+        referralPartnerId: "mssd9",
+        referralPartnerName: "Madalena Duque",
+        referralPartnerType: "reseller"
+      }
+    }
+  };
+  const payload = buildPartnerReferralNotificationPayload(
+    buildBookingEmailModel({}, event)
+  );
+
+  assert.deepEqual(payload?.to, ["madalenaduque9@gmail.com"]);
+  assert.equal(payload?.commissionRateBasisPoints, "1500");
+  assert.equal(payload?.commissionAmount, "32.70");
+  assert.match(payload?.subject || "", /Madalena Duque referral/);
+  assert.match(payload?.text || "", /Customer name: Test Customer/);
 });
 
 test("creates an HMAC token with one central 30-day window and complete metadata", async () => {
