@@ -21,3 +21,26 @@ addresses, and raw user-agent strings are not stored.
 
 Analytics is deliberately fail-open and separate from booking, availability,
 Google Calendar, myPOS, and GetYourGuide behavior.
+
+## Live Google reviews
+
+`GET /api/google-reviews` reads reviews from the official Google Business
+Profile API, keeps only reviews containing text, and includes associated review
+images when Google provides them. Responses are cached at the edge for six
+hours. The browser first renders `reviews-feed.json`, so missing credentials or
+a temporary Google failure never leaves the reviews section empty.
+
+Configure these Cloudflare Pages secrets/variables in Production and Preview:
+
+- `GOOGLE_BUSINESS_REFRESH_TOKEN`: a separate OAuth refresh token authorized
+  with `https://www.googleapis.com/auth/business.manage`.
+- `GOOGLE_BUSINESS_LOCATION`: the resource name in the format
+  `accounts/{accountId}/locations/{locationId}`.
+- `GOOGLE_BUSINESS_CLIENT_ID` and `GOOGLE_BUSINESS_CLIENT_SECRET` are optional
+  when the existing `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` belong to the
+  OAuth client used to issue the Business Profile refresh token.
+- `GOOGLE_BUSINESS_SHARE_URL` is optional and defaults to Boat4Two's configured
+  Google profile share link.
+
+The Google Business Profile integration is read-only. It is deliberately
+separate from the Google Calendar credentials and booking flow.

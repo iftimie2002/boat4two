@@ -8,11 +8,11 @@
       "products": [
         {
           "label": "Private Sailing Tour for Couples",
-          "url": "https://www.getyourguide.com/ferragudo-l100992/portimao-private-sailing-tour-for-couples-all-inclusive-t1108388/?preview=7X1V4H5NIS40K883VFXF87E4RGWWYJJK"
+          "url": "https://www.getyourguide.com/ferragudo-l100992/portimao-private-sailing-tour-for-couples-all-inclusive-t1108388/"
         },
         {
           "label": "Sunset Private Sailing Tour for Couples",
-          "url": "https://www.getyourguide.com/ferragudo-l100992/portimao-sunset-private-sailing-tour-for-couples-t1108486/?preview=T6998LXRY6GHY26D7AG09TT6QUNETFZZ"
+          "url": "https://www.getyourguide.com/ferragudo-l100992/portimao-sunset-private-sailing-tour-for-couples-t1108486/"
         }
       ]
     },
@@ -21,7 +21,7 @@
       "mode": "google_places_api",
       "enabled": true,
       "public": true,
-      "shareUrl": "https://share.google/yWXBdC5UX3wbvZZXv",
+      "shareUrl": "https://share.google/3qhqDb2NgTLbERTUA",
       "placeId": "",
       "textQuery": "Boat4Two Ferragudo Portugal",
       "apiKeyEnv": "GOOGLE_MAPS_API_KEY"

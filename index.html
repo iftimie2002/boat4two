@@ -1937,6 +1937,7 @@ This slot is being held for you for <strong id="hold-countdown-timer">12:00</str
 
       const reviewFeedConfig = {
         feedUrl: './reviews-feed.json',
+        googleFeedUrl: './api/google-reviews',
         preferredProviderId: 'getyourguide',
         publicProviderIds: ['getyourguide', 'google'],
         maxVisibleReviews: 4
@@ -1972,7 +1973,7 @@ This slot is being held for you for <strong id="hold-countdown-timer">12:00</str
             enabled: true,
             public: true,
             name: 'Google',
-            url: 'https://share.google/yWXBdC5UX3wbvZZXv',
+            url: 'https://share.google/3qhqDb2NgTLbERTUA',
             rating: null,
             reviewCount: 0,
             reviews: []
@@ -2422,12 +2423,34 @@ const BOOKING_DATA_STORAGE_KEY = isTestPriceMode ? 'boat4two-booking-data-testpr
         if (!review || !review.quote || !review.author) {
           return null;
         }
+        function normalizeHttpsLink(value) {
+          if (!value) return '';
+          try {
+            const url = new URL(value, window.location.href);
+            return url.protocol === 'https:' ? url.toString() : '';
+          } catch (error) {
+            return '';
+          }
+        }
+        const images = Array.isArray(review.images)
+          ? review.images.map(function(image) {
+              if (!image || !image.url) return null;
+              const imageUrl = normalizeHttpsLink(image.url);
+              return imageUrl ? {
+                url: imageUrl,
+                alt: image.alt || `Photo shared by ${review.author}`
+              } : null;
+            }).filter(Boolean).slice(0, 4)
+          : [];
         return {
           author: review.author,
+          authorPhotoUrl: normalizeHttpsLink(review.authorPhotoUrl),
           location: review.location || '',
           date: review.date || '',
           rating: typeof review.rating === 'number' ? review.rating : null,
-          quote: review.quote
+          quote: review.quote,
+          images: images,
+          sourceUrl: normalizeHttpsLink(review.sourceUrl)
         };
       }
 
@@ -2493,6 +2516,8 @@ const BOOKING_DATA_STORAGE_KEY = isTestPriceMode ? 'boat4two-booking-data-testpr
               date: review.date,
               rating: review.rating,
               quote: review.quote,
+              images: review.images,
+              sourceUrl: review.sourceUrl || provider.url,
               providerName: provider.name
             };
           });
@@ -2525,13 +2550,32 @@ const BOOKING_DATA_STORAGE_KEY = isTestPriceMode ? 'boat4two-booking-data-testpr
 
         reviewsList.innerHTML = state.reviews.map(function(review) {
           const authorLine = review.location ? `${review.author}, ${review.location}` : review.author;
+          const images = review.images && review.images.length
+            ? `<div class="mt-5 grid gap-2 ${review.images.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}">
+                ${review.images.map(function(image) {
+                  return `<img alt="${escapeHtml(image.alt)}" class="h-44 w-full rounded-2xl object-cover" loading="lazy" referrerpolicy="no-referrer" src="${escapeHtml(image.url)}"/>`;
+                }).join('')}
+              </div>`
+            : '';
+          const providerLabel = review.sourceUrl
+            ? `<a class="hover:underline" href="${escapeHtml(review.sourceUrl)}" rel="noopener noreferrer" target="_blank">${escapeHtml(review.providerName)}</a>`
+            : escapeHtml(review.providerName);
+          const authorPhoto = review.authorPhotoUrl
+            ? `<img alt="" class="h-9 w-9 rounded-full object-cover" loading="lazy" referrerpolicy="no-referrer" src="${escapeHtml(review.authorPhotoUrl)}"/>`
+            : '';
           return `
             <article class="rounded-[2rem] border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
-              <p class="text-sm font-semibold uppercase tracking-[0.2em] text-primary">${escapeHtml(review.providerName)}</p>
+              <p class="text-sm font-semibold uppercase tracking-[0.2em] text-primary">${providerLabel}</p>
+              ${images}
               <blockquote class="mt-6 text-xl font-bold leading-snug text-zinc-900 dark:text-zinc-100">"${escapeHtml(review.quote)}"</blockquote>
               <div class="mt-6 border-t border-zinc-200 pt-6 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">
-                <p class="font-semibold text-zinc-900 dark:text-zinc-100">${escapeHtml(authorLine)}</p>
-                <p>${escapeHtml(formatReviewDate(review.date))}</p>
+                <div class="flex items-center gap-3">
+                  ${authorPhoto}
+                  <div>
+                    <p class="font-semibold text-zinc-900 dark:text-zinc-100">${escapeHtml(authorLine)}</p>
+                    <p>${escapeHtml(formatReviewDate(review.date))}</p>
+                  </div>
+                </div>
               </div>
             </article>
           `;
@@ -2539,15 +2583,35 @@ const BOOKING_DATA_STORAGE_KEY = isTestPriceMode ? 'boat4two-booking-data-testpr
       }
 
       async function loadPublicReviews() {
+        let feed = fallbackReviewFeed;
+
         try {
           const response = await fetch(reviewFeedConfig.feedUrl, { cache: 'no-store' });
           if (!response.ok) {
             throw new Error(`Failed to load reviews feed: ${response.status}`);
           }
-          const feed = await response.json();
-          renderPublicReviews(feed);
+          feed = await response.json();
         } catch (error) {
-          renderPublicReviews(fallbackReviewFeed);
+          feed = fallbackReviewFeed;
+        }
+
+        renderPublicReviews(feed);
+
+        try {
+          const googleResponse = await fetch(reviewFeedConfig.googleFeedUrl);
+          if (!googleResponse.ok) return;
+          const googlePayload = await googleResponse.json();
+          if (!googlePayload || !googlePayload.ok || !googlePayload.provider) return;
+
+          renderPublicReviews({
+            ...feed,
+            providers: {
+              ...(feed.providers || {}),
+              google: googlePayload.provider
+            }
+          });
+        } catch (error) {
+          // Keep the already-rendered static feed when the live Google sync is unavailable.
         }
       }
 
