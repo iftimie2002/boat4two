@@ -10,7 +10,7 @@ export const PARTNER_REGISTRY = Object.freeze({
     active: true,
     notificationEmails: Object.freeze([
       "contas@kalkbrenner.ws",
-      "info@kalkbrenner.ws"
+      "reservas@kalkbrenner.ws"
     ]),
     commissionRateBasisPoints: 1500
   }),
