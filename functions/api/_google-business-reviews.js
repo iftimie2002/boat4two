@@ -1,5 +1,7 @@
 const GOOGLE_OAUTH_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_BUSINESS_REVIEWS_BASE_URL = "https://mybusiness.googleapis.com/v4";
+const GOOGLE_BUSINESS_ACCOUNTS_URL = "https://mybusinessaccountmanagement.googleapis.com/v1/accounts";
+const GOOGLE_BUSINESS_INFORMATION_BASE_URL = "https://mybusinessbusinessinformation.googleapis.com/v1";
 const GOOGLE_REVIEWS_PAGE_SIZE = 50;
 const MAX_GOOGLE_REVIEW_PAGES = 10;
 
@@ -87,14 +89,16 @@ export function getGoogleBusinessReviewsConfig(env = {}) {
   const shareUrl = normalizeHttpsUrl(
     env.GOOGLE_BUSINESS_SHARE_URL || "https://share.google/3qhqDb2NgTLbERTUA"
   );
+  const locationTitle = cleanText(env.GOOGLE_BUSINESS_LOCATION_TITLE || "Boat4Two", 240);
 
   return {
     clientId,
     clientSecret,
     refreshToken,
     locationParent,
+    locationTitle,
     shareUrl,
-    configured: Boolean(clientId && clientSecret && refreshToken && locationParent)
+    configured: Boolean(clientId && clientSecret && refreshToken)
   };
 }
 
@@ -120,6 +124,62 @@ async function getAccessToken(config, fetchImpl) {
   return payload.access_token;
 }
 
+async function discoverLocationParent(config, accessToken, fetchImpl) {
+  const accountsResponse = await fetchImpl(GOOGLE_BUSINESS_ACCOUNTS_URL, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "application/json"
+    }
+  });
+  const accountsPayload = await accountsResponse.json().catch(() => null);
+
+  if (!accountsResponse.ok || !accountsPayload) {
+    throw new Error("Google Business Profile account discovery failed.");
+  }
+
+  const candidates = [];
+
+  for (const account of Array.isArray(accountsPayload.accounts) ? accountsPayload.accounts : []) {
+    const accountName = cleanText(account?.name, 240);
+    if (!/^accounts\/[^/]+$/.test(accountName)) continue;
+
+    const locationsUrl = new URL(`${GOOGLE_BUSINESS_INFORMATION_BASE_URL}/${accountName}/locations`);
+    locationsUrl.searchParams.set("pageSize", "100");
+    locationsUrl.searchParams.set("readMask", "name,title");
+
+    const locationsResponse = await fetchImpl(locationsUrl.toString(), {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json"
+      }
+    });
+    const locationsPayload = await locationsResponse.json().catch(() => null);
+
+    if (!locationsResponse.ok || !locationsPayload) continue;
+
+    for (const location of Array.isArray(locationsPayload.locations) ? locationsPayload.locations : []) {
+      const locationName = cleanText(location?.name, 240);
+      const title = cleanText(location?.title, 240);
+
+      if (!/^locations\/[^/]+$/.test(locationName)) continue;
+      candidates.push({
+        parent: `${accountName}/${locationName}`,
+        title
+      });
+    }
+  }
+
+  const expectedTitle = config.locationTitle.toLocaleLowerCase("en");
+  const exactMatch = candidates.find((candidate) => (
+    candidate.title.toLocaleLowerCase("en") === expectedTitle
+  ));
+
+  if (exactMatch) return exactMatch.parent;
+  if (candidates.length === 1) return candidates[0].parent;
+
+  throw new Error("Boat4Two could not be uniquely identified in Google Business Profile.");
+}
+
 export async function fetchGoogleBusinessReviews(env, options = {}) {
   const config = getGoogleBusinessReviewsConfig(env);
   const fetchImpl = options.fetchImpl || fetch;
@@ -131,6 +191,11 @@ export async function fetchGoogleBusinessReviews(env, options = {}) {
   }
 
   const accessToken = await getAccessToken(config, fetchImpl);
+  const locationParent = config.locationParent || await discoverLocationParent(
+    config,
+    accessToken,
+    fetchImpl
+  );
   const reviews = [];
   let averageRating = null;
   let totalReviewCount = 0;
@@ -138,7 +203,7 @@ export async function fetchGoogleBusinessReviews(env, options = {}) {
 
   for (let page = 0; page < MAX_GOOGLE_REVIEW_PAGES; page += 1) {
     const url = new URL(
-      `${GOOGLE_BUSINESS_REVIEWS_BASE_URL}/${config.locationParent}/reviews`
+      `${GOOGLE_BUSINESS_REVIEWS_BASE_URL}/${locationParent}/reviews`
     );
     url.searchParams.set("pageSize", String(GOOGLE_REVIEWS_PAGE_SIZE));
     url.searchParams.set("orderBy", "updateTime desc");

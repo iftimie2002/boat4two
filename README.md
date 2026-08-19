@@ -34,8 +34,10 @@ Configure these Cloudflare Pages secrets/variables in Production and Preview:
 
 - `GOOGLE_BUSINESS_REFRESH_TOKEN`: a separate OAuth refresh token authorized
   with `https://www.googleapis.com/auth/business.manage`.
-- `GOOGLE_BUSINESS_LOCATION`: the resource name in the format
-  `accounts/{accountId}/locations/{locationId}`.
+- `GOOGLE_BUSINESS_LOCATION` is optional. When omitted, the integration looks
+  for the location titled `Boat4Two`; set the variable explicitly in the format
+  `accounts/{accountId}/locations/{locationId}` only if the account contains
+  ambiguous locations.
 - `GOOGLE_BUSINESS_CLIENT_ID` and `GOOGLE_BUSINESS_CLIENT_SECRET` are optional
   when the existing `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` belong to the
   OAuth client used to issue the Business Profile refresh token.

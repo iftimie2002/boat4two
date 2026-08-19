@@ -7,14 +7,16 @@ import {
   normalizeGoogleBusinessReview
 } from "../functions/api/_google-business-reviews.js";
 
-test("Google Business Profile config requires separate review access and a valid location", () => {
+test("Google Business Profile config requires separate review access and can auto-discover location", () => {
   assert.equal(getGoogleBusinessReviewsConfig({}).configured, false);
-  assert.equal(getGoogleBusinessReviewsConfig({
+  const autoDiscoveryConfig = getGoogleBusinessReviewsConfig({
     GOOGLE_CLIENT_ID: "client",
     GOOGLE_CLIENT_SECRET: "secret",
     GOOGLE_BUSINESS_REFRESH_TOKEN: "refresh",
     GOOGLE_BUSINESS_LOCATION: "bad-location"
-  }).configured, false);
+  });
+  assert.equal(autoDiscoveryConfig.configured, true);
+  assert.equal(autoDiscoveryConfig.locationParent, "");
   assert.equal(getGoogleBusinessReviewsConfig({
     GOOGLE_CLIENT_ID: "client",
     GOOGLE_CLIENT_SECRET: "secret",
@@ -124,4 +126,52 @@ test("Google review sync paginates and exposes only normalized text reviews", as
   assert.equal(provider.reviewCount, 3);
   assert.deepEqual(provider.reviews.map((review) => review.id), ["1", "2"]);
   assert.match(calls[1].options.headers.Authorization, /^Bearer /);
+});
+
+test("Google review sync discovers the Boat4Two location when no resource ID is configured", async () => {
+  const calls = [];
+  const fetchImpl = async (url) => {
+    const requestUrl = String(url);
+    calls.push(requestUrl);
+
+    if (requestUrl === "https://oauth2.googleapis.com/token") {
+      return Response.json({ access_token: "access-token" });
+    }
+
+    if (requestUrl === "https://mybusinessaccountmanagement.googleapis.com/v1/accounts") {
+      return Response.json({ accounts: [{ name: "accounts/123" }] });
+    }
+
+    if (requestUrl.startsWith("https://mybusinessbusinessinformation.googleapis.com/v1/accounts/123/locations")) {
+      return Response.json({
+        locations: [
+          { name: "locations/456", title: "Boat4Two" },
+          { name: "locations/789", title: "Another business" }
+        ]
+      });
+    }
+
+    return Response.json({
+      averageRating: 5,
+      totalReviewCount: 1,
+      reviews: [
+        {
+          reviewId: "review-1",
+          reviewer: { displayName: "Guest" },
+          starRating: "FIVE",
+          comment: "Perfect!",
+          createTime: "2026-08-19T10:00:00Z"
+        }
+      ]
+    });
+  };
+
+  const provider = await fetchGoogleBusinessReviews({
+    GOOGLE_CLIENT_ID: "client",
+    GOOGLE_CLIENT_SECRET: "secret",
+    GOOGLE_BUSINESS_REFRESH_TOKEN: "refresh"
+  }, { fetchImpl });
+
+  assert.equal(provider.reviews.length, 1);
+  assert.ok(calls.some((url) => url.includes("accounts/123/locations/456/reviews")));
 });
