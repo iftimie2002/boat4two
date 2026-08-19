@@ -65,6 +65,21 @@ function cleanText(value, max = 240) {
   return String(value || "").trim().slice(0, max);
 }
 
+function normalizeEmailRecipients(value) {
+  const candidates = Array.isArray(value) ? value : [value];
+  const recipients = [];
+  const seen = new Set();
+
+  for (const candidate of candidates) {
+    const email = cleanText(candidate, 200).toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || seen.has(email)) continue;
+    seen.add(email);
+    recipients.push(email);
+  }
+
+  return recipients.slice(0, 50);
+}
+
 function formatDate(dateInput) {
   const value = cleanText(dateInput, 40);
 
@@ -1064,13 +1079,15 @@ function buildPartnerReferralNotificationPayload(model, partnerOverride = null) 
   const partner = partnerOverride || getActivePartner(model.referralPartnerId);
   if (!partner || partner.id !== model.referralPartnerId) return null;
 
-  const recipient = cleanText(partner.notificationEmail, 200);
+  const recipients = normalizeEmailRecipients(
+    partner.notificationEmails || partner.notificationEmail
+  );
   const commission = calculatePartnerCommission(
     model.paymentAmount,
     model.paymentCurrency,
     partner.commissionRateBasisPoints
   );
-  if (!recipient || !commission || !model.amountLabel) return null;
+  if (!recipients.length || !commission || !model.amountLabel) return null;
 
   const rateLabel = `${commission.ratePercent.toLocaleString("en-GB", {
     maximumFractionDigits: 2
@@ -1109,7 +1126,7 @@ function buildPartnerReferralNotificationPayload(model, partnerOverride = null) 
   );
 
   return {
-    to: recipient,
+    to: recipients,
     subject: `Another booking through your ${partner.displayName} referral`,
     text,
     html: buildEmailShell({

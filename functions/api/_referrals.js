@@ -8,9 +8,10 @@ export const PARTNER_REGISTRY = Object.freeze({
     displayName: "Kalkbrenner",
     type: "reseller",
     active: true,
-    // During testing this is the same inbox used for new-booking notifications.
-    // Change this address when the partner is ready to receive notifications.
-    notificationEmail: "info.boat4two@gmail.com",
+    notificationEmails: Object.freeze([
+      "contas@kalkbrenner.ws",
+      "info@kalkbrenner.ws"
+    ]),
     commissionRateBasisPoints: 1500
   })
 });

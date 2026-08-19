@@ -458,7 +458,10 @@ test("partner email includes customer name and 15% commission without contact de
   const output = JSON.stringify(payload);
 
   assert.equal(PARTNER_REGISTRY.kalkbrenner.commissionRateBasisPoints, 1500);
-  assert.equal(PARTNER_REGISTRY.kalkbrenner.notificationEmail, model.bookingNotificationEmail);
+  assert.deepEqual(PARTNER_REGISTRY.kalkbrenner.notificationEmails, [
+    "contas@kalkbrenner.ws",
+    "info@kalkbrenner.ws"
+  ]);
   assert.deepEqual(calculatePartnerCommission("0.10", "EUR", 2000), {
     amount: "0.02",
     amountLabel: "0,02€",
@@ -466,7 +469,7 @@ test("partner email includes customer name and 15% commission without contact de
   });
   assert.equal(calculatePartnerCommission("", "EUR", 2000), null);
   assert.equal(calculatePartnerCommission("invalid", "EUR", 2000), null);
-  assert.equal(payload.to, "info.boat4two@gmail.com");
+  assert.deepEqual(payload.to, ["contas@kalkbrenner.ws", "info@kalkbrenner.ws"]);
   assert.equal(payload.commissionAmount, "32.70");
   assert.match(payload.text, /^Dear partner,/);
   assert.match(payload.text, /We got another booking through your referral\./);
@@ -532,7 +535,10 @@ test("paid referral notification sends once and email failure never blocks booki
 
   const firstResult = await maybeSendBookingConfirmationEmail(env, baseEvent);
   assert.equal(sentPayloads.length, 1);
-  assert.equal(sentPayloads[0].to, "info.boat4two@gmail.com");
+  assert.deepEqual(sentPayloads[0].to, [
+    "contas@kalkbrenner.ws",
+    "info@kalkbrenner.ws"
+  ]);
   assert.equal(firstResult.patchPrivateProps.partnerReferralNotificationEmailStatus, "sent");
   assert.equal(firstResult.patchPrivateProps.partnerReferralCommissionAmount, "0.02");
   assert.equal(firstResult.patchPrivateProps.partnerReferralCommissionCurrency, "EUR");
