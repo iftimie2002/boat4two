@@ -23,6 +23,11 @@ test("Google Business Profile config requires separate review access and can aut
     GOOGLE_BUSINESS_REFRESH_TOKEN: "refresh",
     GOOGLE_BUSINESS_LOCATION: "accounts/123/locations/456"
   }).configured, true);
+  assert.equal(getGoogleBusinessReviewsConfig({
+    GOOGLE_CLIENT_ID: "client",
+    GOOGLE_CLIENT_SECRET: "secret",
+    GOOGLE_REFRESH_TOKEN: "existing-google-refresh"
+  }).configured, true);
 });
 
 test("Google reviews keep text and associated images while dropping rating-only reviews", () => {

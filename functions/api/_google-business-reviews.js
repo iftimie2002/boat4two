@@ -84,7 +84,10 @@ export function normalizeGoogleBusinessReview(review, providerUrl = "") {
 export function getGoogleBusinessReviewsConfig(env = {}) {
   const clientId = cleanText(env.GOOGLE_BUSINESS_CLIENT_ID || env.GOOGLE_CLIENT_ID, 500);
   const clientSecret = cleanText(env.GOOGLE_BUSINESS_CLIENT_SECRET || env.GOOGLE_CLIENT_SECRET, 1000);
-  const refreshToken = cleanText(env.GOOGLE_BUSINESS_REFRESH_TOKEN, 3000);
+  const refreshToken = cleanText(
+    env.GOOGLE_BUSINESS_REFRESH_TOKEN || env.GOOGLE_REFRESH_TOKEN,
+    3000
+  );
   const locationParent = normalizeLocationParent(env.GOOGLE_BUSINESS_LOCATION);
   const shareUrl = normalizeHttpsUrl(
     env.GOOGLE_BUSINESS_SHARE_URL || "https://share.google/3qhqDb2NgTLbERTUA"
