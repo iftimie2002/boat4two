@@ -10,7 +10,7 @@ import { notifyGyGAvailabilityForTourDate } from "./gyg/_notify_outbound.js";
 import {
   buildReferralDescriptionLines,
   buildReferralPrivateProperties,
-  getReferralFromRequest
+  resolveReferralForBooking
 } from "./_referrals.js";
 import {
   getAnalyticsSessionId,
@@ -401,9 +401,10 @@ export async function onRequestPost(context) {
     const testMode = parseBooleanFlag(body.testMode);
     const analyticsSessionId = getAnalyticsSessionId(body.analyticsSessionId);
 
-    // The signed HttpOnly cookie, not booking form data, is authoritative.
+    // Prefer the signed HttpOnly first-touch cookie. The signed response proof
+    // covers the first-page booking race before a browser exposes that cookie.
     // Any referral error fails open so it cannot block a valid booking.
-    const referral = await getReferralFromRequest(request, env);
+    const referral = await resolveReferralForBooking(request, body.referralToken, env);
 
     if (!hasGoogleCalendarCredentials(env)) {
       return Response.json(

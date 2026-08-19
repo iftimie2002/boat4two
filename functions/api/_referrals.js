@@ -200,6 +200,22 @@ export async function getReferralFromRequest(request, env, options = {}) {
   }
 }
 
+export async function resolveReferralForBooking(request, fallbackToken, env, options = {}) {
+  try {
+    const cookieReferral = await getReferralFromRequest(request, env, options);
+    if (cookieReferral) return cookieReferral;
+
+    return await verifyReferralToken(
+      String(fallbackToken || "").trim(),
+      env?.REFERRAL_SIGNING_SECRET,
+      options
+    );
+  } catch (_) {
+    // Referral metadata is supplementary and must never prevent a booking.
+    return null;
+  }
+}
+
 export function serializeReferralCookie(
   token,
   expiresAt,

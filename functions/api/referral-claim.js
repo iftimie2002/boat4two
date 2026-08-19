@@ -3,6 +3,8 @@ import {
   decideReferralClaim,
   getActivePartner,
   getReferralFromRequest,
+  parseCookies,
+  REFERRAL_COOKIE_NAME,
   serializeReferralCookie
 } from "./_referrals.js";
 
@@ -49,10 +51,16 @@ export async function onRequestPost(context) {
     const existingReferral = await getReferralFromRequest(request, env);
     const decision = decideReferralClaim(existingReferral, partner);
     if (!decision.shouldCreate) {
+      const existingToken = parseCookies(request.headers.get("Cookie"))[REFERRAL_COOKIE_NAME] || "";
       console.info(
         `[referral] first_touch_preserved existing=${existingReferral.partner.id} requested=${partner.id}`
       );
-      return json({ ok: true, claimed: false, reason: decision.reason });
+      return json({
+        ok: true,
+        claimed: false,
+        reason: decision.reason,
+        referralToken: existingToken
+      });
     }
 
     const now = new Date();
@@ -79,7 +87,7 @@ export async function onRequestPost(context) {
 
     console.info(`[referral] claim_created partner=${partner.id}`);
     return json(
-      { ok: true, claimed: true },
+      { ok: true, claimed: true, referralToken: token },
       200,
       { "Set-Cookie": cookie }
     );

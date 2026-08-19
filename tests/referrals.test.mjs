@@ -14,6 +14,7 @@ import {
   getReferralFromRequest,
   normalizePartnerSlug,
   parseCookies,
+  resolveReferralForBooking,
   serializeReferralCookie,
   verifyReferralToken
 } from "../functions/api/_referrals.js";
@@ -251,7 +252,9 @@ test("claim endpoint sets no-store cookie, preserves first touch, and ignores un
   const firstBody = await firstResponse.json();
   const setCookie = firstResponse.headers.get("Set-Cookie");
 
-  assert.deepEqual(firstBody, { ok: true, claimed: true });
+  assert.equal(firstBody.ok, true);
+  assert.equal(firstBody.claimed, true);
+  assert.equal((await verifyReferralToken(firstBody.referralToken, SECRET))?.partner?.id, "kalkbrenner");
   assert.equal(firstResponse.headers.get("Cache-Control"), "no-store");
   assert.match(setCookie, /HttpOnly/);
   assert.match(setCookie, /Secure/);
@@ -295,10 +298,12 @@ test("claim endpoint sets no-store cookie, preserves first touch, and ignores un
     env: { REFERRAL_SIGNING_SECRET: SECRET }
   });
 
-  assert.deepEqual(await repeatResponse.json(), {
+  const repeatBody = await repeatResponse.json();
+  assert.deepEqual(repeatBody, {
     ok: true,
     claimed: false,
-    reason: "first_touch_preserved"
+    reason: "first_touch_preserved",
+    referralToken: cookiePair.split("=", 2)[1]
   });
   assert.equal(repeatResponse.headers.get("Set-Cookie"), null);
 
@@ -333,8 +338,38 @@ test("claim endpoint sets no-store cookie, preserves first touch, and ignores un
     }),
     env: { REFERRAL_SIGNING_SECRET: SECRET }
   });
-  assert.deepEqual(await replacementResponse.json(), { ok: true, claimed: true });
+  const replacementBody = await replacementResponse.json();
+  assert.equal(replacementBody.ok, true);
+  assert.equal(replacementBody.claimed, true);
+  assert.equal((await verifyReferralToken(replacementBody.referralToken, SECRET))?.partner?.id, "kalkbrenner");
   assert.match(replacementResponse.headers.get("Set-Cookie"), /^b4t_referral_v1=/);
+});
+
+test("booking referral resolution uses a signed proof when the cookie is not yet available", async () => {
+  const { token } = await createReferralToken(
+    PARTNER_REGISTRY.kalkbrenner,
+    "/kalkbrenner",
+    SECRET,
+    new Date()
+  );
+  const requestWithoutCookie = new Request("https://boat4two.com/api/create-hold");
+
+  assert.equal(
+    (await resolveReferralForBooking(
+      requestWithoutCookie,
+      token,
+      { REFERRAL_SIGNING_SECRET: SECRET }
+    ))?.partner?.id,
+    "kalkbrenner"
+  );
+  assert.equal(
+    await resolveReferralForBooking(
+      requestWithoutCookie,
+      `${token.slice(0, -1)}x`,
+      { REFERRAL_SIGNING_SECRET: SECRET }
+    ),
+    null
+  );
 });
 
 test("referral details appear only in the internal admin email", () => {
@@ -581,7 +616,7 @@ test("create-hold attaches verified referral metadata and direct bookings remain
   };
 
   try {
-    const makeRequest = (cookie = "") => new Request("https://boat4two.com/api/create-hold", {
+    const makeRequest = (cookie = "", referralToken = "") => new Request("https://boat4two.com/api/create-hold", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -595,7 +630,8 @@ test("create-hold attaches verified referral metadata and direct bookings remain
         email: "test@example.com",
         phone: "+351900000000",
         country: "Portugal",
-        testMode: true
+        testMode: true,
+        referralToken
       })
     });
 
@@ -630,13 +666,21 @@ test("create-hold attaches verified referral metadata and direct bookings remain
     assert.match(referralEvent.description, /Sales channel: Partner Referral/);
     assert.match(referralEvent.description, /Referral partner: Kalkbrenner/);
 
+    const signedProofResponse = await createHold({
+      request: makeRequest("", token),
+      env
+    });
+    assert.equal(signedProofResponse.status, 200);
+    assert.equal((await signedProofResponse.json()).ok, true);
+    assert.equal(createdBookingEvents[2].extendedProperties.private.referralPartnerId, "kalkbrenner");
+
     const badCookieResponse = await createHold({
       request: makeRequest(`${REFERRAL_COOKIE_NAME}=bad.token`),
       env
     });
     assert.equal(badCookieResponse.status, 200);
     assert.equal((await badCookieResponse.json()).ok, true);
-    assert.equal(createdBookingEvents[2].extendedProperties.private.referralPartnerId, undefined);
+    assert.equal(createdBookingEvents[3].extendedProperties.private.referralPartnerId, undefined);
 
     const missingSecretResponse = await createHold({
       request: makeRequest(`${REFERRAL_COOKIE_NAME}=${token}`),
@@ -644,7 +688,7 @@ test("create-hold attaches verified referral metadata and direct bookings remain
     });
     assert.equal(missingSecretResponse.status, 200);
     assert.equal((await missingSecretResponse.json()).ok, true);
-    assert.equal(createdBookingEvents[3].extendedProperties.private.referralPartnerId, undefined);
+    assert.equal(createdBookingEvents[4].extendedProperties.private.referralPartnerId, undefined);
   } finally {
     globalThis.fetch = originalFetch;
   }

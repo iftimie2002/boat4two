@@ -1775,32 +1775,50 @@ This slot is being held for you for <strong id="hold-countdown-timer">12:00</str
 
       async function claimReferralFromLandingPath() {
         const pathParts = window.location.pathname.split('/').filter(Boolean);
-        if (pathParts.length !== 1) return;
+        if (pathParts.length !== 1) return '';
 
         const slug = pathParts[0].toLowerCase();
-        if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(slug) || reservedReferralPaths.has(slug)) return;
+        if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(slug) || reservedReferralPaths.has(slug)) return '';
 
-        const controller = new AbortController();
-        const timeoutId = window.setTimeout(function() {
-          controller.abort();
-        }, 2500);
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+          const controller = new AbortController();
+          const timeoutId = window.setTimeout(function() {
+            controller.abort();
+          }, 2500);
 
-        try {
-          await fetch('/api/referral-claim', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            credentials: 'same-origin',
-            cache: 'no-store',
-            signal: controller.signal,
-            body: JSON.stringify({ slug: slug })
-          });
-        } catch (_) {
-          // Referral tracking is optional and must never interrupt the site or booking flow.
-        } finally {
-          window.clearTimeout(timeoutId);
+          try {
+            const response = await fetch('/api/referral-claim', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              credentials: 'same-origin',
+              cache: 'no-store',
+              signal: controller.signal,
+              body: JSON.stringify({ slug: slug })
+            });
+            const data = await response.json();
+            const referralToken = typeof data?.referralToken === 'string'
+              ? data.referralToken.trim()
+              : '';
+
+            if (response.ok && data?.ok && referralToken && referralToken.length <= 2048) {
+              return referralToken;
+            }
+          } catch (_) {
+            // Retry once below. Referral tracking must never interrupt the booking flow.
+          } finally {
+            window.clearTimeout(timeoutId);
+          }
+
+          if (attempt === 0) {
+            await new Promise(function(resolve) {
+              window.setTimeout(resolve, 150);
+            });
+          }
         }
+
+        return '';
       }
 
       const referralClaimPromise = claimReferralFromLandingPath();
@@ -2879,7 +2897,7 @@ const BOOKING_DATA_STORAGE_KEY = isTestPriceMode ? 'boat4two-booking-data-testpr
       }
 
 async function createHoldFromSelection(formValues) {
-  await referralClaimPromise;
+  const referralToken = await referralClaimPromise;
   const selection = buildSelectionData();
   const selectedTimeSlot = getSelectedTimeSlot();
 
@@ -2894,7 +2912,8 @@ async function createHoldFromSelection(formValues) {
     occasion: formValues.occasion || '',
     message: formValues.message || '',
     testMode: isTestPriceMode,
-    analyticsSessionId
+    analyticsSessionId,
+    referralToken
   };
 
   const response = await fetch('/api/create-hold', {
@@ -2902,6 +2921,7 @@ async function createHoldFromSelection(formValues) {
     headers: {
       'Content-Type': 'application/json'
     },
+    credentials: 'same-origin',
     body: JSON.stringify(payload)
   });
 
