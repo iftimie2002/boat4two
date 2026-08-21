@@ -1,0 +1,11 @@
+User-agent: OAI-SearchBot
+Allow: /
+User-agent: ChatGPT-User
+Allow: /
+User-agent: Googlebot
+Allow: /
+User-agent: Bingbot
+Allow: /
+User-agent: *
+Allow: /
+Sitemap: https://boat4two.com/sitemap.xml
