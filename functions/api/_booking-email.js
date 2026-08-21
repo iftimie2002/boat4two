@@ -1092,6 +1092,7 @@ function buildPartnerReferralNotificationPayload(model, partnerOverride = null) 
   const rateLabel = `${commission.ratePercent.toLocaleString("en-GB", {
     maximumFractionDigits: 2
   })}%`;
+  const includeCustomerName = partner.includeCustomerNameInNotification !== false;
   const text = [
     "Dear partner,",
     "",
@@ -1099,7 +1100,7 @@ function buildPartnerReferralNotificationPayload(model, partnerOverride = null) 
     "",
     "Booking details",
     "",
-    model.customerName ? `Customer name: ${model.customerName}` : "",
+    includeCustomerName && model.customerName ? `Customer name: ${model.customerName}` : "",
     `Tour: ${model.tourLabel}`,
     model.dateLabel ? `Date: ${model.dateLabel}` : "",
     model.timeLabel ? `Time: ${model.timeLabel}` : "",
@@ -1116,7 +1117,7 @@ function buildPartnerReferralNotificationPayload(model, partnerOverride = null) 
     "Referral booking",
     `
       <p style="margin:0 0 8px;font-size:16px;font-weight:700;color:#211611;">${escapeHtml(model.tourLabel)}</p>
-      ${model.customerName ? `<p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Customer name:</strong> ${escapeHtml(model.customerName)}</p>` : ""}
+      ${includeCustomerName && model.customerName ? `<p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Customer name:</strong> ${escapeHtml(model.customerName)}</p>` : ""}
       ${model.dateLabel ? `<p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Date:</strong> ${escapeHtml(model.dateLabel)}</p>` : ""}
       ${model.timeLabel ? `<p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Time:</strong> ${escapeHtml(model.timeLabel)}</p>` : ""}
       <p style="margin:0 0 6px;font-size:14px;color:#4a3b34;"><strong>Total booking:</strong> ${escapeHtml(model.amountLabel)}</p>

@@ -12,7 +12,8 @@ export const PARTNER_REGISTRY = Object.freeze({
       "contas@kalkbrenner.ws",
       "reservas@kalkbrenner.ws"
     ]),
-    commissionRateBasisPoints: 1500
+    commissionRateBasisPoints: 1500,
+    includeCustomerNameInNotification: true
   }),
   mssd9: Object.freeze({
     id: "mssd9",
@@ -22,7 +23,41 @@ export const PARTNER_REGISTRY = Object.freeze({
     notificationEmails: Object.freeze([
       "madalenaduque9@gmail.com"
     ]),
-    commissionRateBasisPoints: 1500
+    commissionRateBasisPoints: 1500,
+    includeCustomerNameInNotification: true
+  }),
+  mserol: Object.freeze({
+    id: "mserol",
+    displayName: "Marcos Serol",
+    type: "reseller",
+    active: true,
+    notificationEmails: Object.freeze([
+      "marcos.serol@gmail.com"
+    ]),
+    commissionRateBasisPoints: 1500,
+    includeCustomerNameInNotification: false
+  }),
+  orchidvillas: Object.freeze({
+    id: "orchidvillas",
+    displayName: "Micaela",
+    type: "reseller",
+    active: true,
+    notificationEmails: Object.freeze([
+      "orchidvillasprainha@gmail.com"
+    ]),
+    commissionRateBasisPoints: 1500,
+    includeCustomerNameInNotification: false
+  }),
+  laura: Object.freeze({
+    id: "laura",
+    displayName: "Laura Miguel",
+    type: "reseller",
+    active: true,
+    notificationEmails: Object.freeze([
+      "laurabmiguel13@gmail.com"
+    ]),
+    commissionRateBasisPoints: 1500,
+    includeCustomerNameInNotification: false
   })
 });
 
