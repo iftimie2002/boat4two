@@ -118,6 +118,82 @@ test("Madalena Duque receives signed attribution and her own partner email", asy
   assert.match(payload?.text || "", /Customer name: Test Customer/);
 });
 
+test("new partners receive 15% referral emails without customer names", async () => {
+  const partners = [
+    {
+      id: "mserol",
+      displayName: "Marcos Serol",
+      email: "marcos.serol@gmail.com"
+    },
+    {
+      id: "orchidvillas",
+      displayName: "Micaela",
+      email: "orchidvillasprainha@gmail.com"
+    },
+    {
+      id: "laura",
+      displayName: "Laura Miguel",
+      email: "laurabmiguel13@gmail.com"
+    }
+  ];
+
+  for (const expected of partners) {
+    const partner = PARTNER_REGISTRY[expected.id];
+    assert.equal(getActivePartner(`/${expected.id}`), partner);
+    assert.equal(partner.displayName, expected.displayName);
+    assert.deepEqual(partner.notificationEmails, [expected.email]);
+    assert.equal(partner.commissionRateBasisPoints, 1500);
+    assert.equal(partner.includeCustomerNameInNotification, false);
+
+    const { token } = await createReferralToken(
+      partner,
+      `/${expected.id}`,
+      SECRET,
+      CAPTURED_AT
+    );
+    const verified = await verifyReferralToken(token, SECRET, {
+      now: new Date("2026-08-20T00:00:00.000Z")
+    });
+    assert.equal(verified?.partner?.id, expected.id);
+    assert.equal(verified?.landingPath, `/${expected.id}`);
+
+    const event = {
+      id: `${expected.id}-partner-email-event`,
+      start: { dateTime: "2026-08-25T13:00:00.000Z", timeZone: "Europe/Lisbon" },
+      end: { dateTime: "2026-08-25T16:30:00.000Z", timeZone: "Europe/Lisbon" },
+      extendedProperties: {
+        private: {
+          tour: "amor",
+          date: "2026-08-25",
+          time: "14:00",
+          customerName: "Private Customer Name",
+          customerEmail: "private-customer@example.com",
+          customerPhone: "+351900000000",
+          paymentAmount: "198.00",
+          paymentCurrency: "EUR",
+          paymentOrderId: `B4T-${expected.id.toUpperCase()}-TEST`,
+          salesChannel: "partner_referral",
+          referralPartnerId: expected.id,
+          referralPartnerName: expected.displayName,
+          referralPartnerType: "reseller"
+        }
+      }
+    };
+    const payload = buildPartnerReferralNotificationPayload(
+      buildBookingEmailModel({}, event)
+    );
+    const output = JSON.stringify(payload);
+
+    assert.deepEqual(payload?.to, [expected.email]);
+    assert.equal(payload?.commissionRateBasisPoints, "1500");
+    assert.equal(payload?.commissionAmount, "29.70");
+    assert.match(payload?.subject || "", new RegExp(expected.displayName));
+    assert.match(payload?.text || "", /Your commission \(15%\): 29,70€/);
+    assert.doesNotMatch(output, /Private Customer Name|Customer name:/);
+    assert.doesNotMatch(output, /private-customer@example\.com|351900000000/);
+  }
+});
+
 test("creates an HMAC token with one central 30-day window and complete metadata", async () => {
   const partner = PARTNER_REGISTRY.kalkbrenner;
   const { token, referral } = await createReferralToken(partner, "/kalkbrenner", SECRET, CAPTURED_AT);
